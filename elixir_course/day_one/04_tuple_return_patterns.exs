@@ -81,3 +81,40 @@ with {:ok, acct} <- Bank.Account.deposit(acct, 5_00),
 else
   {:error, reason} -> IO.inspect(reason, label: "operation failed")
 end
+
+# ────────────────────────────────────────────────────────────────
+# 🚀  EXERCISES
+#
+# 1. Write `parse_bool/1` that accepts "true" | "false" strings and returns
+#    {:ok, boolean} or {:error, :invalid}.
+# 2. Using `with`, chain `File.read/1` and `parse_bool/1` to read a one-line
+#    file containing "true"/"false" and return the boolean.
+# 3. (Challenge) Convert the Bank.Account example into a `with` pipeline that
+#    deposits then withdraws, short-circuiting on the first error.
+#
+"""
+🔑 ANSWERS & EXPLANATIONS
+
+# 1.
+parse_bool = fn
+  "true"  -> {:ok, true}
+  "false" -> {:ok, false}
+  _ -> {:error, :invalid}
+end
+
+# 2.
+read_bool_file = fn path ->
+  with {:ok, raw} <- File.read(path),
+       {:ok, val} <- parse_bool.(String.trim(raw)) do
+    {:ok, val}
+  end
+end
+#  Demonstrates chaining two tuple-returning fns.
+
+# 3. Using `with` for bank steps
+with {:ok, acc1} <- Bank.Account.deposit(acct, 5_00),
+     {:ok, acc2} <- Bank.Account.withdraw(acc1, 15_00) do
+  {:ok, acc2}
+end
+#  The flow stops if deposit fails, showing short-circuiting nature.
+"""

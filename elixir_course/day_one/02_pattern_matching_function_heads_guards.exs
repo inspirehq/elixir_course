@@ -74,3 +74,44 @@ examples = [
 Enum.each(examples, fn ex ->
   IO.inspect({ex, HttpHelpers.classify(ex)})
 end)
+
+# ────────────────────────────────────────────────────────────────
+# 🚀  EXERCISES
+#
+# 1. Implement a `FizzBuzz.fizzbuzz/1` function using multiple function heads
+#    and guards that returns :fizz (divisible by 3), :buzz (5), :fizzbuzz (15)
+#    or the number itself.
+# 2. Write a `safe_head/1` function with two heads that returns {:ok, h} for a
+#    non-empty list and :error for an empty list.
+# 3. (Challenge) Create a `sign/1` function that returns :positive, :negative
+#    or :zero using guards `n > 0`, `n < 0`, `n == 0`.
+#
+"""
+🔑 ANSWERS & EXPLANATIONS
+
+# 1. FizzBuzz
+defmodule FizzBuzz do
+  def fizzbuzz(n) when rem(n, 15) == 0, do: :fizzbuzz
+  def fizzbuzz(n) when rem(n, 3)  == 0, do: :fizz
+  def fizzbuzz(n) when rem(n, 5)  == 0, do: :buzz
+  def fizzbuzz(n),                 do: n
+end
+#  Why? multiple heads + guards let us encode each rule declaratively.
+
+# 2. safe_head/1
+safe_head = fn
+  [h | _] -> {:ok, h}
+  []      -> :error
+end
+IO.inspect(safe_head.([1,2]))
+#  Shows pattern matching on list structure to avoid runtime errors.
+
+# 3. sign/1
+sign = fn
+  n when n > 0 -> :positive
+  n when n < 0 -> :negative
+  0 -> :zero
+end
+IO.inspect Enum.map([-2,0,5], sign)
+#  Demonstrates guard expressions to classify numbers succinctly.
+"""

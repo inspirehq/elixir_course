@@ -85,3 +85,52 @@ IO.inspect(pipeline, label: "pipeline outcome")
 
 # A single `with` replaces two nested `case` statements and cleanly propagates
 # the first error (e.g., {:error, :enoent} or {:error, :invalid}).
+
+# ────────────────────────────────────────────────────────────────
+# 🚀  EXERCISES
+#
+# 1. Refactor the following nested `case` into a `with` chain:
+#        case File.read("config.json") do
+#          {:ok, raw} ->
+#            case Jason.decode(raw) do
+#              {:ok, map} -> IO.inspect(map)
+#              err -> err
+#            end
+#          err -> err
+#        end
+# 2. Write a `maybe_div/2` function that divides a by b but returns
+#    {:error, :zero_div} when b == 0, using `with` for flow control.
+# 3. (Challenge) Create a `User.fetch_age/1` function that chains:
+#    get_user(id)      -> {:ok, user}
+#    get_profile(user) -> {:ok, profile}
+#    Map.fetch(profile, :age)
+#    returning just the age or the first error.
+#
+"""
+🔑 ANSWERS & EXPLANATIONS
+
+# 1. File read + decode
+with {:ok, raw}  <- File.read("config.json"),
+     {:ok, map} <- Jason.decode(raw) do
+  IO.inspect(map)
+end
+#  Single expression is clearer; `with` stops on first {:error, _}.
+
+# 2. maybe_div/2
+maybe_div = fn a, b ->
+  with true <- b != 0 do
+    {:ok, a / b}
+  else
+    _ -> {:error, :zero_div}
+  end
+end
+IO.inspect(maybe_div.(10, 0))
+
+# 3. fetch_age/1 outline
+with {:ok, user}    <- get_user(id),
+     {:ok, profile} <- get_profile(user),
+     {:ok, age}     <- Map.fetch(profile, :age) do
+  {:ok, age}
+end
+#  Guards the happy path while propagating the first failure.
+"""

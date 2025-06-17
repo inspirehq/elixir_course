@@ -1,9 +1,9 @@
 # Day 1 – Immutability and Rebinding in Elixir
 #
 # This script can be run with:
-#     mix run day_one/01_immutability_and_rebinding.exs
+#     mix run elixir_course/day_one/01_immutability_and_rebinding.exs
 # or inside IEx with:
-#     iex -r day_one/01_immutability_and_rebinding.exs
+#     iex -r elixir_course/day_one/01_immutability_and_rebinding.exs
 #
 # Each numbered section below demonstrates how data is immutable in Elixir and
 # how variable *names* (bindings) can be rebound to new values.
@@ -86,3 +86,47 @@ IO.inspect(DayOne.Cart.total(cart) / 100, label: "cart total ($)")
 # The `cart` list never changes.  `Enum.reduce/3` successively rebinds the
 # accumulator (`acc`) but every step returns a *new* integer; no mutation
 # occurs. This mirrors how you would calculate totals in production code.
+
+# ────────────────────────────────────────────────────────────────
+# 🚀  EXERCISES
+#
+# 1. Write a function `bump_each/1` that takes a list of integers and returns a
+#    *new* list where each element is incremented by 1.  Prove the original
+#    list is intact by printing both.
+# 2. Using the pin operator (^), pattern-match against the tuple `{1, 2, 3}` so
+#    that only the second element may rebind. Print the result and the value of
+#    your pinned variables.
+# 3. (Challenge) Implement a pure function `deep_update/3` that returns a *new*
+#    nested map with an updated key: `deep_update(user, [:settings, :theme], "dark")`.
+#
+"""
+🔑 ANSWERS & EXPLANATIONS
+
+# 1. bump_each/1
+original = [1, 2, 3]
+new_list = Enum.map(original, &(&1 + 1))
+IO.inspect({original, new_list}, label: "orig vs new")
+#  Why correct?  Enum.map/2 never mutates `original`; it produces a brand-new
+#  list. Printing shows `original` remains [1,2,3].  This reinforces immutability.
+
+# 2. Pin demonstration
+x = 1
+y = 3
+{:ok, ^x, middle, ^y} = {:ok, 1, 2, 3}
+IO.inspect({x, middle, y})
+#  We pinned the first and last elements to enforce they match existing values
+#  of x and y. Only `middle` is rebound (to 2).  This shows selective rebinding.
+
+# 3. deep_update/3 (simple version)
+update_in_map = fn m, [k], v -> Map.put(m, k, v)
+  m, [k | rest], v ->
+    inner = Map.get(m, k, %{})
+    Map.put(m, k, update_in_map.(inner, rest, v))
+end
+
+user = %{settings: %{theme: "light"}}
+updated = update_in_map.(user, [:settings, :theme], "dark")
+IO.inspect(updated, label: "updated")
+#  We returned a *new* map with shared structure; `user` is unchanged.  This
+#  demonstrates deep immutability and structural sharing.
+"""

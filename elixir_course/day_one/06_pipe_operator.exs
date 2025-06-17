@@ -72,3 +72,37 @@ etl_result = raw_rows
              |> Enum.reduce(0, fn order, acc -> acc + order.total end)
 
 IO.inspect(etl_result, label: "Total shipped revenue ($)")
+
+# ────────────────────────────────────────────────────────────────
+# 🚀  EXERCISES
+#
+# 1. Rewrite the expression `String.upcase(String.trim("  hi "))` using a pipe.
+# 2. Take a range 1..5, square the numbers, keep those > 10, sum the result
+#    using a single pipeline.
+# 3. (Challenge) Build a pipeline that reads a file "data.txt", splits on
+#    lines, removes blanks, and returns the line count.
+#
+"""
+🔑 ANSWERS & EXPLANATIONS
+
+# 1.
+"  hi " |> String.trim() |> String.upcase()
+#  Pipe passes intermediate value left-to-right; clearer than nested calls.
+
+# 2.
+result = 1..5
+         |> Enum.map(& &1*&1)
+         |> Enum.filter(& &1 > 10)
+         |> Enum.sum()
+IO.inspect(result)
+#  Shows transformation stages in readable order.
+
+# 3.
+count = "data.txt"
+        |> File.read!()
+        |> String.split("\n")
+        |> Enum.reject(&(&1 == ""))
+        |> length()
+IO.inspect(count)
+#  Demonstrates IO + string operations in a pipeline.
+"""

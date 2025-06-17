@@ -63,3 +63,31 @@ shipment_totals =
   |> Enum.into(%{})
 
 IO.inspect(shipment_totals, label: "Shipped totals by customer ($)")
+
+# ────────────────────────────────────────────────────────────────
+# 🚀  EXERCISES
+#
+# 1. Use Enum.reduce/3 to compute the sum of squares for 1..10.
+# 2. Implement `Enum.my_max/1` using reduce (no Enum.max/1!).
+# 3. (Challenge) Count word frequencies in "hello world hello" returning
+#    %{"hello" => 2, "world" => 1} using Enum functions only.
+#
+"""
+🔑 ANSWERS & EXPLANATIONS
+
+# 1.
+sum_sq = Enum.reduce(1..10, 0, fn n, acc -> acc + n*n end)
+IO.inspect(sum_sq)
+#  Shows accumulator pattern.
+
+# 2.
+my_max = fn [h | t] -> Enum.reduce(t, h, &max/2) end
+IO.inspect(my_max.([3,7,2]))
+#  Demonstrates custom reduce to replace built-in.
+
+# 3.
+words = String.split("hello world hello")
+freqs = Enum.reduce(words, %{}, fn w, acc -> Map.update(acc, w, 1, &(&1+1)) end)
+IO.inspect(freqs)
+#  Combines split + reduce to build frequency map immutably.
+"""
