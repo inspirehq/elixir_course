@@ -18,6 +18,17 @@ defmodule ElixirCourseWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+
+    # Task management routes
+    live "/tasks", TaskBoardLive
+  end
+
+  # API routes for task management
+  scope "/api", ElixirCourseWeb do
+    pipe_through :api
+
+    resources "/users", UserController, except: [:new, :edit]
+    resources "/tasks", TaskController, except: [:new, :edit]
   end
 
   # Other scopes may use custom stacks.

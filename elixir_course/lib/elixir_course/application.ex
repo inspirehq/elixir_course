@@ -12,8 +12,12 @@ defmodule ElixirCourse.Application do
       ElixirCourse.Repo,
       {DNSCluster, query: Application.get_env(:elixir_course, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: ElixirCourse.PubSub},
+      # Start Phoenix Presence for tracking online users
+      ElixirCourseWeb.Presence,
       # Start the Finch HTTP client for sending emails
       {Finch, name: ElixirCourse.Finch},
+      # Start the TaskManager GenServer for the capstone project
+      ElixirCourse.Tasks.TaskManager,
       # Start a worker by calling: ElixirCourse.Worker.start_link(arg)
       # {ElixirCourse.Worker, arg},
       # Start to serve requests, typically the last entry

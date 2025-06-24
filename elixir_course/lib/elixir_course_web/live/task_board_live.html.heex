@@ -1,0 +1,504 @@
+<div class="min-h-screen bg-gray-100">
+  <!-- Header -->
+  <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="ml-4">
+            <h1 class="text-xl font-semibold text-gray-900">TaskBoard</h1>
+            <p class="text-sm text-gray-500 hidden sm:block">Real-time task management</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-4">
+          <div class="hidden sm:flex items-center px-3 py-1 bg-green-50 text-green-700 rounded-full text-sm">
+            <div class="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
+            Connected
+          </div>
+          <div class="hidden lg:flex items-center px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+            </svg>
+            <%= online_users_count(@presence_list) %> online
+          </div>
+          <button phx-click="refresh_data" class="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="flex items-center">
+          <div class="p-2 bg-blue-50 rounded-lg">
+            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+            </svg>
+          </div>
+          <div class="ml-3 flex-1">
+            <p class="text-sm font-medium text-gray-600">Total</p>
+            <p class="text-xl font-semibold text-gray-900"><%= @stats.total %></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="flex items-center">
+          <div class="p-2 bg-blue-50 rounded-lg">
+            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+          <div class="ml-3 flex-1">
+            <p class="text-sm font-medium text-gray-600">Active</p>
+            <p class="text-xl font-semibold text-gray-900"><%= @stats.in_progress %></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="flex items-center">
+          <div class="p-2 bg-blue-50 rounded-lg">
+            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+            </svg>
+          </div>
+          <div class="ml-3 flex-1">
+            <p class="text-sm font-medium text-gray-600">Review</p>
+            <p class="text-xl font-semibold text-gray-900"><%= @stats.review %></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg border border-gray-200 p-4">
+        <div class="flex items-center">
+          <div class="p-2 bg-blue-50 rounded-lg">
+            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <div class="ml-3 flex-1">
+            <p class="text-sm font-medium text-gray-600">Done</p>
+            <p class="text-xl font-semibold text-gray-900"><%= @stats.done %></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions and Filters -->
+    <div class="bg-white rounded-lg border border-gray-200 mb-6">
+      <div class="p-4 border-b border-gray-200">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h2 class="text-lg font-semibold text-gray-900">Tasks</h2>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <button phx-click="toggle_create_task" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+              <%= if @show_create_form, do: "Cancel", else: "New Task" %>
+            </button>
+            <button phx-click="toggle_create_user" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+              </svg>
+              <%= if @show_user_form, do: "Cancel", else: "New User" %>
+            </button>
+            <button phx-click="toggle_channel_demo" class="inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-medium rounded-lg text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path>
+              </svg>
+              <%= if @show_channel_demo, do: "Hide", else: "Channel Demo" %>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="p-4">
+        <.form for={%{}} phx-change="update_filter">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select name="filter[status]" value={@filters.status} class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                <option value="">All Statuses</option>
+                <option value="todo">To Do</option>
+                <option value="in_progress">In Progress</option>
+                <option value="review">Review</option>
+                <option value="done">Done</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+              <select name="filter[priority]" value={@filters.priority} class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                <option value="">All Priorities</option>
+                <option value="urgent">Urgent</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Sort</label>
+              <select name="filter[sort_by]" value={@filters.sort_by} class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                <option value="">Default</option>
+                <option value="priority">Priority</option>
+                <option value="status">Status</option>
+                <option value="created_at">Created</option>
+                <option value="due_date">Due Date</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Search</label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                  </svg>
+                </div>
+                <input name="filter[search]" type="text" value={@filters.search} placeholder="Search tasks..." class="block w-full pl-10 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+              </div>
+            </div>
+          </div>
+        </.form>
+      </div>
+    </div>
+
+    <!-- Create Task Form -->
+    <div :if={@show_create_form} class="bg-white rounded-lg border border-gray-200 mb-6">
+      <div class="p-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900">Create New Task</h3>
+      </div>
+      <div class="p-4">
+        <.form for={%{}} phx-submit="create_task">
+          <div class="space-y-4">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                <input name="task[title]" type="text" required class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Enter task title">
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                <select name="task[priority]" class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                  <option value="low">Low</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select name="task[status]" class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                  <option value="todo" selected>To Do</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="review">Review</option>
+                  <option value="done">Done</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Created By *</label>
+                <select name="task[creator_id]" class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
+                  <option value="">Select Creator</option>
+                  <%= for user <- @users do %>
+                    <option value={user.id}><%= user.name %></option>
+                  <% end %>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Assigned To</label>
+                <select name="task[assignee_id]" class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                  <option value="">Select Assignee</option>
+                  <%= for user <- @users do %>
+                    <option value={user.id}><%= user.name %></option>
+                  <% end %>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+              <textarea name="task[description]" rows="3" class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Enter task description"></textarea>
+            </div>
+            <div class="flex justify-end">
+              <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                Create Task
+              </button>
+            </div>
+          </div>
+        </.form>
+      </div>
+    </div>
+
+    <!-- Create User Form -->
+    <div :if={@show_user_form} class="bg-white rounded-lg border border-gray-200 mb-6">
+      <div class="p-4 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900">Create New User</h3>
+      </div>
+      <div class="p-4">
+        <.form for={%{}} phx-submit="create_user">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+              <input name="user[name]" type="text" required class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Enter full name">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+              <input name="user[email]" type="email" required class="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="Enter email address">
+            </div>
+          </div>
+          <div class="mt-4 flex justify-end">
+            <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+              Create User
+            </button>
+          </div>
+        </.form>
+      </div>
+    </div>
+
+    <!-- Channel Demo Section -->
+    <div :if={@show_channel_demo} class="bg-white rounded-lg border border-gray-200 shadow-sm mb-6">
+      <!-- Header -->
+      <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">WebSocket Channel Demo</h3>
+            <p class="text-sm text-gray-600 mt-1">Demonstrate real-time communication patterns using Phoenix Channels</p>
+          </div>
+          <div class="flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">
+            <div class="w-2 h-2 bg-blue-500 rounded-full mr-2 animate-pulse"></div>
+            <%= @channel_status %>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Content -->
+      <div class="p-6 space-y-6">
+        <!-- Send Message Section -->
+        <div>
+          <h4 class="text-base font-medium text-gray-900 mb-4">Send Channel Messages</h4>
+          <.form for={%{}} phx-submit="send_channel_message">
+            <div class="flex gap-3">
+              <input name="message[content]" type="text" placeholder="Type a message to broadcast..." class="flex-1 block w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+              <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors whitespace-nowrap">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                </svg>
+                Send
+              </button>
+            </div>
+          </.form>
+        </div>
+        
+        <!-- Event Simulation Section -->
+        <div>
+          <h4 class="text-base font-medium text-gray-900 mb-4">Simulate Channel Events</h4>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button phx-click="simulate_channel_event" phx-value-event_type="user_joined" class="inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+              </svg>
+              User Joined
+            </button>
+            <button phx-click="simulate_channel_event" phx-value-event_type="user_typing" class="inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg hover:bg-yellow-100 focus:outline-none focus:ring-2 focus:ring-yellow-500 transition-colors">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+              </svg>
+              Typing
+            </button>
+            <button phx-click="simulate_channel_event" phx-value-event_type="task_broadcast" class="inline-flex items-center justify-center px-3 py-2 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"></path>
+              </svg>
+              Broadcast
+            </button>
+          </div>
+        </div>
+        
+        <!-- Message History Section -->
+        <div>
+          <h4 class="text-base font-medium text-gray-900 mb-4">Channel Message History</h4>
+          <div class="bg-gray-50 rounded-lg border border-gray-200 p-4 h-80 overflow-y-auto">
+            <%= if Enum.empty?(@channel_messages) do %>
+              <div class="flex items-center justify-center h-full text-gray-500">
+                <div class="text-center">
+                  <svg class="mx-auto h-12 w-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                  </svg>
+                  <p class="text-sm font-medium text-gray-700">No messages yet</p>
+                  <p class="text-xs text-gray-500 mt-1">Send a message or simulate an event to get started</p>
+                </div>
+              </div>
+            <% else %>
+              <div class="space-y-3">
+                <%= for message <- Enum.reverse(@channel_messages) do %>
+                  <div class={"p-3 rounded-lg border #{get_message_style(message.type)}"}>
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-xs font-semibold"><%= message.user_id %></span>
+                      <span class="text-xs opacity-60"><%= message.timestamp %></span>
+                    </div>
+                    <div class="text-sm font-medium"><%= message.content %></div>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Task List -->
+    <div class="bg-white rounded-lg border border-gray-200">
+      <div class="p-4 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-gray-900">Tasks (<%= length(@tasks) %>)</h3>
+        </div>
+      </div>
+      
+      <%= if Enum.empty?(@tasks) do %>
+        <div class="p-8 text-center">
+          <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+          </svg>
+          <h3 class="mt-2 text-sm font-medium text-gray-900">No tasks found</h3>
+          <p class="mt-1 text-sm text-gray-500">Get started by creating a new task.</p>
+        </div>
+      <% else %>
+        <div class="divide-y divide-gray-200">
+          <%= for task <- @tasks do %>
+            <div class="p-4 hover:bg-gray-50 transition-colors">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <!-- Task Info -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-3 mb-2">
+                    <h4 class="text-sm font-medium text-gray-900 truncate"><%= task.title %></h4>
+                    <span class={"inline-flex items-center px-2 py-1 rounded-full text-xs font-medium #{get_status_class(task.status)}"}>
+                      <%= format_status(task.status) %>
+                    </span>
+                    <span class={"inline-flex items-center px-2 py-1 rounded-full text-xs font-medium #{get_priority_class(task.priority)}"}>
+                      <%= String.capitalize(task.priority) %>
+                    </span>
+                  </div>
+                  <%= if task.description do %>
+                    <p class="text-sm text-gray-600 mb-2 line-clamp-2"><%= task.description %></p>
+                  <% end %>
+                  <div class="flex flex-wrap items-center gap-4 text-xs text-gray-500">
+                    <span>Created by <%= if task.creator, do: task.creator.name, else: "Unknown" %></span>
+                    <%= if task.assignee do %>
+                      <span>Assigned to <%= task.assignee.name %></span>
+                    <% end %>
+                    <%= if task.due_date do %>
+                      <span>Due <%= format_datetime(task.due_date) %></span>
+                    <% end %>
+                  </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex items-center gap-2">
+                  <!-- Status Buttons -->
+                  <div class="flex items-center gap-1">
+                    <%= for status <- ["todo", "in_progress", "review", "done"] do %>
+                      <button 
+                        phx-click="update_task_status" 
+                        phx-value-task_id={task.id} 
+                        phx-value-status={status}
+                        class={"p-2 rounded-lg transition-colors " <> if task.status == status, do: "bg-blue-100 text-blue-600", else: "text-gray-400 hover:text-gray-600 hover:bg-gray-100"}
+                        title={"Set status to #{format_status(status)}"}
+                      >
+                        <%= if status == "todo" do %>
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                          </svg>
+                        <% end %>
+                        <%= if status == "in_progress" do %>
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                          </svg>
+                        <% end %>
+                        <%= if status == "review" do %>
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                          </svg>
+                        <% end %>
+                        <%= if status == "done" do %>
+                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                          </svg>
+                        <% end %>
+                      </button>
+                    <% end %>
+                  </div>
+                  
+                  <!-- Delete Button -->
+                  <button 
+                    phx-click="delete_task" 
+                    phx-value-task_id={task.id}
+                    data-confirm="Are you sure you want to delete this task?"
+                    class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Delete task"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </main>
+
+  <!-- Activity Log and Presence -->
+  <div class="fixed bottom-4 right-4 w-80 max-w-sm z-30 hidden lg:block space-y-4">
+    <!-- Online Users -->
+    <div class="bg-white rounded-lg border border-gray-200 shadow-lg">
+      <div class="p-3 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-gray-900">Online Users</h3>
+          <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+            <%= online_users_count(@presence_list) %>
+          </span>
+        </div>
+      </div>
+      <div class="p-3 max-h-40 overflow-y-auto space-y-1">
+        <%= if online_users_count(@presence_list) == 0 do %>
+          <div class="text-xs text-gray-500 italic">No users online</div>
+        <% else %>
+          <%= for user_info <- format_presence_info(@presence_list) do %>
+            <div class="text-xs text-gray-600 leading-relaxed flex items-center">
+              <div class="w-2 h-2 bg-green-400 rounded-full mr-2 flex-shrink-0"></div>
+              <%= user_info %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Activity Log -->
+    <div class="bg-white rounded-lg border border-gray-200 shadow-lg">
+      <div class="p-3 border-b border-gray-200">
+        <h3 class="text-sm font-semibold text-gray-900">Activity Log</h3>
+      </div>
+      <div class="p-3 max-h-64 overflow-y-auto space-y-2">
+        <%= for log_entry <- @activity_log do %>
+          <div class="text-xs text-gray-600 leading-relaxed"><%= log_entry %></div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div> 
