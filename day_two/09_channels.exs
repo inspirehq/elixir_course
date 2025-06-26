@@ -1,9 +1,9 @@
 # Day 2 – Phoenix Channels
 #
-# Run with `mix run elixir_course/day_two/09_channels.exs`
+# This script can be run with:
+#     mix run day_two/09_channels.exs
 # or inside IEx with:
-#     iex -S mix
-#     c "elixir_course/day_two/09_channels.exs"
+#     iex -r day_two/09_channels.exs
 #
 # Phoenix Channels provide real-time bidirectional communication between clients
 # and the server using WebSockets, with automatic fallbacks to long-polling.

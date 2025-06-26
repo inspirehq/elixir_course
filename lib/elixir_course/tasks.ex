@@ -71,6 +71,7 @@ defmodule ElixirCourse.Tasks do
           "tasks",
           {:task_created, get_task!(task.id)}
         )
+
         {:ok, get_task!(task.id)}
 
       error ->
@@ -101,6 +102,7 @@ defmodule ElixirCourse.Tasks do
           "tasks",
           {:task_updated, get_task!(updated_task.id)}
         )
+
         {:ok, get_task!(updated_task.id)}
 
       error ->
@@ -128,6 +130,7 @@ defmodule ElixirCourse.Tasks do
           "tasks",
           {:task_deleted, deleted_task.id}
         )
+
         {:ok, deleted_task}
 
       error ->
@@ -156,10 +159,11 @@ defmodule ElixirCourse.Tasks do
       %{total: 10, completed: 5, in_progress: 3, todo: 2}
   """
   def get_task_stats do
-    query = from(t in Task,
-      group_by: t.status,
-      select: {t.status, count(t.id)}
-    )
+    query =
+      from(t in Task,
+        group_by: t.status,
+        select: {t.status, count(t.id)}
+      )
 
     stats = Repo.all(query) |> Enum.into(%{})
 
@@ -212,14 +216,17 @@ defmodule ElixirCourse.Tasks do
 
   defp filter_by(query, :search, search_term) when search_term != "" do
     search_pattern = "%#{search_term}%"
+
     from(t in query,
-      where: ilike(t.title, ^search_pattern) or
-             ilike(t.description, ^search_pattern)
+      where:
+        ilike(t.title, ^search_pattern) or
+          ilike(t.description, ^search_pattern)
     )
   end
 
   defp filter_by(query, :due_soon, true) do
     tomorrow = Date.add(Date.utc_today(), 1)
+
     from(t in query,
       where: t.due_date <= ^tomorrow and t.status != "done"
     )
@@ -227,6 +234,7 @@ defmodule ElixirCourse.Tasks do
 
   defp filter_by(query, :overdue, true) do
     today = Date.utc_today()
+
     from(t in query,
       where: t.due_date < ^today and t.status != "done"
     )

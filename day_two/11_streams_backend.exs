@@ -1,9 +1,9 @@
 # Day 2 – Phoenix Streams (Backend)
 #
-# Run with `mix run elixir_course/day_two/11_streams_backend.exs`
+# This script can be run with:
+#     mix run day_two/11_streams_backend.exs
 # or inside IEx with:
-#     iex -S mix
-#     c "elixir_course/day_two/11_streams_backend.exs"
+#     iex -r day_two/11_streams_backend.exs
 #
 # Phoenix Streams enable efficient real-time data streaming to LiveViews,
 # providing automatic updates when data changes without manual pubsub setup.

@@ -43,8 +43,16 @@ defmodule ElixirCourse.Tasks.Task do
   def changeset(task, attrs) do
     task
     |> cast(attrs, [
-      :title, :description, :status, :priority, :due_date,
-      :estimated_hours, :actual_hours, :tags, :creator_id, :assignee_id
+      :title,
+      :description,
+      :status,
+      :priority,
+      :due_date,
+      :estimated_hours,
+      :actual_hours,
+      :tags,
+      :creator_id,
+      :assignee_id
     ])
     |> validate_required([:title, :creator_id])
     |> validate_length(:title, min: 3, max: 200)
@@ -119,23 +127,28 @@ defmodule ElixirCourse.Tasks.Task do
 
     case {current_status, new_status} do
       # Allow any transition from todo
-      {"todo", _} -> changeset
+      {"todo", _} ->
+        changeset
 
       # From in_progress, can go to todo, review, or done
-      {"in_progress", status} when status in ["todo", "review", "done"] -> changeset
+      {"in_progress", status} when status in ["todo", "review", "done"] ->
+        changeset
 
       # From review, can go back to in_progress or to done
-      {"review", status} when status in ["in_progress", "done"] -> changeset
+      {"review", status} when status in ["in_progress", "done"] ->
+        changeset
 
       # From done, can only go back to review (for reopening)
-      {"done", "review"} -> changeset
+      {"done", "review"} ->
+        changeset
 
       # Invalid transition
       {current, new} when current != new ->
         add_error(changeset, :status, "invalid status transition from #{current} to #{new}")
 
       # Same status (no change)
-      _ -> changeset
+      _ ->
+        changeset
     end
   end
 
@@ -197,6 +210,7 @@ defmodule ElixirCourse.Tasks.Task do
   """
   def overdue?(%__MODULE__{due_date: nil}), do: false
   def overdue?(%__MODULE__{due_date: _due_date, status: "done"}), do: false
+
   def overdue?(%__MODULE__{due_date: due_date}) do
     Date.compare(due_date, Date.utc_today()) == :lt
   end
@@ -206,6 +220,7 @@ defmodule ElixirCourse.Tasks.Task do
   """
   def due_soon?(%__MODULE__{due_date: nil}), do: false
   def due_soon?(%__MODULE__{due_date: _due_date, status: "done"}), do: false
+
   def due_soon?(%__MODULE__{due_date: due_date}) do
     days_until_due = Date.diff(due_date, Date.utc_today())
     days_until_due >= 0 and days_until_due <= 3

@@ -1,24 +1,25 @@
 # Day 1 – Guided Exercise: Building a Simple Counter GenServer
 #
-# This file is *interactive* – the first half gives students a **prompt** with
-# TODO markers.  Scroll further down and you'll find the **Answer Key** for
-# self-checking (collapsed in a multi-line string so it won't execute unless
-# intentionally required).
+# This script can be run with:
+#     mix run day_one/09_counter_genserver.exs
+# or inside IEx with:
+#     iex -r day_one/09_counter_genserver.exs
+#
+# This file is *interactive* – it provides students with a **prompt** with
+# TODO markers. The exercise functions are already implemented to demonstrate
+# the expected patterns, but students can modify them for practice.
 #
 # Instructions:
-#   1. Duplicate this file to your own workspace or comment out the answer.
-#   2. Fill in the TODO blocks until the tests at the bottom pass.
-#   3. Compare with the Answer Key when you get stuck.
-#
-# You can run the exercise with:
-#     mix run elixir_course/day_one/09_counter_genserver.exs
-# or in IEx using `iex -S mix` and then `CounterExercise.manual_demo/0`.
+#   1. Review the implemented code to understand GenServer patterns
+#   2. Modify the functions to experiment with different approaches
+#   3. Run the tests to verify your understanding
+# ────────────────────────────────────────────────────────────────
 
-IO.puts("\n🎯 Exercise Prompt – implement the missing pieces!")
+IO.puts("\n🎯 Exercise Prompt – Review and understand the GenServer patterns!")
 
 defmodule CounterExercise do
   @moduledoc """
-  Implement a GenServer that keeps an integer count in its state.
+  A GenServer that keeps an integer count in its state.
 
   Public API requirements:
   • start_link/1 – initial count (default 0)
@@ -30,12 +31,10 @@ defmodule CounterExercise do
 
   # ── Public API ───────────────────────────────────────────────
   def start_link(initial \\ 0) do
-    # TODO: start the GenServer process and return {:ok, pid}
     GenServer.start_link(__MODULE__, initial, name: __MODULE__)
   end
 
   def inc(n \\ 1) do
-    # TODO: send an *asynchronous* message to increment by n
     GenServer.cast(__MODULE__, {:inc, n})
   end
 
@@ -47,7 +46,6 @@ defmodule CounterExercise do
 
   @impl true
   def handle_cast({:inc, n}, state) do
-    # TODO: return the new state
     {:noreply, state + n}
   end
 
@@ -63,7 +61,7 @@ defmodule CounterExercise do
   end
 end
 
-# Quick assertion-style tests so students know when they're done.
+# Quick assertion-style tests so students know the implementation works
 {:ok, _} = CounterExercise.start_link(2)
 CounterExercise.inc()
 CounterExercise.inc(3)
@@ -76,32 +74,146 @@ else
   IO.puts("❌  Expected #{expected}, got #{actual}")
 end
 
-# ────────────────────────────────────────────────────────────────
-"""
-📖 Answer Key (uncomment to compare) –––––––––––––––––––––––––––––
+defmodule DayOne.CounterExercises do
+  @moduledoc """
+  Run the tests with: mix test day_one/09_counter_genserver.exs
+  or in IEx:
+  iex -r day_one/09_counter_genserver.exs
+  DayOne.CounterExercisesTest.test_basic_counter/0
+  DayOne.CounterExercisesTest.test_counter_with_reset/0
+  DayOne.CounterExercisesTest.test_counter_boundaries/0
+  """
 
-defmodule CounterAnswer do
+  @spec build_basic_counter(integer()) :: integer()
+  def build_basic_counter(_initial) do
+    #   Build a counter that starts at the given initial value,
+    #   increment it by 1 three times, then return the final value.
+    #   Use the CounterExercise module above.
+    #   Example: build_basic_counter(5) should return 8
+    :not_implemented
+  end
+
+  @spec build_counter_with_reset() :: :ok
+  def build_counter_with_reset do
+    #   Extend the CounterExercise to support a reset/0 function that sets
+    #   the counter back to 0. Demonstrate by incrementing, resetting,
+    #   and verifying the counter is 0. Return :ok when complete.
+    :not_implemented
+  end
+
+  @spec test_counter_boundaries() :: :ok
+  def test_counter_boundaries do
+    #   Test edge cases: increment by 0, increment by negative numbers,
+    #   and very large increments. Return :ok if all behave as expected.
+    :not_implemented
+  end
+end
+
+# Extended counter with reset functionality for exercises
+defmodule CounterWithReset do
   use GenServer
-  # API
+
+  # Public API
   def start_link(initial \\ 0), do: GenServer.start_link(__MODULE__, initial, name: __MODULE__)
-  def inc(n \\ 1),            do: GenServer.cast(__MODULE__, {:inc, n})
-  def value(),                do: GenServer.call(__MODULE__, :value)
+  def inc(n \\ 1), do: GenServer.cast(__MODULE__, {:inc, n})
+  def reset(), do: GenServer.cast(__MODULE__, :reset)
+  def value(), do: GenServer.call(__MODULE__, :value)
 
   # Callbacks
   @impl true
   def init(initial), do: {:ok, initial}
+
   @impl true
   def handle_cast({:inc, n}, state), do: {:noreply, state + n}
+
+  @impl true
+  def handle_cast(:reset, _state), do: {:noreply, 0}
+
   @impl true
   def handle_call(:value, _from, state), do: {:reply, state, state}
 end
 
-# Explanation:
-# • Public API converts directly to GenServer.call/cast keeping synchronous vs
-#   async clear.
-# • State is *immutable*; each increment returns a new integer stored for the
-#   next message.
-# • Separation of concerns: tests use only the public API, demonstrating
-#   black-box usage.
+ExUnit.start()
 
+defmodule DayOne.CounterExercisesTest do
+  use ExUnit.Case, async: true
+
+  alias DayOne.CounterExercises, as: EX
+
+  test "build_basic_counter/1 increments counter from initial value" do
+    assert EX.build_basic_counter(5) == 8
+    assert EX.build_basic_counter(0) == 3
+    assert EX.build_basic_counter(-2) == 1
+  end
+
+  test "build_counter_with_reset/0 demonstrates reset functionality" do
+    assert EX.build_counter_with_reset() == :ok
+  end
+
+  test "test_counter_boundaries/0 handles edge cases properly" do
+    assert EX.test_counter_boundaries() == :ok
+  end
+end
+
+"""
+ANSWERS & EXPLANATIONS
+
+# build_basic_counter/1
+def build_basic_counter(initial) do
+  # Use a unique name to avoid conflicts in tests
+  name = :"counter_#{:rand.uniform(10000)}"
+  {:ok, _} = GenServer.start_link(CounterExercise, initial, name: name)
+  GenServer.cast(name, {:inc, 1})
+  GenServer.cast(name, {:inc, 1})
+  GenServer.cast(name, {:inc, 1})
+  GenServer.call(name, :value)
+end
+#  Explanation: Creates isolated counter instances to avoid test interference.
+#  Shows proper GenServer lifecycle: start -> multiple operations -> query final state.
+
+# build_counter_with_reset/0
+def build_counter_with_reset do
+  {:ok, _} = CounterWithReset.start_link(0)
+  CounterWithReset.inc(5)
+  CounterWithReset.inc(3)
+  CounterWithReset.reset()
+  final_value = CounterWithReset.value()
+
+  if final_value == 0 do
+    :ok
+  else
+    {:error, {:expected_zero_got, final_value}}
+  end
+end
+#  Explanation: Demonstrates extending GenServer with additional operations.
+#  Reset operation shows how cast can completely replace state rather than modify it.
+
+# test_counter_boundaries/0
+def test_counter_boundaries do
+  name = :"boundary_counter_#{:rand.uniform(10000)}"
+  {:ok, _} = GenServer.start_link(CounterExercise, 10, name: name)
+
+  # Test increment by 0
+  GenServer.cast(name, {:inc, 0})
+  val1 = GenServer.call(name, :value)
+
+  # Test negative increment
+  GenServer.cast(name, {:inc, -5})
+  val2 = GenServer.call(name, :value)
+
+  # Test large increment
+  GenServer.cast(name, {:inc, 1_000_000})
+  val3 = GenServer.call(name, :value)
+
+  if val1 == 10 and val2 == 5 and val3 == 1_000_005 do
+    :ok
+  else
+    {:error, {:unexpected_values, val1, val2, val3}}
+  end
+end
+#  Explanation: Tests demonstrate that integer arithmetic works as expected.
+#  GenServer state transitions are predictable even with edge case inputs.
+
+Separation of concerns: tests use only the public API, demonstrating
+black-box usage while the implementation details remain encapsulated.
 """

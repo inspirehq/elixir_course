@@ -1,9 +1,9 @@
 # Day 2 – Querying with Ecto
 #
-# Run with `mix run elixir_course/day_two/04_querying.exs`
+# This script can be run with:
+#     mix run day_two/04_querying.exs
 # or inside IEx with:
-#     iex -S mix
-#     c "elixir_course/day_two/04_querying.exs"
+#     iex -r day_two/04_querying.exs
 #
 # Ecto.Query provides a composable, type-safe DSL for building database queries.
 # This module demonstrates the various ways to query data using Ecto's Query API.
@@ -413,28 +413,81 @@ end
 IO.puts("Blog query system:")
 IO.puts(DayTwo.BlogQueries.show_blog_query_functions())
 
-# ────────────────────────────────────────────────────────────────
-# 🚀  EXERCISES
-#
-# 1. Write a query that finds all users who have posted in the last 30 days,
-#    ordered by their most recent post date. Include the user info and their
-#    post count in that period.
-# 2. Create a "related posts" query that finds posts with similar tags to a
-#    given post, excluding the original post, limited to 5 results.
-# 3. (Challenge) Build a query for a comment moderation system that finds
-#    comments needing approval (approved = false), includes the post title
-#    and author name, and groups by user to show repeat offenders first.
+defmodule DayTwo.QueryExercises do
+  @moduledoc """
+  Run the tests with: mix test day_two/04_querying.exs
+  or in IEx:
+  iex -r day_two/04_querying.exs
+  DayTwo.QueryExercisesTest.test_active_users_query/0
+  DayTwo.QueryExercisesTest.test_related_posts_query/0
+  DayTwo.QueryExercisesTest.test_moderation_query/0
+  """
+
+  @spec build_active_users_query() :: binary()
+  def build_active_users_query do
+    #   Write a query that finds all users who have posted in the last 30 days,
+    #   ordered by their most recent post date. Include the user info and their
+    #   post count in that period.
+    #   Return the query as a string representation
+    :not_implemented
+  end
+
+  @spec build_related_posts_query(integer()) :: binary()
+  def build_related_posts_query(_post_id) do
+    #   Create a "related posts" query that finds posts with similar tags to a
+    #   given post, excluding the original post, limited to 5 results.
+    #   Return the query as a string representation
+    :not_implemented
+  end
+
+  @spec build_moderation_query() :: binary()
+  def build_moderation_query do
+    #   Build a query for a comment moderation system that finds
+    #   comments needing approval (approved = false), includes the post title
+    #   and author name, and groups by user to show repeat offenders first.
+    #   Return the query as a string representation
+    :not_implemented
+  end
+end
+
+ExUnit.start()
+
+defmodule DayTwo.QueryExercisesTest do
+  use ExUnit.Case, async: true
+
+  alias DayTwo.QueryExercises, as: EX
+
+  test "build_active_users_query/0 returns valid query structure" do
+    query = EX.build_active_users_query()
+    assert is_binary(query)
+    assert String.contains?(query, "from u in User")
+    assert String.contains?(query, "30")
+  end
+
+  test "build_related_posts_query/1 handles post exclusion" do
+    query = EX.build_related_posts_query(123)
+    assert is_binary(query)
+    assert String.contains?(query, "where: p.id != ^123")
+    assert String.contains?(query, "limit: 5")
+  end
+
+  test "build_moderation_query/0 includes grouping logic" do
+    query = EX.build_moderation_query()
+    assert is_binary(query)
+    assert String.contains?(query, "approved == false")
+    assert String.contains?(query, "group_by")
+  end
+end
 
 """
-🔑 ANSWERS & EXPLANATIONS
+ANSWERS & EXPLANATIONS
 
-# 1. Active users in last 30 days
-def active_users_last_30_days do
-  thirty_days_ago = DateTime.add(DateTime.utc_now(), -30, :day)
-
+# 1. build_active_users_query/0
+def build_active_users_query do
+  \"\"\"
   from u in User,
     join: p in assoc(u, :posts),
-    where: p.inserted_at >= ^thirty_days_ago,
+    where: p.inserted_at >= ^DateTime.add(DateTime.utc_now(), -30, :day),
     group_by: u.id,
     order_by: [desc: max(p.inserted_at)],
     select: %{
@@ -442,23 +495,26 @@ def active_users_last_30_days do
       recent_post_count: count(p.id),
       latest_post_date: max(p.inserted_at)
     }
+  \"\"\"
 end
+#  Uses join + group_by to aggregate user data, orders by latest activity
 
-# 2. Related posts by tags
-def related_posts(post_id, limit \\ 5) do
-  # First get the tags of the original post
-  original_post = Repo.get!(Post, post_id)
-
+# 2. build_related_posts_query/1
+def build_related_posts_query(post_id) do
+  \"\"\"
   from p in Post,
-    where: p.id != ^post_id,
-    where: fragment("? && ?", p.tags, ^original_post.tags),
-    order_by: [desc: fragment("array_length(? & ?, 1)", p.tags, ^original_post.tags)],
-    limit: ^limit,
+    where: p.id != ^#{post_id},
+    where: fragment("? && ?", p.tags, ^tags),
+    order_by: [desc: fragment("array_length(? & ?, 1)", p.tags, ^tags)],
+    limit: 5,
     preload: [:user]
+  \"\"\"
 end
+#  Uses PostgreSQL array operators for tag intersection, orders by overlap
 
-# 3. Comments needing moderation with repeat offender detection
-def comments_for_moderation do
+# 3. build_moderation_query/0
+def build_moderation_query do
+  \"\"\"
   from c in Comment,
     where: c.approved == false,
     join: p in assoc(c, :post),
@@ -471,10 +527,7 @@ def comments_for_moderation do
       pending_comment_count: count(c.id),
       sample_posts: fragment("array_agg(DISTINCT ?)", p.title)
     }
+  \"\"\"
 end
-
-# Why these work:
-# 1. Uses join + group_by to aggregate user data, orders by latest activity
-# 2. Uses PostgreSQL array operators && for tag intersection, orders by overlap
-# 3. Groups by user to identify patterns, uses array_agg to show affected posts
+#  Groups by user to identify patterns, uses array_agg to show affected posts
 """

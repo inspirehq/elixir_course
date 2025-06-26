@@ -1,9 +1,9 @@
 # Day 2 – Phoenix PubSub
 #
-# Run with `mix run elixir_course/day_two/08_phoenix_pubsub.exs`
+# This script can be run with:
+#     mix run day_two/08_phoenix_pubsub.exs
 # or inside IEx with:
-#     iex -S mix
-#     c "elixir_course/day_two/08_phoenix_pubsub.exs"
+#     iex -r day_two/08_phoenix_pubsub.exs
 #
 # Phoenix PubSub provides distributed publish-subscribe messaging. It enables
 # processes to subscribe to topics and receive messages published to those topics,
@@ -481,18 +481,74 @@ end
 DayTwo.ChatDemo.demonstrate_chat_flow()
 DayTwo.ChatDemo.show_chat_topics()
 
-# ────────────────────────────────────────────────────────────────
-# 🚀  EXERCISES
-#
-# 1. Design a notification system using PubSub. Create topics for different
-#    notification types (email, push, SMS) and show how a user action can
-#    trigger multiple notification methods.
-# 2. Build a real-time dashboard system where multiple widgets subscribe to
-#    different data topics (sales, users, errors). Show how data updates
-#    propagate to relevant widgets.
-# 3. (Challenge) Create a distributed task processing system where workers
-#    subscribe to job topics based on their capabilities, and a dispatcher
-#    publishes jobs to appropriate topics.
+defmodule DayTwo.PubSubExercises do
+  @moduledoc """
+  Run the tests with: mix test day_two/08_phoenix_pubsub.exs
+  or in IEx:
+  iex -r day_two/08_phoenix_pubsub.exs
+  DayTwo.PubSubExercisesTest.test_notification_system/0
+  DayTwo.PubSubExercisesTest.test_dashboard_system/0
+  DayTwo.PubSubExercisesTest.test_task_processing_system/0
+  """
+
+  @spec design_notification_system() :: [binary()]
+  def design_notification_system do
+    #   Design a notification system using PubSub. Create topics for different
+    #   notification types (email, push, SMS) and show how a user action can
+    #   trigger multiple notification methods.
+    #   Return a list of topic names
+    :not_implemented
+  end
+
+  @spec build_dashboard_system() :: map()
+  def build_dashboard_system do
+    #   Build a real-time dashboard system where multiple widgets subscribe to
+    #   different data topics (sales, users, errors). Show how data updates
+    #   propagate to relevant widgets.
+    #   Return a map with widget types and their subscribed topics
+    :not_implemented
+  end
+
+  @spec create_task_processing_system() :: binary()
+  def create_task_processing_system do
+    #   Create a distributed task processing system where workers
+    #   subscribe to job topics based on their capabilities, and a dispatcher
+    #   publishes jobs to appropriate topics.
+    #   Return a description of the system architecture
+    :not_implemented
+  end
+end
+
+ExUnit.start()
+
+defmodule DayTwo.PubSubExercisesTest do
+  use ExUnit.Case, async: true
+
+  alias DayTwo.PubSubExercises, as: EX
+
+  test "design_notification_system/0 returns notification topics" do
+    topics = EX.design_notification_system()
+    assert is_list(topics)
+    assert Enum.any?(topics, fn t -> String.contains?(t, "email") end)
+    assert Enum.any?(topics, fn t -> String.contains?(t, "push") end)
+    assert Enum.any?(topics, fn t -> String.contains?(t, "sms") end)
+  end
+
+  test "build_dashboard_system/0 maps widgets to topics" do
+    system = EX.build_dashboard_system()
+    assert is_map(system)
+    assert Map.has_key?(system, :widgets)
+    assert Map.has_key?(system, :topics)
+  end
+
+  test "create_task_processing_system/0 describes worker distribution" do
+    description = EX.create_task_processing_system()
+    assert is_binary(description)
+    assert String.contains?(description, "worker")
+    assert String.contains?(description, "topic")
+    assert String.length(description) > 100
+  end
+end
 
 """
 🔑 ANSWERS & EXPLANATIONS

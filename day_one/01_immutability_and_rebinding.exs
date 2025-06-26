@@ -1,9 +1,9 @@
 # Day 1 – Immutability and Rebinding in Elixir
 #
 # This script can be run with:
-#     mix run elixir_course/day_one/01_immutability_and_rebinding.exs
+#     mix run day_one/01_immutability_and_rebinding.exs
 # or inside IEx with:
-#     iex -r elixir_course/day_one/01_immutability_and_rebinding.exs
+#     iex -r day_one/01_immutability_and_rebinding.exs
 #
 # Each numbered section below demonstrates how data is immutable in Elixir and
 # how variable *names* (bindings) can be rebound to new values.
@@ -73,7 +73,8 @@ defmodule DayOne.Cart do
   @moduledoc """
   Pure functions that operate on an immutable shopping cart (a list of maps).
   """
-
+  # @type is a type specifier
+  # @spec is a function specifier
   @type money :: integer()  # cents
   @spec total([map()]) :: money()
   def total(line_items) do
@@ -85,22 +86,87 @@ IO.inspect(DayOne.Cart.total(cart) / 100, label: "cart total ($)")
 
 # The `cart` list never changes.  `Enum.reduce/3` successively rebinds the
 # accumulator (`acc`) but every step returns a *new* integer; no mutation
-# occurs. This mirrors how you would calculate totals in production code.
+# occurs.
 
-# ────────────────────────────────────────────────────────────────
-# 🚀  EXERCISES
-#
-# 1. Write a function `bump_each/1` that takes a list of integers and returns a
-#    *new* list where each element is incremented by 1.  Prove the original
-#    list is intact by printing both.
-# 2. Using the pin operator (^), pattern-match against the tuple `{1, 2, 3}` so
-#    that only the second element may rebind. Print the result and the value of
-#    your pinned variables.
-# 3. (Challenge) Implement a pure function `deep_update/3` that returns a *new*
-#    nested map with an updated key: `deep_update(user, [:settings, :theme], "dark")`.
-#
+defmodule DayOne.Exercises do
+  @moduledoc """
+  Run the tests with: mix test day_one/01_immutability_and_rebinding.exs
+  or in IEx:
+  iex -r day_one/01_immutability_and_rebinding.exs
+  DayOne.ExercisesTest.test_bump_each/0
+  DayOne.ExercisesTest.test_pin_demo/0
+  DayOne.ExercisesTest.test_deep_update/0
+  """
+
+  @spec bump_each([integer()]) :: [integer()]
+  def bump_each(_ints) do
+    #   Given a list of integers, return *a new list* with each value bumped.
+    #   Prove the original list is intact by printing both.
+    #   Hint: Use Enum.map/2 to create a new list.
+    #   Example: bump_each([1,2,3]) ⇒ [2,3,4]
+    :not_implemented
+  end
+
+  @spec pin_demo() :: {integer(), integer(), integer()}
+  def pin_demo do
+    #   Show off the pin operator ^
+    #   1. Bind two variables, e.g. x = 1 and y = 3.
+    #   2. Pattern-match against a tuple, *pinning* x and y so they cannot be
+    #      rebound while the middle element *is* rebound.
+    #   3. Return the resulting 3-tuple.
+    #      A common answer is {1,2,3}, but any tuple that proves the concept
+    #      is acceptable *as long as the outer elements are the pinned ones*.
+    :not_implemented
+  end
+
+  @spec deep_update(map(), [term()], any()) :: map()
+  def deep_update(_data, _path, _value) do
+    #   Produce and return a *new* map where the value located at `path` is
+    #   replaced by `value`. The original map must stay unchanged.
+    #   Hint: Use Kernel.put_in/3 or update_in/3.
+    #   Example:
+    #     deep_update(%{settings: %{theme: "light"}}, [:settings, :theme], "dark")
+    #     #=> %{settings: %{theme: "dark"}}
+    :not_implemented
+  end
+end
+
+ExUnit.start()
+
+defmodule DayOne.ExercisesTest do
+  use ExUnit.Case, async: true
+
+  alias DayOne.Exercises, as: EX
+
+  test "bump_each/1 increments each element and leaves original intact" do
+    original = [1, 2, 3]
+    assert EX.bump_each(original) == [2, 3, 4]
+    assert original == [1, 2, 3]
+  end
+
+  test "pin_demo/0 shows selective rebinding with the pin operator" do
+    {x, _middle, y} = EX.pin_demo()
+    # outer elements must be the pinned originals (1 and 3)
+    assert x == 1
+    assert y == 3
+  end
+
+  test "deep_update/3 updates nested value immutably" do
+    data    = %{settings: %{theme: "light"}}
+    path    = [:settings, :theme]
+    new_val = "dark"
+
+    updated = EX.deep_update(data, path, new_val)
+
+    # Value replaced at path
+    assert get_in(updated, path) == new_val
+    # Unrelated parts stay intact (immutability) – original untouched
+    assert data[:settings][:theme] == "light"
+  end
+end
+
 """
-🔑 ANSWERS & EXPLANATIONS
+ANSWERS & EXPLANATIONS
 
 # 1. bump_each/1
 original = [1, 2, 3]
@@ -112,21 +178,18 @@ IO.inspect({original, new_list}, label: "orig vs new")
 # 2. Pin demonstration
 x = 1
 y = 3
-{:ok, ^x, middle, ^y} = {:ok, 1, 2, 3}
+{^x, middle, ^y} = {1, 2, 3}
 IO.inspect({x, middle, y})
 #  We pinned the first and last elements to enforce they match existing values
 #  of x and y. Only `middle` is rebound (to 2).  This shows selective rebinding.
 
-# 3. deep_update/3 (simple version)
-update_in_map = fn m, [k], v -> Map.put(m, k, v)
-  m, [k | rest], v ->
-    inner = Map.get(m, k, %{})
-    Map.put(m, k, update_in_map.(inner, rest, v))
-end
-
+# 3. deep_update/3 (one-liner solution)
 user = %{settings: %{theme: "light"}}
-updated = update_in_map.(user, [:settings, :theme], "dark")
+
+# put_in/3 walks the path and returns a *new* map with the change applied.
+updated = put_in(user, [:settings, :theme], "dark")
+
 IO.inspect(updated, label: "updated")
-#  We returned a *new* map with shared structure; `user` is unchanged.  This
-#  demonstrates deep immutability and structural sharing.
+#  Kernel.put_in/3 created a brand-new map; `user` is left untouched.  This
+#  shows how to update nested data immutably in a single line.
 """

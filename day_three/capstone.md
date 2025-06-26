@@ -1,8 +1,114 @@
 # Day Three Capstone Project: Real-Time Task Management System
 
+## 🚀 Getting Started: Create Your Phoenix Project
+
+### Step 1: Generate a New Phoenix Application
+
+Create a completely new Phoenix project that you'll build from scratch:
+
+```bash
+# Create new Phoenix project with database support
+mix phx.new task_manager --database postgres
+
+# Navigate to your project directory
+cd task_manager
+
+# Install dependencies
+mix deps.get
+
+# Create your database
+mix ecto.create
+```
+
+### Step 2: Configure Your Database
+
+Update your database configuration in `config/dev.exs`:
+
+```elixir
+config :task_manager, TaskManager.Repo,
+  username: "postgres",
+  password: "postgres",
+  hostname: "localhost",
+  database: "task_manager_dev",
+  stacktrace: true,
+  show_sensitive_data_on_connection_error: true,
+  pool_size: 10
+```
+
+### Step 3: Verify Your Setup
+
+Test that everything is working:
+
+```bash
+# Start your Phoenix server
+mix phx.server
+
+# Visit http://localhost:4000 - you should see the Phoenix welcome page
+```
+
+### Step 4: Add Required Dependencies
+
+Update your `mix.exs` file to include these dependencies (if they don't already):
+
+```elixir
+defp deps do
+  [
+    {:phoenix, "~> 1.7.0"},
+    {:phoenix_ecto, "~> 4.4"},
+    {:ecto_sql, "~> 3.10"},
+    {:postgrex, ">= 0.0.0"},
+    {:phoenix_html, "~> 3.3"},
+    {:phoenix_live_reload, "~> 1.2", only: :dev},
+    {:phoenix_live_view, "~> 0.18.16"},
+    {:floki, ">= 0.30.0", only: :test},
+    {:phoenix_live_dashboard, "~> 0.7.2"},
+    {:esbuild, "~> 0.7", runtime: Mix.env() == :dev},
+    {:tailwind, "~> 0.2.0", runtime: Mix.env() == :dev},
+    {:swoosh, "~> 1.3"},
+    {:finch, "~> 0.13"},
+    {:telemetry_metrics, "~> 0.6"},
+    {:telemetry_poller, "~> 1.0"},
+    {:gettext, "~> 0.20"},
+    {:jason, "~> 1.2"},
+    {:plug_cowboy, "~> 2.5"},
+    {:phoenix_pubsub, "~> 2.1"},
+    {:phoenix_presence, "~> 1.1"}
+  ]
+end
+```
+
+Then install the new dependencies:
+
+```bash
+mix deps.get
+```
+
+### Step 5: Enable Phoenix PubSub and Presence
+
+Your Phoenix application already has PubSub configured, but you'll need to set up Presence. Add this to your `lib/task_manager/application.ex` supervision tree:
+
+```elixir
+children = [
+  # Start the Ecto repository
+  TaskManager.Repo,
+  # Start the Telemetry supervisor
+  TaskManagerWeb.Telemetry,
+  # Start the PubSub system
+  {Phoenix.PubSub, name: TaskManager.PubSub},
+  # Start Presence
+  TaskManagerWeb.Presence,
+  # Start the Endpoint (http/https)
+  TaskManagerWeb.Endpoint
+  # Start a worker by calling: TaskManager.Worker.start_link(arg)
+  # {TaskManager.Worker, arg}
+]
+```
+
+---
+
 ## 🎯 Project Overview
 
-Build a **Real-Time Task Management System** that demonstrates mastery of all Day One and Day Two concepts. This system includes GenServer-based task coordination, real-time updates via Phoenix PubSub/Channels, database persistence with Ecto, and comprehensive testing.
+Now that you have your Phoenix project set up, you'll build a **Real-Time Task Management System** that includes GenServer-based task coordination, real-time updates via Phoenix PubSub/Channels, database persistence with Ecto, and comprehensive testing.
 
 ### System Requirements
 
@@ -45,7 +151,7 @@ Your system consists of these core components:
 
 ## 📋 Implementation Checklist
 
-### Phase 1: Core Database Layer (Day Two Ecto Concepts)
+### Phase 1: Core Database Layer
 
 #### ✅ Schema Design
 - [x] Define User schema with proper field types and validations
@@ -213,116 +319,96 @@ The TaskManager GenServer maintains efficient in-memory state:
 5. **PubSub Broadcast** → GenServer broadcasts event
 6. **Channel Push** → WebSocket channels receive and forward updates
 
----
+### Front End Parts
 
-## 📊 Evaluation Criteria
+Once you have completed your backend implementation, you can test it using the provided frontend components. The frontend demonstrates all the real-time features and provides a complete user interface for your task management system.
 
-Your project will be evaluated on:
+#### 🎨 Provided Frontend Files
 
-### Technical Implementation (40%)
-- Proper GenServer implementation and state management
-- Correct use of Ecto patterns and database design
-- Efficient queries with proper associations and indexes
-- Real-time feature implementation with PubSub
+The following files are **already implemented** and ready to use with your backend:
 
-### Code Quality (30%)
-- Clean, readable, and well-documented code
-- Proper use of Elixir patterns and conventions
-- Error handling and edge case management
-- Performance considerations and optimization
+**Router Configuration** (`lib/elixir_course_web/router.ex`):
+```elixir
+# LiveView route for the task board interface
+live "/live/task_board", TaskBoardLive
 
-### Testing Coverage (20%)
-- Comprehensive test suite with good coverage
-- Proper use of ExUnit testing strategies
-- Integration tests covering full workflows
-- Error scenario testing
+# WebSocket endpoint for real-time communication
+socket "/socket", ElixirCourseWeb.UserSocket,
+  websocket: true,
+  longpoll: false
+```
 
-### Architecture Design (10%)
-- Proper separation of concerns between layers
-- Efficient data flow and state management
-- Good API design with proper HTTP semantics
-- Appropriate use of OTP patterns
+**LiveView Interface** (`lib/elixir_course_web/live/task_board_live.ex`)
+**LiveView Template** (`lib/elixir_course_web/live/task_board_live.html.heex`)
+**WebSocket Channel** (`lib/elixir_course_web/channels/task_board_channel.ex`)
 
----
+#### 🚀 Testing Your Backend Implementation
 
-## 🚀 Advanced Features Implemented
+##### Step 1: Start Your Phoenix Server
+```bash
+# Ensure your database is set up
+mix ecto.create
+mix ecto.migrate
 
-### Filtering and Search
-- **Status filtering**: Filter tasks by todo, in_progress, review, done
-- **Priority filtering**: Filter by urgent, high, medium, low priority
-- **Assignee filtering**: Filter tasks by assigned user
-- **Text search**: Search in task titles and descriptions
-- **Combined filtering**: Multiple filters can be applied simultaneously
+# Optionally add some seed data (use /priv/repo/seeds.exs)
+mix run priv/repo/seeds.exs
 
-### Sorting Options
-- **Priority sorting**: Orders by urgency (urgent → high → medium → low)
-- **Due date sorting**: Orders by due date (earliest first)
-- **Creation date sorting**: Orders by creation time (newest first)
+# Start the Phoenix server
+mix phx.server
+```
 
-### Real-Time Features
-- **Task creation notifications**: Instant updates when new tasks are created
-- **Task update notifications**: Live updates for status/priority changes
-- **Task deletion notifications**: Real-time removal from all connected clients
-- **User presence**: Track who's currently viewing the task board
+##### Step 2: Access the LiveView Interface
+Navigate to: **http://localhost:4000/live/task_board**
 
-### Error Handling
-- **Validation errors**: Comprehensive changeset error formatting
-- **Not found errors**: Proper 404 responses for missing resources
-- **Database errors**: Graceful handling of connection issues
-- **GenServer errors**: Fault tolerance with supervisor recovery
+You should see a complete task management interface with:
+- Task creation and management forms
+- Real-time task updates across browser tabs
+- User presence tracking
+- Live statistics and activity logging
 
----
+##### Step 3: Test Real-Time Features
 
-## 🎯 Learning Outcomes
+**Multi-Tab Testing**:
+1. Open multiple browser tabs to the same URL
+2. Create tasks in one tab - see them appear instantly in others
+3. Update task status - watch real-time synchronization
+4. Notice user presence indicators showing active users
 
-Upon completion, you will have demonstrated:
+**WebSocket Channel Testing**:
+1. Use the "Channel Demo" section in the interface
+2. Send WebSocket messages directly to your backend
+3. Monitor message flow in browser developer tools
+4. Test error handling with invalid data
 
-- **GenServer Mastery**: State management, concurrent access, and message passing
-- **Ecto Proficiency**: Schema design, migrations, queries, and validations
-- **Phoenix Integration**: PubSub, channels, and real-time communication
-- **API Design**: RESTful endpoints with proper error handling
-- **Testing Excellence**: Comprehensive test coverage with multiple strategies
-- **Production Readiness**: Error handling, logging, and performance considerations
+**API Testing**:
+```bash
+# Test your REST API endpoints
+curl -X GET "http://localhost:4000/api/tasks"
+curl -X POST "http://localhost:4000/api/tasks" \
+  -H "Content-Type: application/json" \
+  -d '{"task": {"title": "API Test Task", "priority": "high"}}'
+```
 
----
+#### 🎯 Success Criteria
 
-## 🔗 Key Files Implemented
-
-### Core Application Files
-- `lib/elixir_course/accounts/user.ex` - User schema and validations
-- `lib/elixir_course/tasks/task.ex` - Task schema with business logic
-- `lib/elixir_course/accounts.ex` - User management context
-- `lib/elixir_course/tasks.ex` - Task management context
-- `lib/elixir_course/tasks/task_manager.ex` - GenServer coordination
-
-### Web Layer Files
-- `lib/elixir_course_web/controllers/task_controller.ex` - RESTful API
-- `lib/elixir_course_web/controllers/user_controller.ex` - User API
-- `lib/elixir_course_web/channels/task_board_channel.ex` - WebSocket channel
-- `lib/elixir_course_web/presence.ex` - User presence tracking
-
-### Database Files
-- `priv/repo/migrations/001_create_users.exs` - User table migration
-- `priv/repo/migrations/002_create_tasks.exs` - Task table migration
-- `priv/repo/seeds.exs` - Sample data for testing
-
-### Testing Files
-- `test/elixir_course/tasks/task_manager_test.exs` - GenServer tests
-- Complete test coverage for all core functionality
+Your backend implementation is complete when:
+- ✅ LiveView loads without errors at `http://localhost:4000/live/task_board`
+- ✅ Tasks can be created, updated, and deleted via UI
+- ✅ Real-time updates work across multiple browser tabs
+- ✅ Filtering and search produce correct results
+- ✅ WebSocket channels connect and communicate properly
+- ✅ API endpoints return proper JSON responses
+- ✅ Error handling displays user-friendly messages
+- ✅ User presence tracking functions correctly
 
 ---
 
-## 🎉 Final Project Status
+## 🎉 Next Steps
 
-**✅ COMPLETED SUCCESSFULLY**
+Other features / topics to explore:
 
-- **20 tests passing** with 0 failures
-- **Full CRUD operations** for tasks and users
-- **Real-time updates** via PubSub and WebSockets
-- **Comprehensive filtering** and sorting
-- **Production-ready** error handling
-- **Clean architecture** with proper separation of concerns
-
-This capstone project successfully demonstrates mastery of all Day One and Day Two concepts, creating a robust, scalable, and maintainable Elixir application using OTP, Ecto, and Phoenix patterns.
-
-**Congratulations on building a production-quality Elixir application! 🚀** 
+1. **Deploy to Production**: Learn about releases and deployment strategies
+2. **Add Features**: Implement file uploads, email notifications, or advanced search
+3. **Scale the System**: Explore distributed Elixir with multiple nodes
+4. **Monitor and Observe**: Add telemetry, metrics, and logging
+5. **Optimize Performance**: Database query optimization and caching strategies

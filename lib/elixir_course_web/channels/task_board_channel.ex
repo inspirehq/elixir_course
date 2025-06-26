@@ -32,12 +32,13 @@ defmodule ElixirCourseWeb.TaskBoardChannel do
         TaskManager.subscribe_to_updates()
 
         # Track user presence
-        {:ok, _} = Presence.track(socket, user_id, %{
-          user_id: user_id,
-          name: user.name,
-          status: "online",
-          joined_at: inspect(System.system_time(:second))
-        })
+        {:ok, _} =
+          Presence.track(socket, user_id, %{
+            user_id: user_id,
+            name: user.name,
+            status: "online",
+            joined_at: inspect(System.system_time(:second))
+          })
 
         # Update user status to online
         Accounts.update_user_status(user, "online")
@@ -69,13 +70,11 @@ defmodule ElixirCourseWeb.TaskBoardChannel do
     user_id = socket.assigns[:user_id]
 
     if user_id do
-      case Accounts.get_user!(user_id) do
-        user ->
-          Accounts.update_user_status(user, "offline")
-          Logger.info("User #{user.name} left task board (#{inspect(reason)})")
-        _ ->
-          Logger.warning("Could not find user #{user_id} during channel termination")
-      end
+      user = Accounts.get_user!(user_id)
+      Accounts.update_user_status(user, "offline")
+      Logger.info("User #{user.name} left task board (#{inspect(reason)})")
+    else
+      Logger.warning("Could not find user #{user_id} during channel termination")
     end
 
     :ok
@@ -126,12 +125,12 @@ defmodule ElixirCourseWeb.TaskBoardChannel do
 
         {:reply, {:ok, %{task: task}}, socket}
 
+      {:error, :not_found} ->
+        {:reply, {:error, %{message: "Task not found"}}, socket}
+
       {:error, changeset} ->
         errors = format_changeset_errors(changeset)
         {:reply, {:error, %{errors: errors}}, socket}
-
-      {:error, :not_found} ->
-        {:reply, {:error, %{message: "Task not found"}}, socket}
     end
   end
 
@@ -140,6 +139,12 @@ defmodule ElixirCourseWeb.TaskBoardChannel do
     user_id = socket.assigns.user_id
 
     case TaskManager.delete_task(id) do
+      {:error, :not_found} ->
+        {:reply, {:error, %{message: "Task not found"}}, socket}
+
+      {:error, reason} ->
+        {:reply, {:error, %{message: "Failed to delete task: #{inspect(reason)}"}}, socket}
+
       {:ok, _task} ->
         # Broadcast task deletion
         broadcast!(socket, "task_deleted", %{
@@ -152,12 +157,6 @@ defmodule ElixirCourseWeb.TaskBoardChannel do
         broadcast!(socket, "stats_updated", %{stats: stats})
 
         {:reply, :ok, socket}
-
-      {:error, :not_found} ->
-        {:reply, {:error, %{message: "Task not found"}}, socket}
-
-      {:error, reason} ->
-        {:reply, {:error, %{message: "Failed to delete task: #{inspect(reason)}"}}, socket}
     end
   end
 
@@ -203,32 +202,32 @@ defmodule ElixirCourseWeb.TaskBoardChannel do
   def handle_in("update_status", %{"status" => status}, socket) do
     user_id = socket.assigns.user_id
 
-    case Accounts.get_user!(user_id) do
-      user ->
-        case Accounts.update_user_status(user, status) do
-          {:ok, updated_user} ->
-            # Update presence
-            Presence.update(socket, user_id, %{
-              user_id: user_id,
-              name: updated_user.name,
-              status: status,
-              joined_at: inspect(System.system_time(:second))
-            })
+    user = Accounts.get_user!(user_id)
 
-            broadcast!(socket, "user_status_updated", %{
-              user_id: user_id,
-              status: status
-            })
+    if user do
+      case Accounts.update_user_status(user, status) do
+        {:ok, updated_user} ->
+          # Update presence
+          Presence.update(socket, user_id, %{
+            user_id: user_id,
+            name: updated_user.name,
+            status: status,
+            joined_at: inspect(System.system_time(:second))
+          })
 
-            {:reply, {:ok, %{status: status}}, socket}
+          broadcast!(socket, "user_status_updated", %{
+            user_id: user_id,
+            status: status
+          })
 
-          {:error, changeset} ->
-            errors = format_changeset_errors(changeset)
-            {:reply, {:error, %{errors: errors}}, socket}
-        end
+          {:reply, {:ok, %{status: status}}, socket}
 
-      _ ->
-        {:reply, {:error, %{message: "User not found"}}, socket}
+        {:error, changeset} ->
+          errors = format_changeset_errors(changeset)
+          {:reply, {:error, %{errors: errors}}, socket}
+      end
+    else
+      {:reply, {:error, %{message: "User not found"}}, socket}
     end
   end
 
@@ -280,6 +279,7 @@ defmodule ElixirCourseWeb.TaskBoardChannel do
     rescue
       Ecto.NoResultsError ->
         {:error, "User not found"}
+
       e ->
         Logger.error("Authorization error: #{inspect(e)}")
         {:error, "Authorization failed"}

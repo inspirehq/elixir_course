@@ -9,21 +9,7 @@ defmodule ElixirCourseWeb.TaskController do
 
   # API endpoints
   def index(conn, params) do
-    filters =
-      params
-      |> Map.take(["status", "priority", "assignee_id", "search", "sort_by"])
-      |> Enum.reduce(%{}, fn {key, value}, acc ->
-        if value != "" and value != nil do
-          atom_key = safe_string_to_atom(key)
-          if atom_key && atom_key in @valid_filter_keys do
-            Map.put(acc, atom_key, value)
-          else
-            acc
-          end
-        else
-          acc
-        end
-      end)
+    filters = build_filters(params)
     {:ok, tasks} = TaskManager.get_tasks(filters)
 
     conn
@@ -93,7 +79,6 @@ defmodule ElixirCourseWeb.TaskController do
     end
   end
 
-  # Helper function to format changeset errors
   defp format_errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
       Enum.reduce(opts, msg, fn {key, value}, acc ->
@@ -103,6 +88,7 @@ defmodule ElixirCourseWeb.TaskController do
   end
 
   defp safe_string_to_atom(key) when is_atom(key), do: key
+
   defp safe_string_to_atom(key) when is_binary(key) do
     try do
       String.to_existing_atom(key)
@@ -110,5 +96,20 @@ defmodule ElixirCourseWeb.TaskController do
       ArgumentError -> nil
     end
   end
+
   defp safe_string_to_atom(_), do: nil
+
+  defp build_filters(params) do
+    params
+    |> Map.take(["status", "priority", "assignee_id", "search", "sort_by"])
+    |> Enum.reduce(%{}, fn {key, value}, acc ->
+      with true <- value not in ["", nil],
+           atom_key when is_atom(atom_key) <- safe_string_to_atom(key),
+           true <- atom_key in @valid_filter_keys do
+        Map.put(acc, atom_key, value)
+      else
+        _ -> acc
+      end
+    end)
+  end
 end

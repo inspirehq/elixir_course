@@ -1,9 +1,9 @@
 # Day 2 – Intro to ExUnit
 #
-# Run with `mix test elixir_course/day_two/12_intro_to_exunit.exs`
+# This script can be run with:
+#     mix run day_two/12_intro_to_exunit.exs
 # or inside IEx with:
-#     iex -S mix
-#     c "elixir_course/day_two/12_intro_to_exunit.exs"
+#     iex -r day_two/12_intro_to_exunit.exs
 #
 # ExUnit is Elixir's built-in testing framework providing a rich set of assertions,
 # test organization features, and integration with Mix for comprehensive testing.

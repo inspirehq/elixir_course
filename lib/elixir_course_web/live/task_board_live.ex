@@ -38,6 +38,7 @@ defmodule ElixirCourseWeb.TaskBoardLive do
 
       # Track user presence
       user_id = generate_user_id()
+
       Presence.track(self(), "task_board", user_id, %{
         joined_at: :os.system_time(:second),
         user_agent: get_user_agent(socket)
@@ -56,11 +57,12 @@ defmodule ElixirCourseWeb.TaskBoardLive do
     stats = calculate_stats(tasks)
 
     # Get current presence list
-    presence_list = if connected?(socket) do
-      Presence.list("task_board")
-    else
-      %{}
-    end
+    presence_list =
+      if connected?(socket) do
+        Presence.list("task_board")
+      else
+        %{}
+      end
 
     socket =
       socket
@@ -111,9 +113,7 @@ defmodule ElixirCourseWeb.TaskBoardLive do
 
       {:error, changeset} ->
         errors =
-          changeset.errors
-          |> Enum.map(fn {field, {msg, _}} -> "#{field}: #{msg}" end)
-          |> Enum.join(", ")
+          Enum.map_join(changeset.errors, ", ", fn {field, {msg, _}} -> "#{field}: #{msg}" end)
 
         socket =
           socket
@@ -137,9 +137,7 @@ defmodule ElixirCourseWeb.TaskBoardLive do
 
       {:error, changeset} ->
         errors =
-          changeset.errors
-          |> Enum.map(fn {field, {msg, _}} -> "#{field}: #{msg}" end)
-          |> Enum.join(", ")
+          Enum.map_join(changeset.errors, ", ", fn {field, {msg, _}} -> "#{field}: #{msg}" end)
 
         socket =
           socket
@@ -209,19 +207,19 @@ defmodule ElixirCourseWeb.TaskBoardLive do
           |> assign(:tasks, filtered_tasks)
           |> assign(:stats, stats)
           |> log_activity("Task status updated to #{status}", "success")
+
         {:noreply, socket}
 
       {:error, :not_found} ->
         socket =
           socket
           |> log_activity("Failed to update task: not found", "error")
+
         {:noreply, socket}
 
       {:error, changeset} ->
         errors =
-          changeset.errors
-          |> Enum.map(fn {field, {msg, _}} -> "#{field}: #{msg}" end)
-          |> Enum.join(", ")
+          Enum.map_join(changeset.errors, ", ", fn {field, {msg, _}} -> "#{field}: #{msg}" end)
 
         socket =
           socket
@@ -245,12 +243,14 @@ defmodule ElixirCourseWeb.TaskBoardLive do
           |> assign(:tasks, filtered_tasks)
           |> assign(:stats, stats)
           |> log_activity("Task deleted", "success")
+
         {:noreply, socket}
 
       {:error, :not_found} ->
         socket =
           socket
           |> log_activity("Failed to delete task: not found", "error")
+
         {:noreply, socket}
     end
   end
@@ -276,7 +276,9 @@ defmodule ElixirCourseWeb.TaskBoardLive do
         }
       })
 
-      socket = log_activity(socket, "Channel message sent: #{String.slice(message, 0, 30)}...", "info")
+      socket =
+        log_activity(socket, "Channel message sent: #{String.slice(message, 0, 30)}...", "info")
+
       {:noreply, socket}
     else
       {:noreply, socket}
@@ -381,13 +383,15 @@ defmodule ElixirCourseWeb.TaskBoardLive do
     socket = assign(socket, :presence_list, presence_list)
 
     # Log presence changes
-    socket = Enum.reduce(joins, socket, fn {user_id, _meta}, acc ->
-      log_activity(acc, "User #{user_id} joined the task board", "info")
-    end)
+    socket =
+      Enum.reduce(joins, socket, fn {user_id, _meta}, acc ->
+        log_activity(acc, "User #{user_id} joined the task board", "info")
+      end)
 
-    socket = Enum.reduce(leaves, socket, fn {user_id, _meta}, acc ->
-      log_activity(acc, "User #{user_id} left the task board", "info")
-    end)
+    socket =
+      Enum.reduce(leaves, socket, fn {user_id, _meta}, acc ->
+        log_activity(acc, "User #{user_id} left the task board", "info")
+      end)
 
     {:noreply, socket}
   end
@@ -399,11 +403,12 @@ defmodule ElixirCourseWeb.TaskBoardLive do
     new_messages = [message | socket.assigns.channel_messages] |> Enum.take(50)
 
     # Update channel status if it's our message
-    channel_status = if message.user_id == socket.assigns.user_id do
-      "Message sent successfully"
-    else
-      "Receiving messages"
-    end
+    channel_status =
+      if message.user_id == socket.assigns.user_id do
+        "Message sent successfully"
+      else
+        "Receiving messages"
+      end
 
     socket =
       socket
@@ -454,27 +459,25 @@ defmodule ElixirCourseWeb.TaskBoardLive do
   end
 
   defp format_datetime(nil), do: "Not set"
+
   defp format_datetime(datetime) do
     datetime |> DateTime.to_date() |> Date.to_string()
   end
 
   defp convert_filters_to_atoms(filters) do
-    filters
-    |> Enum.reduce(%{}, fn {key, value}, acc ->
-      if value != "" and value != nil do
-        atom_key = safe_string_to_atom(key)
-        if atom_key && atom_key in @valid_filter_keys do
-          Map.put(acc, atom_key, value)
-        else
-          acc
-        end
+    Enum.reduce(filters, %{}, fn {key, value}, acc ->
+      with true <- value not in ["", nil],
+           atom_key when is_atom(atom_key) <- safe_string_to_atom(key),
+           true <- atom_key in @valid_filter_keys do
+        Map.put(acc, atom_key, value)
       else
-        acc
+        _ -> acc
       end
     end)
   end
 
   defp safe_string_to_atom(key) when is_atom(key), do: key
+
   defp safe_string_to_atom(key) when is_binary(key) do
     try do
       String.to_existing_atom(key)
@@ -482,6 +485,7 @@ defmodule ElixirCourseWeb.TaskBoardLive do
       ArgumentError -> nil
     end
   end
+
   defp safe_string_to_atom(_), do: nil
 
   # Generate a simple user ID for demonstration
@@ -492,7 +496,9 @@ defmodule ElixirCourseWeb.TaskBoardLive do
   # Get user agent for presence metadata
   defp get_user_agent(socket) do
     case get_connect_info(socket, :user_agent) do
-      nil -> "Unknown"
+      nil ->
+        "Unknown"
+
       user_agent ->
         cond do
           String.contains?(user_agent, "Chrome") -> "Chrome"

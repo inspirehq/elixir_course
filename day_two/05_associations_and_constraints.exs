@@ -1,9 +1,9 @@
 # Day 2 – Associations and Constraints
 #
-# Run with `mix run elixir_course/day_two/05_associations_and_constraints.exs`
+# This script can be run with:
+#     mix run day_two/05_associations_and_constraints.exs
 # or inside IEx with:
-#     iex -S mix
-#     c "elixir_course/day_two/05_associations_and_constraints.exs"
+#     iex -r day_two/05_associations_and_constraints.exs
 #
 # Associations define relationships between schemas, while constraints ensure
 # data integrity at the database level. Together they create robust,
@@ -512,93 +512,107 @@ end
 IO.puts("E-commerce schema relationships:")
 IO.puts(DayTwo.EcommerceExample.show_ecommerce_schemas())
 
-# ────────────────────────────────────────────────────────────────
-# 🚀  EXERCISES
-#
-# 1. Design a library system with `Book`, `Author`, `User`, and `Checkout`
-#    entities. Books can have multiple authors, users can check out multiple
-#    books, but each book can only be checked out by one user at a time.
-# 2. Create a social media schema where users can follow each other and
-#    like posts. Add constraints to prevent users from liking their own
-#    posts and following themselves.
-# 3. (Challenge) Design a course enrollment system with `Course`, `Student`,
-#    `Instructor`, and `Enrollment` entities. Include prerequisites (courses
-#    that must be completed before enrolling) and capacity limits.
+defmodule DayTwo.AssociationExercises do
+  @moduledoc """
+  Run the tests with: mix test day_two/05_associations_and_constraints.exs
+  or in IEx:
+  iex -r day_two/05_associations_and_constraints.exs
+  DayTwo.AssociationExercisesTest.test_library_system/0
+  DayTwo.AssociationExercisesTest.test_social_media_constraints/0
+  DayTwo.AssociationExercisesTest.test_course_enrollment/0
+  """
+
+  @spec design_library_system() :: [atom()]
+  def design_library_system do
+    #   Design a library system with `Book`, `Author`, `User`, and `Checkout`
+    #   entities. Books can have multiple authors, users can check out multiple
+    #   books, but each book can only be checked out by one user at a time.
+    #   Return a list of module names for the main entities
+    :not_implemented
+  end
+
+  @spec design_social_media_constraints() :: [binary()]
+  def design_social_media_constraints do
+    #   Create a social media schema where users can follow each other and
+    #   like posts. Add constraints to prevent users from liking their own
+    #   posts and following themselves.
+    #   Return a list of constraint definitions as strings
+    :not_implemented
+  end
+
+  @spec design_course_enrollment_system() :: map()
+  def design_course_enrollment_system do
+    #   Design a course enrollment system with `Course`, `Student`,
+    #   `Instructor`, and `Enrollment` entities. Include prerequisites (courses
+    #   that must be completed before enrolling) and capacity limits.
+    #   Return a map with keys for the main entities and their constraints
+    :not_implemented
+  end
+end
+
+ExUnit.start()
+
+defmodule DayTwo.AssociationExercisesTest do
+  use ExUnit.Case, async: true
+
+  alias DayTwo.AssociationExercises, as: EX
+
+  test "design_library_system/0 returns core entities" do
+    entities = EX.design_library_system()
+    assert is_list(entities)
+    assert length(entities) == 4
+    assert :Book in entities
+    assert :Author in entities
+    assert :User in entities
+    assert :Checkout in entities
+  end
+
+  test "design_social_media_constraints/0 prevents self-interaction" do
+    constraints = EX.design_social_media_constraints()
+    assert is_list(constraints)
+    assert Enum.any?(constraints, fn c -> String.contains?(c, "cannot_like_own_post") end)
+    assert Enum.any?(constraints, fn c -> String.contains?(c, "cannot_follow_self") end)
+  end
+
+  test "design_course_enrollment_system/0 includes capacity constraints" do
+    system = EX.design_course_enrollment_system()
+    assert is_map(system)
+    assert Map.has_key?(system, :entities)
+    assert Map.has_key?(system, :constraints)
+    assert is_list(system.constraints)
+  end
+end
 
 """
-🔑 ANSWERS & EXPLANATIONS
+ANSWERS & EXPLANATIONS
 
-# 1. Library system design
-defmodule Library.Book do
-  schema "books" do
-    field :title, :string
-    field :isbn, :string
-    field :available, :boolean, default: true
-
-    many_to_many :authors, Author, join_through: "book_authors"
-    has_one :active_checkout, Checkout, where: [returned_at: nil]
-    has_many :checkouts, Checkout
-  end
+# 1. design_library_system/0
+def design_library_system do
+  [:Book, :Author, :User, :Checkout]
 end
+#  Key constraint: unique_index(:checkouts, [:book_id], where: "returned_at IS NULL")
+#  ensures only one active checkout per book
 
-defmodule Library.Checkout do
-  schema "checkouts" do
-    field :due_date, :date
-    field :returned_at, :utc_datetime
-
-    belongs_to :book, Book
-    belongs_to :user, User
-  end
+# 2. design_social_media_constraints/0
+def design_social_media_constraints do
+  [
+    "create unique_index(:likes, [:user_id, :post_id])",
+    "create constraint(:likes, :cannot_like_own_post, exclude: \"gist (user_id WITH =, post_id WITH =) WHERE (user_id = (SELECT user_id FROM posts WHERE id = post_id))\")",
+    "create constraint(:follows, :cannot_follow_self, check: \"follower_id != following_id\")"
+  ]
 end
+#  Constraints prevent self-interaction and duplicate likes/follows
 
-# Constraints:
-create unique_index(:checkouts, [:book_id], where: "returned_at IS NULL")
-# Ensures only one active checkout per book
-
-# 2. Social media with constraints
-defmodule Social.Like do
-  schema "likes" do
-    belongs_to :user, User
-    belongs_to :post, Post
-  end
+# 3. design_course_enrollment_system/0
+def design_course_enrollment_system do
+  %{
+    entities: [:Course, :Student, :Instructor, :Enrollment],
+    constraints: [
+      "create constraint(:courses, :positive_capacity, check: \"capacity > 0\")",
+      "create unique_index(:enrollments, [:student_id, :course_id])",
+      "create constraint(:course_prerequisites, :no_self_prerequisite, check: \"course_id != prerequisite_id\")"
+    ]
+  }
 end
-
-# Constraints:
-create unique_index(:likes, [:user_id, :post_id])
-create constraint(:likes, :cannot_like_own_post,
-  exclude: "gist (user_id WITH =, post_id WITH =) WHERE (user_id = (SELECT user_id FROM posts WHERE id = post_id))"
-)
-
-# 3. Course enrollment system
-defmodule Education.Enrollment do
-  schema "enrollments" do
-    field :grade, :string
-    field :completed_at, :utc_datetime
-
-    belongs_to :student, Student
-    belongs_to :course, Course
-  end
-end
-
-defmodule Education.Course do
-  schema "courses" do
-    field :name, :string
-    field :capacity, :integer
-
-    many_to_many :prerequisites, Course,
-      join_through: "course_prerequisites",
-      join_keys: [course_id: :id, prerequisite_id: :id]
-
-    has_many :enrollments, Enrollment
-  end
-end
-
-# Constraints:
-create constraint(:courses, :positive_capacity, check: "capacity > 0")
-create unique_index(:enrollments, [:student_id, :course_id])
-
-# Prevent self-prerequisites:
-create constraint(:course_prerequisites, :no_self_prerequisite,
-  check: "course_id != prerequisite_id"
-)
+#  Includes capacity limits and prevents circular prerequisites
 """

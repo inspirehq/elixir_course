@@ -81,6 +81,7 @@ defmodule ElixirCourse.Accounts.User do
     case get_change(changeset, :status) do
       "offline" ->
         put_change(changeset, :last_seen_at, NaiveDateTime.utc_now())
+
       _ ->
         changeset
     end
@@ -105,8 +106,7 @@ defmodule ElixirCourse.Accounts.User do
     name
     |> String.split(" ")
     |> Enum.take(2)
-    |> Enum.map(&String.first/1)
-    |> Enum.join("")
+    |> Enum.map_join("", &String.first/1)
     |> String.upcase()
   end
 

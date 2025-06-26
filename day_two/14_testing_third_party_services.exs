@@ -1,9 +1,9 @@
 # Day 2 – Testing 3rd Party Services Through Effective Use of Mocks
 #
-# Run with `mix run elixir_course/day_two/14_testing_third_party_services.exs`
+# This script can be run with:
+#     mix run day_two/14_testing_third_party_services.exs
 # or inside IEx with:
-#     iex -S mix
-#     c "elixir_course/day_two/14_testing_third_party_services.exs"
+#     iex -r day_two/14_testing_third_party_services.exs
 #
 # Testing external services requires isolation, speed, and reliability. We'll explore
 # mocking strategies using Mox, test doubles, and dependency injection patterns.

@@ -75,43 +75,105 @@ Enum.each(examples, fn ex ->
   IO.inspect({ex, HttpHelpers.classify(ex)})
 end)
 
-# ────────────────────────────────────────────────────────────────
-# 🚀  EXERCISES
-#
-# 1. Implement a `FizzBuzz.fizzbuzz/1` function using multiple function heads
-#    and guards that returns :fizz (divisible by 3), :buzz (5), :fizzbuzz (15)
-#    or the number itself.
-# 2. Write a `safe_head/1` function with two heads that returns {:ok, h} for a
-#    non-empty list and :error for an empty list.
-# 3. (Challenge) Create a `sign/1` function that returns :positive, :negative
-#    or :zero using guards `n > 0`, `n < 0`, `n == 0`.
-#
+defmodule DayOne.PatternMatchingExercises do
+  @moduledoc """
+  Run the tests with:
+
+    mix test day_one/02_pattern_matching_function_heads_guards.exs
+
+  or in IEx:
+    iex -r day_one/02_pattern_matching_function_heads_guards.exs
+    DayOne.PatternMatchingExercisesTest.test_fizzbuzz/0
+    DayOne.PatternMatchingExercisesTest.test_safe_head/0
+    DayOne.PatternMatchingExercisesTest.test_sign/0
+  """
+
+  @spec fizzbuzz(integer()) :: :fizz | :buzz | :fizzbuzz | integer()
+  def fizzbuzz(_n) do
+    # Implement a `FizzBuzz.fizzbuzz/1` function using multiple function heads
+    # and guards that returns :fizz (divisible by 3), :buzz (5), :fizzbuzz (15)
+    # or the number itself.
+    # Hint:
+    #   FizzBuzz.fizzbuzz(15) ⇒ :fizzbuzz
+    #   FizzBuzz.fizzbuzz(7)  ⇒ 7
+    :not_implemented
+  end
+
+  @spec safe_head(list()) :: {:ok, any()} | :error
+  def safe_head(_list) do
+    # Write a `safe_head/1` function with two heads that returns {:ok, h} for a
+    # non-empty list and :error for an empty list.
+    # Hint:
+    #   safe_head([1, 2]) ⇒ {:ok, 1}
+    #   safe_head([])     ⇒ :error
+    :not_implemented
+  end
+
+  @spec sign(number()) :: :positive | :negative | :zero
+  def sign(_n) do
+    # Create a `sign/1` function that returns :positive, :negative
+    # or :zero using guards `n > 0`, `n < 0`, `n == 0`.
+    # Hint:
+    #   sign(10) ⇒ :positive
+    #   sign(-2) ⇒ :negative
+    #   sign(0)  ⇒ :zero
+    :not_implemented
+  end
+end
+
+# --------------------------- Exercise Test Suite ---------------------------
+ExUnit.start()
+
+defmodule DayOne.PatternMatchingExercisesTest do
+  use ExUnit.Case, async: true
+
+  alias DayOne.PatternMatchingExercises, as: EX
+
+  test "fizzbuzz/1 works for common cases" do
+    assert EX.fizzbuzz(3)  == :fizz
+    assert EX.fizzbuzz(5)  == :buzz
+    assert EX.fizzbuzz(15) == :fizzbuzz
+    assert EX.fizzbuzz(7)  == 7
+  end
+
+  test "safe_head/1 returns tuple or error" do
+    assert EX.safe_head([:a, :b]) == {:ok, :a}
+    assert EX.safe_head([]) == :error
+  end
+
+  test "sign/1 classifies numbers" do
+    assert EX.sign(10)  == :positive
+    assert EX.sign(-2)  == :negative
+    assert EX.sign(0)   == :zero
+  end
+end
+
 """
 🔑 ANSWERS & EXPLANATIONS
 
-# 1. FizzBuzz
-defmodule FizzBuzz do
+# 1. fizzbuzz/1
+defmodule FizzBuzzSolution do
   def fizzbuzz(n) when rem(n, 15) == 0, do: :fizzbuzz
   def fizzbuzz(n) when rem(n, 3)  == 0, do: :fizz
   def fizzbuzz(n) when rem(n, 5)  == 0, do: :buzz
   def fizzbuzz(n),                 do: n
 end
-#  Why? multiple heads + guards let us encode each rule declaratively.
+#  Multiple heads + guards clearly encode each rule.
 
 # 2. safe_head/1
-safe_head = fn
+safe_head_solution = fn
   [h | _] -> {:ok, h}
   []      -> :error
 end
-IO.inspect(safe_head.([1,2]))
-#  Shows pattern matching on list structure to avoid runtime errors.
+IO.inspect(safe_head_solution.([1, 2]))
+#  Pattern matching on list structure avoids runtime errors (no hd/1 crash).
 
-# 3. sign/1
-sign = fn
-  n when n > 0 -> :positive
-  n when n < 0 -> :negative
-  0 -> :zero
+# 3. sign/1 – classify a number using guards
+defmodule SignSolution do
+  def sign(n) when n > 0, do: :positive
+  def sign(n) when n < 0, do: :negative
+  def sign(0),           do: :zero
 end
-IO.inspect Enum.map([-2,0,5], sign)
-#  Demonstrates guard expressions to classify numbers succinctly.
+IO.inspect Enum.map([-2, 0, 5], &SignSolution.sign/1)
+#  Guards let us express the three cases succinctly.
 """

@@ -1,9 +1,9 @@
 # Day 2 – Transactions & Ecto.Multi
 #
-# Run with `mix run elixir_course/day_two/06_transactions_and_multi.exs`
+# This script can be run with:
+#     mix run day_two/06_transactions_and_multi.exs
 # or inside IEx with:
-#     iex -S mix
-#     c "elixir_course/day_two/06_transactions_and_multi.exs"
+#     iex -r day_two/06_transactions_and_multi.exs
 #
 # Transactions ensure data consistency by grouping operations that must all
 # succeed or all fail together. Ecto.Multi provides a composable way to
@@ -402,18 +402,70 @@ end
 IO.puts("Order processing Multi:")
 IO.puts(DayTwo.OrderProcessing.show_order_processing_multi())
 
-# ────────────────────────────────────────────────────────────────
-# 🚀  EXERCISES
-#
-# 1. Create a user registration Multi that: creates the user, sends a welcome
-#    email, creates a default profile, and logs the registration event. Handle
-#    the case where email sending fails but still complete registration.
-# 2. Build a blog post publishing Multi that: validates the post, updates
-#    category post counts, notifies subscribers, and schedules social media
-#    posts. Make social media scheduling optional based on user preferences.
-# 3. (Challenge) Design a data migration Multi that moves user data between
-#    tables, updates related records, and maintains audit logs. Include
-#    rollback compensation for external API calls that can't be undone.
+defmodule DayTwo.TransactionExercises do
+  @moduledoc """
+  Run the tests with: mix test day_two/06_transactions_and_multi.exs
+  or in IEx:
+  iex -r day_two/06_transactions_and_multi.exs
+  DayTwo.TransactionExercisesTest.test_user_registration_multi/0
+  DayTwo.TransactionExercisesTest.test_blog_publishing_multi/0
+  DayTwo.TransactionExercisesTest.test_data_migration_multi/0
+  """
+
+  @spec build_user_registration_multi(map()) :: Ecto.Multi.t()
+  def build_user_registration_multi(_attrs) do
+    #   Create a user registration Multi that: creates the user, sends a welcome
+    #   email, creates a default profile, and logs the registration event. Handle
+    #   the case where email sending fails but still complete registration.
+    #   Return an Ecto.Multi struct
+    :not_implemented
+  end
+
+  @spec build_blog_publishing_multi(integer(), map()) :: Ecto.Multi.t()
+  def build_blog_publishing_multi(_post_id, _user_preferences) do
+    #   Build a blog post publishing Multi that: validates the post, updates
+    #   category post counts, notifies subscribers, and schedules social media
+    #   posts. Make social media scheduling optional based on user preferences.
+    #   Return an Ecto.Multi struct
+    :not_implemented
+  end
+
+  @spec design_migration_strategy() :: binary()
+  def design_migration_strategy do
+    #   Design a data migration Multi that moves user data between
+    #   tables, updates related records, and maintains audit logs. Include
+    #   rollback compensation for external API calls that can't be undone.
+    #   Return a description of the strategy including compensation patterns
+    :not_implemented
+  end
+end
+
+ExUnit.start()
+
+defmodule DayTwo.TransactionExercisesTest do
+  use ExUnit.Case, async: true
+
+  alias DayTwo.TransactionExercises, as: EX
+
+  test "build_user_registration_multi/1 creates proper Multi structure" do
+    attrs = %{"name" => "Alice", "email" => "alice@example.com"}
+    multi = EX.build_user_registration_multi(attrs)
+    assert %Ecto.Multi{} = multi
+  end
+
+  test "build_blog_publishing_multi/2 handles conditional operations" do
+    preferences = %{auto_social_share: true}
+    multi = EX.build_blog_publishing_multi(1, preferences)
+    assert %Ecto.Multi{} = multi
+  end
+
+  test "design_migration_strategy/0 includes compensation patterns" do
+    strategy = EX.design_migration_strategy()
+    assert is_binary(strategy)
+    assert String.contains?(strategy, "compensation")
+    assert String.contains?(strategy, "backup")
+  end
+end
 
 """
 🔑 ANSWERS & EXPLANATIONS

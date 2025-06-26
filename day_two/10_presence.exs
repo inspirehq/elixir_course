@@ -1,9 +1,9 @@
 # Day 2 – Phoenix Presence
 #
-# Run with `mix run elixir_course/day_two/10_presence.exs`
+# This script can be run with:
+#     mix run day_two/10_presence.exs
 # or inside IEx with:
-#     iex -S mix
-#     c "elixir_course/day_two/10_presence.exs"
+#     iex -r day_two/10_presence.exs
 #
 # Phoenix Presence provides distributed, fault-tolerant user presence tracking
 # across a cluster of nodes using CRDTs (Conflict-free Replicated Data Types).

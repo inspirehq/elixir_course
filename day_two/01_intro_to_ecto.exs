@@ -1,9 +1,9 @@
 # Day 2 – Intro to Ecto
 #
-# Run with `mix run elixir_course/day_two/01_intro_to_ecto.exs`
+# This script can be run with:
+#     mix run day_two/01_intro_to_ecto.exs
 # or inside IEx with:
-#     iex -S mix
-#     c "elixir_course/day_two/01_intro_to_ecto.exs"
+#     iex -r day_two/01_intro_to_ecto.exs
 #
 # Ecto is Elixir's database wrapper and query generator. It provides:
 # - Database connections and connection pooling
@@ -168,30 +168,45 @@ end
 DayTwo.EctoBenefits.demonstrate_benefits()
 DayTwo.EctoBenefits.show_typical_workflow()
 
-# ────────────────────────────────────────────────────────────────
-# 🚀  EXERCISES
-#
-# 1. Research and list 3 databases that Ecto supports. For each, write down
-#    one advantage of using that database with Ecto.
-# 2. Create a mock `BlogRepo` module similar to `ExampleRepo` above, but with
-#    functions for `insert_post/1`, `get_post/1`, and `list_posts/0`. Make
-#    them return fake blog post data with fields: id, title, content, published_at.
-# 3. (Challenge) Write a function `explain_ecto_layers/0` that returns a map
-#    describing what each layer does: Repo, Schema, Changeset, Query, Migration.
-#    Include a real-world analogy for each layer.
+defmodule DayTwo.EctoExercises do
+  @moduledoc """
+  Run the tests with: mix test day_two/01_intro_to_ecto.exs
+  or in IEx:
+  iex -r day_two/01_intro_to_ecto.exs
+  DayTwo.EctoExercisesTest.test_supported_databases/0
+  DayTwo.EctoExercisesTest.test_blog_repo/0
+  DayTwo.EctoExercisesTest.test_ecto_layers/0
+  """
 
-"""
-🔑 ANSWERS & EXPLANATIONS
+  @spec research_supported_databases() :: [map()]
+  def research_supported_databases do
+    #   Research and list 3 databases that Ecto supports. For each, write down
+    #   one advantage of using that database with Ecto.
+    #   Return a list of maps with keys: :database, :advantage
+    #   Example: [%{database: "PostgreSQL", advantage: "Advanced features like arrays"}]
+    :not_implemented
+  end
 
-# 1. Ecto supported databases:
-#    PostgreSQL - Advanced features like arrays, JSON, full-text search
-#    MySQL - Wide compatibility, good for legacy system integration
-#    SQLite - Embedded database, perfect for development and testing
-#
-#    Why correct? Ecto adapters exist for these major databases, each with
-#    specific strengths for different use cases.
+  @spec build_blog_repo() :: :ok
+  def build_blog_repo do
+    #   Create a mock `BlogRepo` module similar to `ExampleRepo` above, but with
+    #   functions for `insert_post/1`, `get_post/1`, and `list_posts/0`. Make
+    #   them return fake blog post data with fields: id, title, content, published_at.
+    #   Return :ok after creating and demonstrating the repo.
+    :not_implemented
+  end
 
-# 2. BlogRepo mock
+  @spec explain_ecto_layers() :: map()
+  def explain_ecto_layers do
+    #   Write a function that returns a map describing what each layer does:
+    #   Repo, Schema, Changeset, Query, Migration.
+    #   Include a real-world analogy for each layer.
+    #   Example: %{repo: "Database connection manager - like a librarian..."}
+    :not_implemented
+  end
+end
+
+# Mock BlogRepo for testing
 defmodule BlogRepo do
   def insert_post(attrs) do
     post = %{
@@ -220,8 +235,76 @@ defmodule BlogRepo do
   end
 end
 
-# 3. Ecto layers explanation
-explain_ecto_layers = fn ->
+ExUnit.start()
+
+defmodule DayTwo.EctoExercisesTest do
+  use ExUnit.Case, async: true
+
+  alias DayTwo.EctoExercises, as: EX
+
+  test "research_supported_databases/0 returns database information" do
+    databases = EX.research_supported_databases()
+    assert is_list(databases)
+    assert length(databases) == 3
+
+    Enum.each(databases, fn db ->
+      assert Map.has_key?(db, :database)
+      assert Map.has_key?(db, :advantage)
+      assert is_binary(db.database)
+      assert is_binary(db.advantage)
+    end)
+  end
+
+  test "build_blog_repo/0 creates and demonstrates blog repository" do
+    assert EX.build_blog_repo() == :ok
+  end
+
+  test "explain_ecto_layers/0 describes Ecto architecture" do
+    layers = EX.explain_ecto_layers()
+    assert is_map(layers)
+
+    required_keys = [:repo, :schema, :changeset, :query, :migration]
+    Enum.each(required_keys, fn key ->
+      assert Map.has_key?(layers, key)
+      assert is_binary(layers[key])
+      assert String.length(layers[key]) > 10
+    end)
+  end
+end
+
+"""
+ANSWERS & EXPLANATIONS
+
+# 1. research_supported_databases/0
+def research_supported_databases do
+  [
+    %{database: "PostgreSQL", advantage: "Advanced features like arrays, JSON, full-text search"},
+    %{database: "MySQL", advantage: "Wide compatibility and good for legacy system integration"},
+    %{database: "SQLite", advantage: "Embedded database, perfect for development and testing"}
+  ]
+end
+#  Why correct? Ecto adapters exist for these major databases, each with
+#  specific strengths for different use cases.
+
+# 2. build_blog_repo/0
+def build_blog_repo do
+  # Demonstrate the BlogRepo functions
+  {:ok, post} = BlogRepo.insert_post(%{title: "Test Post", content: "Test content"})
+  IO.inspect(post, label: "Created post")
+
+  retrieved_post = BlogRepo.get_post(1)
+  IO.inspect(retrieved_post, label: "Retrieved post")
+
+  all_posts = BlogRepo.list_posts()
+  IO.inspect(all_posts, label: "All posts")
+
+  :ok
+end
+#  Shows how to create mock repository functions that return structured data
+#  mimicking real database operations.
+
+# 3. explain_ecto_layers/0
+def explain_ecto_layers do
   %{
     repo: "Database connection manager - like a librarian who handles all book checkouts",
     schema: "Data structure definition - like a form template that defines required fields",
@@ -230,6 +313,5 @@ explain_ecto_layers = fn ->
     migration: "Database evolution tracker - like version control for your database structure"
   }
 end
-
-#    Each layer has a clear responsibility, making the system modular and testable.
+#  Each layer has a clear responsibility, making the system modular and testable.
 """

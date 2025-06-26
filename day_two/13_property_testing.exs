@@ -1,9 +1,9 @@
 # Day 2 – Options for Property Testing
 #
-# Run with `mix run elixir_course/day_two/13_property_testing.exs`
+# This script can be run with:
+#     mix run day_two/13_property_testing.exs
 # or inside IEx with:
-#     iex -S mix
-#     c "elixir_course/day_two/13_property_testing.exs"
+#     iex -r day_two/13_property_testing.exs
 #
 # Property testing generates hundreds of test cases automatically to find edge cases
 # that traditional example-based testing might miss. We'll explore StreamData and PropCheck.

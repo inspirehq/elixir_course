@@ -48,6 +48,7 @@ users =
       {:ok, user} ->
         IO.puts("  ✓ Created user: #{user.name}")
         user
+
       {:error, changeset} ->
         IO.puts("  ✗ Failed to create user #{user_attrs.name}: #{inspect(changeset.errors)}")
         nil
@@ -197,6 +198,7 @@ tasks =
       {:ok, task} ->
         IO.puts("  ✓ Created task: #{task.title} (#{task.priority}/#{task.status})")
         task
+
       {:error, changeset} ->
         IO.puts("  ✗ Failed to create task #{task_attrs.title}: #{inspect(changeset.errors)}")
         nil
@@ -213,12 +215,14 @@ IO.puts("Tasks: #{length(tasks)}")
 
 task_stats = Enum.group_by(tasks, & &1.status)
 IO.puts("\nTask Status Distribution:")
+
 for {status, task_list} <- task_stats do
   IO.puts("  #{String.capitalize(String.replace(status, "_", " "))}: #{length(task_list)}")
 end
 
 priority_stats = Enum.group_by(tasks, & &1.priority)
 IO.puts("\nTask Priority Distribution:")
+
 for {priority, task_list} <- priority_stats do
   IO.puts("  #{String.capitalize(priority)}: #{length(task_list)}")
 end

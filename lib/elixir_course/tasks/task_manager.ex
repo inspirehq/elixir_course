@@ -95,10 +95,14 @@ defmodule ElixirCourse.Tasks.TaskManager do
     end
 
     state = %{
-      tasks: %{},           # Map of task_id => task
-      subscribers: [],      # List of monitored PIDs
-      last_refresh: nil,    # Timestamp of last cache refresh
-      cache_hits: 0,        # Performance metrics
+      # Map of task_id => task
+      tasks: %{},
+      # List of monitored PIDs
+      subscribers: [],
+      # Timestamp of last cache refresh
+      last_refresh: nil,
+      # Performance metrics
+      cache_hits: 0,
       cache_misses: 0
     }
 
@@ -110,10 +114,7 @@ defmodule ElixirCourse.Tasks.TaskManager do
     case load_tasks_from_db() do
       {:ok, tasks} ->
         tasks_map = Map.new(tasks, &{&1.id, &1})
-        new_state = %{state |
-          tasks: tasks_map,
-          last_refresh: DateTime.utc_now()
-        }
+        new_state = %{state | tasks: tasks_map, last_refresh: DateTime.utc_now()}
         schedule_refresh()
         Logger.info("TaskManager cache loaded with #{map_size(tasks_map)} tasks")
         {:noreply, new_state}
@@ -129,10 +130,7 @@ defmodule ElixirCourse.Tasks.TaskManager do
     case load_tasks_from_db() do
       {:ok, tasks} ->
         tasks_map = Map.new(tasks, &{&1.id, &1})
-        new_state = %{state |
-          tasks: tasks_map,
-          last_refresh: DateTime.utc_now()
-        }
+        new_state = %{state | tasks: tasks_map, last_refresh: DateTime.utc_now()}
         schedule_refresh()
         Logger.info("TaskManager cache refreshed with #{map_size(tasks_map)} tasks")
         {:noreply, new_state}
@@ -145,10 +143,11 @@ defmodule ElixirCourse.Tasks.TaskManager do
   end
 
   def handle_call({:get_tasks, filters}, _from, state) do
-    filtered_tasks = state.tasks
-    |> Map.values()
-    |> apply_filters(filters)
-    |> sort_tasks(filters[:sort_by])
+    filtered_tasks =
+      state.tasks
+      |> Map.values()
+      |> apply_filters(filters)
+      |> sort_tasks(filters[:sort_by])
 
     new_state = %{state | cache_hits: state.cache_hits + 1}
 
@@ -173,6 +172,7 @@ defmodule ElixirCourse.Tasks.TaskManager do
         # Task not in cache, try to fetch from DB
         try do
           task = Tasks.get_task!(id)
+
           case Tasks.update_task(task, attrs) do
             {:ok, updated_task} ->
               new_state = put_in(state.tasks[id], updated_task)
@@ -227,15 +227,12 @@ defmodule ElixirCourse.Tasks.TaskManager do
       cache_misses: state.cache_misses,
       hit_ratio: calculate_hit_ratio(state.cache_hits, state.cache_misses)
     }
+
     {:reply, stats, state}
   end
 
   def handle_call(:clear_cache, _from, state) do
-    new_state = %{state |
-      tasks: %{},
-      cache_hits: 0,
-      cache_misses: 0
-    }
+    new_state = %{state | tasks: %{}, cache_hits: 0, cache_misses: 0}
     {:reply, :ok, new_state}
   end
 
@@ -273,9 +270,11 @@ defmodule ElixirCourse.Tasks.TaskManager do
   end
 
   def handle_info({:DOWN, ref, :process, pid, _reason}, state) do
-    new_subscribers = Enum.reject(state.subscribers, fn {sub_pid, sub_ref} ->
-      sub_pid == pid || sub_ref == ref
-    end)
+    new_subscribers =
+      Enum.reject(state.subscribers, fn {sub_pid, sub_ref} ->
+        sub_pid == pid || sub_ref == ref
+      end)
+
     {:noreply, %{state | subscribers: new_subscribers}}
   end
 
@@ -296,6 +295,7 @@ defmodule ElixirCourse.Tasks.TaskManager do
   end
 
   defp apply_filters(tasks, filters) when map_size(filters) == 0, do: tasks
+
   defp apply_filters(tasks, filters) do
     tasks
     |> filter_by_status(filters[:status])
@@ -308,34 +308,40 @@ defmodule ElixirCourse.Tasks.TaskManager do
 
   defp filter_by_status(tasks, nil), do: tasks
   defp filter_by_status(tasks, ""), do: tasks
+
   defp filter_by_status(tasks, status) do
     Enum.filter(tasks, &(&1.status == status))
   end
 
   defp filter_by_priority(tasks, nil), do: tasks
   defp filter_by_priority(tasks, ""), do: tasks
+
   defp filter_by_priority(tasks, priority) do
     Enum.filter(tasks, &(&1.priority == priority))
   end
 
   defp filter_by_assignee(tasks, nil), do: tasks
+
   defp filter_by_assignee(tasks, assignee_id) when is_binary(assignee_id) do
     case Integer.parse(assignee_id) do
       {id, ""} -> filter_by_assignee(tasks, id)
       _ -> tasks
     end
   end
+
   defp filter_by_assignee(tasks, assignee_id) do
     Enum.filter(tasks, &(&1.assignee_id == assignee_id))
   end
 
   defp filter_by_search(tasks, nil), do: tasks
   defp filter_by_search(tasks, ""), do: tasks
+
   defp filter_by_search(tasks, search_term) do
     search_lower = String.downcase(search_term)
+
     Enum.filter(tasks, fn task ->
       String.contains?(String.downcase(task.title), search_lower) or
-      (task.description && String.contains?(String.downcase(task.description), search_lower))
+        (task.description && String.contains?(String.downcase(task.description), search_lower))
     end)
   end
 
@@ -348,15 +354,18 @@ defmodule ElixirCourse.Tasks.TaskManager do
   defp maybe_filter_due_soon(tasks, true) do
     Enum.filter(tasks, &Task.due_soon?/1)
   end
+
   defp maybe_filter_due_soon(tasks, _), do: tasks
 
   defp maybe_filter_overdue(tasks, true) do
     Enum.filter(tasks, &Task.overdue?/1)
   end
+
   defp maybe_filter_overdue(tasks, _), do: tasks
 
   defp filter_by_tags(tasks, nil), do: tasks
   defp filter_by_tags(tasks, []), do: tasks
+
   defp filter_by_tags(tasks, tags) when is_list(tags) do
     Enum.filter(tasks, fn task ->
       Enum.any?(tags, &(&1 in (task.tags || [])))
@@ -365,10 +374,12 @@ defmodule ElixirCourse.Tasks.TaskManager do
 
   defp sort_tasks(tasks, nil), do: tasks
   defp sort_tasks(tasks, ""), do: tasks
+
   defp sort_tasks(tasks, "priority") do
     priority_order = %{"urgent" => 0, "high" => 1, "medium" => 2, "low" => 3}
     Enum.sort_by(tasks, &Map.get(priority_order, &1.priority, 4))
   end
+
   defp sort_tasks(tasks, "due_date") do
     Enum.sort_by(tasks, fn task ->
       case task.due_date do
@@ -377,9 +388,11 @@ defmodule ElixirCourse.Tasks.TaskManager do
       end
     end)
   end
+
   defp sort_tasks(tasks, "created_at") do
-    Enum.sort_by(tasks, &(&1.inserted_at), {:desc, DateTime})
+    Enum.sort_by(tasks, & &1.inserted_at, {:desc, DateTime})
   end
+
   defp sort_tasks(tasks, "status") do
     status_order = %{"todo" => 0, "in_progress" => 1, "review" => 2, "done" => 3}
     Enum.sort_by(tasks, &Map.get(status_order, &1.status, 4))
@@ -396,6 +409,7 @@ defmodule ElixirCourse.Tasks.TaskManager do
   end
 
   defp calculate_hit_ratio(0, 0), do: 0.0
+
   defp calculate_hit_ratio(hits, misses) do
     Float.round(hits / (hits + misses) * 100, 2)
   end

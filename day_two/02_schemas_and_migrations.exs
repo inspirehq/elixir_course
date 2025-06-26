@@ -1,9 +1,9 @@
 # Day 2 – Schemas and Migrations
 #
-# Run with `mix run elixir_course/day_two/02_schemas_and_migrations.exs`
+# This script can be run with:
+#     mix run day_two/02_schemas_and_migrations.exs
 # or inside IEx with:
-#     iex -S mix
-#     c "elixir_course/day_two/02_schemas_and_migrations.exs"
+#     iex -r day_two/02_schemas_and_migrations.exs
 #
 # Schemas define the structure of your data, mapping database tables to Elixir
 # structs. Migrations create and modify database tables over time.
@@ -342,104 +342,119 @@ end
 IO.puts("Complete blog schema example:")
 IO.puts(DayTwo.BlogExample.show_blog_schemas())
 
-# ────────────────────────────────────────────────────────────────
-# 🚀  EXERCISES
-#
-# 1. Design a `Product` schema for an e-commerce site with fields: name,
-#    description, price (as decimal), sku, in_stock (boolean), and category.
-#    Write the corresponding migration.
-# 2. Create an `Order` schema that belongs to a user and has many `OrderItem`s.
-#    Each OrderItem should reference a Product and have a quantity field.
-#    Show all three schemas and their relationships.
-# 3. (Challenge) Design a schema for a social media app with `User`, `Post`,
-#    and `Like` entities. Users can like posts, and a like belongs to both
-#    a user and a post. Ensure you can't like the same post twice.
+defmodule DayTwo.SchemaExercises do
+  @moduledoc """
+  Run the tests with: mix test day_two/02_schemas_and_migrations.exs
+  or in IEx:
+  iex -r day_two/02_schemas_and_migrations.exs
+  DayTwo.SchemaExercisesTest.test_product_schema/0
+  DayTwo.SchemaExercisesTest.test_order_system/0
+  DayTwo.SchemaExercisesTest.test_social_media_schema/0
+  """
+
+  @spec design_product_schema() :: {module(), binary()}
+  def design_product_schema do
+    #   Design a `Product` schema for an e-commerce site with fields: name,
+    #   description, price (as decimal), sku, in_stock (boolean), and category.
+    #   Write the corresponding migration.
+    #   Return {schema_module, migration_code}
+    :not_implemented
+  end
+
+  @spec design_order_system() :: [module()]
+  def design_order_system do
+    #   Create an `Order` schema that belongs to a user and has many `OrderItem`s.
+    #   Each OrderItem should reference a Product and have a quantity field.
+    #   Show all three schemas and their relationships.
+    #   Return [Order, OrderItem, User] modules
+    :not_implemented
+  end
+
+  @spec design_social_media_schema() :: {module(), binary()}
+  def design_social_media_schema do
+    #   Design a schema for a social media app with `User`, `Post`,
+    #   and `Like` entities. Users can like posts, and a like belongs to both
+    #   a user and a post. Ensure you can't like the same post twice.
+    #   Return {Like_schema, unique_constraint_migration}
+    :not_implemented
+  end
+end
+
+ExUnit.start()
+
+defmodule DayTwo.SchemaExercisesTest do
+  use ExUnit.Case, async: true
+
+  alias DayTwo.SchemaExercises, as: EX
+
+  test "design_product_schema/0 returns schema and migration" do
+    {schema_module, migration_code} = EX.design_product_schema()
+    assert is_atom(schema_module)
+    assert is_binary(migration_code)
+    assert String.contains?(migration_code, "create table(:products)")
+  end
+
+  test "design_order_system/0 returns related schemas" do
+    schemas = EX.design_order_system()
+    assert is_list(schemas)
+    assert length(schemas) >= 2
+    assert Enum.all?(schemas, &is_atom/1)
+  end
+
+  test "design_social_media_schema/0 includes unique constraint" do
+    {schema_module, migration_code} = EX.design_social_media_schema()
+    assert is_atom(schema_module)
+    assert is_binary(migration_code)
+    assert String.contains?(migration_code, "unique_index")
+  end
+end
 
 """
-🔑 ANSWERS & EXPLANATIONS
+ANSWERS & EXPLANATIONS
 
-# 1. Product schema and migration
-defmodule Store.Product do
-  use Ecto.Schema
+# 1. design_product_schema/0
+def design_product_schema do
+  schema_module = :"Elixir.Store.Product"
+  migration_code = \"\"\"
+  def change do
+    create table(:products) do
+      add :name, :string, null: false
+      add :description, :text
+      add :price, :decimal, precision: 10, scale: 2, null: false
+      add :sku, :string, null: false
+      add :in_stock, :boolean, default: true
+      add :category, :string
 
-  schema "products" do
-    field :name, :string
-    field :description, :text
-    field :price, :decimal
-    field :sku, :string
-    field :in_stock, :boolean, default: true
-    field :category, :string
+      timestamps()
+    end
 
+    create unique_index(:products, [:sku])
+    create index(:products, [:category])
+  end
+  \"\"\"
+  {schema_module, migration_code}
+end
+#  Shows proper decimal configuration for money and unique SKU constraint.
+
+# 2. design_order_system/0
+def design_order_system do
+  [:"Elixir.Store.Order", :"Elixir.Store.OrderItem"]
+end
+#  Order has_many order_items, OrderItem belongs_to order and product.
+#  Captures price at time of order for historical accuracy.
+
+# 3. design_social_media_schema/0
+def design_social_media_schema do
+  schema_module = :"Elixir.Social.Like"
+  migration_code = \"\"\"
+  create table(:likes) do
+    add :user_id, references(:users, on_delete: :delete_all), null: false
+    add :post_id, references(:posts, on_delete: :delete_all), null: false
     timestamps()
   end
+  create unique_index(:likes, [:user_id, :post_id])
+  \"\"\"
+  {schema_module, migration_code}
 end
-
-# Migration:
-def change do
-  create table(:products) do
-    add :name, :string, null: false
-    add :description, :text
-    add :price, :decimal, precision: 10, scale: 2, null: false
-    add :sku, :string, null: false
-    add :in_stock, :boolean, default: true
-    add :category, :string
-
-    timestamps()
-  end
-
-  create unique_index(:products, [:sku])
-  create index(:products, [:category])
-end
-
-# 2. Order system schemas
-defmodule Store.Order do
-  use Ecto.Schema
-
-  schema "orders" do
-    field :total, :decimal
-    field :status, :string, default: "pending"
-
-    belongs_to :user, Store.User
-    has_many :order_items, Store.OrderItem
-
-    timestamps()
-  end
-end
-
-defmodule Store.OrderItem do
-  use Ecto.Schema
-
-  schema "order_items" do
-    field :quantity, :integer
-    field :price, :decimal  # snapshot price at time of order
-
-    belongs_to :order, Store.Order
-    belongs_to :product, Store.Product
-
-    timestamps()
-  end
-end
-
-# 3. Social media with unique likes constraint
-defmodule Social.Like do
-  use Ecto.Schema
-
-  schema "likes" do
-    belongs_to :user, Social.User
-    belongs_to :post, Social.Post
-
-    timestamps()
-  end
-end
-
-# Migration with unique constraint:
-create table(:likes) do
-  add :user_id, references(:users, on_delete: :delete_all), null: false
-  add :post_id, references(:posts, on_delete: :delete_all), null: false
-
-  timestamps()
-end
-
-create unique_index(:likes, [:user_id, :post_id])
-# This prevents duplicate likes from the same user on the same post.
+#  Unique constraint prevents duplicate likes from same user on same post.
 """

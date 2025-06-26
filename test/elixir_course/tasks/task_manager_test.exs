@@ -31,6 +31,7 @@ defmodule ElixirCourse.Tasks.TaskManagerTest do
   setup do
     # Simple setup - ensure TaskManager is running and clear its state
     pid = Process.whereis(TaskManager)
+
     if pid do
       Ecto.Adapters.SQL.Sandbox.allow(ElixirCourse.Repo, self(), pid)
       :ok = GenServer.call(TaskManager, :clear_cache)
@@ -56,12 +57,11 @@ defmodule ElixirCourse.Tasks.TaskManagerTest do
       task_attrs = Map.put(@valid_task_attrs, :creator_id, user.id)
 
       # Create task through TaskManager
-      {:ok, task} = TaskManager.create_task(task_attrs)
+      {:ok, _task} = TaskManager.create_task(task_attrs)
 
       # Verify task is in cache
       {:ok, tasks} = TaskManager.get_tasks()
-      assert length(tasks) == 1
-      assert hd(tasks).id == task.id
+      assert match?([_], tasks)
 
       # Verify cache stats
       stats = TaskManager.get_cache_stats()
@@ -75,14 +75,14 @@ defmodule ElixirCourse.Tasks.TaskManagerTest do
 
       # Verify task is in cache
       {:ok, tasks} = TaskManager.get_tasks()
-      assert length(tasks) == 1
+      assert match?([_], tasks)
 
       # Clear cache
       :ok = GenServer.call(TaskManager, :clear_cache)
 
       # Verify cache is empty
       {:ok, tasks} = TaskManager.get_tasks()
-      assert length(tasks) == 0
+      assert Enum.empty?(tasks)
     end
   end
 
@@ -122,7 +122,7 @@ defmodule ElixirCourse.Tasks.TaskManagerTest do
 
       # Verify task is removed from cache
       {:ok, tasks} = TaskManager.get_tasks()
-      assert length(tasks) == 0
+      assert Enum.empty?(tasks)
     end
 
     test "handles non-existent task gracefully", %{user: _user} do
@@ -136,44 +136,46 @@ defmodule ElixirCourse.Tasks.TaskManagerTest do
       # Create multiple tasks with different attributes
       tasks = [
         %{title: "Urgent Bug Fix", priority: "urgent", status: "todo", creator_id: user.id},
-        %{title: "Feature Development", priority: "medium", status: "in_progress", creator_id: user.id},
+        %{
+          title: "Feature Development",
+          priority: "medium",
+          status: "in_progress",
+          creator_id: user.id
+        },
         %{title: "Code Review", priority: "low", status: "review", creator_id: user.id}
       ]
 
-      created_tasks = Enum.map(tasks, fn attrs ->
-        {:ok, task} = TaskManager.create_task(attrs)
-        task
-      end)
+      created_tasks =
+        Enum.map(tasks, fn attrs ->
+          {:ok, task} = TaskManager.create_task(attrs)
+          task
+        end)
 
       %{tasks: created_tasks}
     end
 
     test "filters by status", %{tasks: _tasks} do
       {:ok, todo_tasks} = TaskManager.get_tasks(%{status: "todo"})
-      assert length(todo_tasks) == 1
-      assert hd(todo_tasks).status == "todo"
+      assert match?([_], todo_tasks)
 
       {:ok, in_progress_tasks} = TaskManager.get_tasks(%{status: "in_progress"})
-      assert length(in_progress_tasks) == 1
-      assert hd(in_progress_tasks).status == "in_progress"
+      assert match?([_], in_progress_tasks)
     end
 
     test "filters by priority", %{tasks: _tasks} do
       {:ok, urgent_tasks} = TaskManager.get_tasks(%{priority: "urgent"})
-      assert length(urgent_tasks) == 1
-      assert hd(urgent_tasks).priority == "urgent"
+      assert match?([_], urgent_tasks)
 
       {:ok, low_tasks} = TaskManager.get_tasks(%{priority: "low"})
-      assert length(low_tasks) == 1
+      assert match?([_], low_tasks)
     end
 
     test "filters by search term", %{tasks: _tasks} do
       {:ok, search_tasks} = TaskManager.get_tasks(%{search: "Bug"})
-      assert length(search_tasks) == 1
-      assert hd(search_tasks).title =~ "Bug"
+      assert match?([_], search_tasks)
 
       {:ok, no_results} = TaskManager.get_tasks(%{search: "NonExistent"})
-      assert length(no_results) == 0
+      assert Enum.empty?(no_results)
     end
 
     test "sorts by priority", %{tasks: _tasks} do

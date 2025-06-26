@@ -1,9 +1,9 @@
 # Day 2 – Behaviour Refresher
 #
-# Run with `mix run elixir_course/day_two/07_behaviour_refresher.exs`
+# This script can be run with:
+#     mix run day_two/07_behaviour_refresher.exs
 # or inside IEx with:
-#     iex -S mix
-#     c "elixir_course/day_two/07_behaviour_refresher.exs"
+#     iex -r day_two/07_behaviour_refresher.exs
 #
 # Building on GenServer from Day 1, we'll explore behaviours as a design pattern.
 # Behaviours define contracts - a set of functions that implementing modules must provide.
@@ -371,18 +371,72 @@ DayTwo.NotificationDispatcher.send_multi_channel(
   providers
 )
 
-# ────────────────────────────────────────────────────────────────
-# 🚀  EXERCISES
-#
-# 1. Create a `CacheProvider` behaviour with callbacks for `get/1`, `put/2`,
-#    and `delete/1`. Implement it with `MemoryCache` and `RedisCache` modules.
-#    Show how the same code can work with either implementation.
-# 2. Build a `DataValidator` behaviour for form validation. Include callbacks
-#    for `validate_field/2` and `format_errors/1`. Create implementations for
-#    `EmailValidator`, `PhoneValidator`, and `PasswordValidator`.
-# 3. (Challenge) Design a `JobProcessor` behaviour for background job processing.
-#    Include callbacks for `enqueue/2`, `process/1`, and `retry/2`. Create
-#    implementations that simulate different queue backends (memory, database).
+defmodule DayTwo.BehaviourExercises do
+  @moduledoc """
+  Run the tests with: mix test day_two/07_behaviour_refresher.exs
+  or in IEx:
+  iex -r day_two/07_behaviour_refresher.exs
+  DayTwo.BehaviourExercisesTest.test_cache_provider/0
+  DayTwo.BehaviourExercisesTest.test_data_validator/0
+  DayTwo.BehaviourExercisesTest.test_job_processor/0
+  """
+
+  @spec define_cache_provider_behaviour() :: binary()
+  def define_cache_provider_behaviour do
+    #   Create a `CacheProvider` behaviour with callbacks for `get/1`, `put/2`,
+    #   and `delete/1`. Implement it with `MemoryCache` and `RedisCache` modules.
+    #   Show how the same code can work with either implementation.
+    #   Return the behaviour definition as a string
+    :not_implemented
+  end
+
+  @spec build_data_validator_behaviour() :: [atom()]
+  def build_data_validator_behaviour do
+    #   Build a `DataValidator` behaviour for form validation. Include callbacks
+    #   for `validate_field/2` and `format_errors/1`. Create implementations for
+    #   `EmailValidator`, `PhoneValidator`, and `PasswordValidator`.
+    #   Return a list of validator module names
+    :not_implemented
+  end
+
+  @spec design_job_processor_behaviour() :: map()
+  def design_job_processor_behaviour do
+    #   Design a `JobProcessor` behaviour for background job processing.
+    #   Include callbacks for `enqueue/2`, `process/1`, and `retry/2`. Create
+    #   implementations that simulate different queue backends (memory, database).
+    #   Return a map with callbacks and implementation strategies
+    :not_implemented
+  end
+end
+
+ExUnit.start()
+
+defmodule DayTwo.BehaviourExercisesTest do
+  use ExUnit.Case, async: true
+
+  alias DayTwo.BehaviourExercises, as: EX
+
+  test "define_cache_provider_behaviour/0 includes all required callbacks" do
+    behaviour_def = EX.define_cache_provider_behaviour()
+    assert is_binary(behaviour_def)
+    assert String.contains?(behaviour_def, "@callback get")
+    assert String.contains?(behaviour_def, "@callback put")
+    assert String.contains?(behaviour_def, "@callback delete")
+  end
+
+  test "build_data_validator_behaviour/0 returns validator modules" do
+    validators = EX.build_data_validator_behaviour()
+    assert is_list(validators)
+    assert length(validators) >= 3
+  end
+
+  test "design_job_processor_behaviour/0 includes queue strategies" do
+    design = EX.design_job_processor_behaviour()
+    assert is_map(design)
+    assert Map.has_key?(design, :callbacks)
+    assert Map.has_key?(design, :implementations)
+  end
+end
 
 """
 🔑 ANSWERS & EXPLANATIONS

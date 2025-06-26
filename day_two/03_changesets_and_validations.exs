@@ -1,9 +1,9 @@
 # Day 2 – Changesets and Validations
 #
-# Run with `mix run elixir_course/day_two/03_changesets_and_validations.exs`
+# This script can be run with:
+#     mix run day_two/03_changesets_and_validations.exs
 # or inside IEx with:
-#     iex -S mix
-#     c "elixir_course/day_two/03_changesets_and_validations.exs"
+#     iex -r day_two/03_changesets_and_validations.exs
 #
 # Changesets are Ecto's way of filtering, casting, and validating data before
 # it reaches the database. They provide a clear boundary between raw input
@@ -408,96 +408,141 @@ end
 post = %DayTwo.BlogPost{}
 DayTwo.BlogPost.changeset(post, %{"title" => "My Blog Post"})
 
-# ────────────────────────────────────────────────────────────────
-# 🚀  EXERCISES
-#
-# 1. Create a `Product` changeset that validates price is positive, name is
-#    at least 3 characters, and SKU follows format "ABC-123" (3 letters,
-#    dash, 3 numbers). Include a custom validation function.
-# 2. Build a `PasswordReset` changeset that validates the token is present,
-#    the new password meets complexity requirements (8+ chars, has number
-#    and special character), and confirmation matches.
-# 3. (Challenge) Design an `Order` changeset that calculates total from
-#    line items, validates inventory is available, and applies discount
-#    codes. Show how you'd handle the case where validation requires
-#    database queries.
+defmodule DayTwo.ChangesetExercises do
+  @moduledoc """
+  Run the tests with: mix test day_two/03_changesets_and_validations.exs
+  or in IEx:
+  iex -r day_two/03_changesets_and_validations.exs
+  DayTwo.ChangesetExercisesTest.test_product_changeset/0
+  DayTwo.ChangesetExercisesTest.test_password_reset/0
+  DayTwo.ChangesetExercisesTest.test_order_changeset/0
+  """
+
+  @spec build_product_changeset(map(), map()) :: map()
+  def build_product_changeset(_product, _attrs) do
+    #   Create a `Product` changeset that validates price is positive, name is
+    #   at least 3 characters, and SKU follows format "ABC-123" (3 letters,
+    #   dash, 3 numbers). Include a custom validation function.
+    #   Return a changeset-like map with valid? and errors keys
+    :not_implemented
+  end
+
+  @spec build_password_reset_changeset(map(), map()) :: map()
+  def build_password_reset_changeset(_reset, _attrs) do
+    #   Build a `PasswordReset` changeset that validates the token is present,
+    #   the new password meets complexity requirements (8+ chars, has number
+    #   and special character), and confirmation matches.
+    #   Return a changeset-like map with valid? and errors keys
+    :not_implemented
+  end
+
+  @spec design_order_changeset_strategy() :: binary()
+  def design_order_changeset_strategy do
+    #   Design an `Order` changeset that calculates total from
+    #   line items, validates inventory is available, and applies discount
+    #   codes. Show how you'd handle the case where validation requires
+    #   database queries. Return a description of your approach.
+    :not_implemented
+  end
+end
+
+ExUnit.start()
+
+defmodule DayTwo.ChangesetExercisesTest do
+  use ExUnit.Case, async: true
+
+  alias DayTwo.ChangesetExercises, as: EX
+
+  test "build_product_changeset/2 validates all product fields" do
+    product = %{}
+    valid_attrs = %{"name" => "Great Product", "price" => 29.99, "sku" => "ABC-123"}
+    invalid_attrs = %{"name" => "ab", "price" => -10, "sku" => "invalid"}
+
+    valid_changeset = EX.build_product_changeset(product, valid_attrs)
+    assert valid_changeset.valid? == true
+
+    invalid_changeset = EX.build_product_changeset(product, invalid_attrs)
+    assert valid_changeset.valid? == false
+    assert Map.has_key?(invalid_changeset, :errors)
+  end
+
+  test "build_password_reset_changeset/2 validates password complexity" do
+    reset = %{}
+    valid_attrs = %{
+      "token" => "abc123",
+      "password" => "secure123!",
+      "password_confirmation" => "secure123!"
+    }
+    invalid_attrs = %{
+      "password" => "weak",
+      "password_confirmation" => "different"
+    }
+
+    valid_changeset = EX.build_password_reset_changeset(reset, valid_attrs)
+    assert valid_changeset.valid? == true
+
+    invalid_changeset = EX.build_password_reset_changeset(reset, invalid_attrs)
+    assert invalid_changeset.valid? == false
+  end
+
+  test "design_order_changeset_strategy/0 describes database validation approach" do
+    strategy = EX.design_order_changeset_strategy()
+    assert is_binary(strategy)
+    assert String.contains?(strategy, "prepare_changes")
+    assert String.length(strategy) > 50
+  end
+end
 
 """
-🔑 ANSWERS & EXPLANATIONS
+ANSWERS & EXPLANATIONS
 
-# 1. Product changeset with custom SKU validation
-def changeset(product, attrs) do
-  product
-  |> cast(attrs, [:name, :price, :sku])
-  |> validate_required([:name, :price, :sku])
-  |> validate_length(:name, min: 3)
-  |> validate_number(:price, greater_than: 0)
-  |> validate_sku_format()
+# 1. build_product_changeset/2
+def build_product_changeset(product, attrs) do
+  # Simulate changeset validation logic
+  name = Map.get(attrs, "name", "")
+  price = Map.get(attrs, "price", 0)
+  sku = Map.get(attrs, "sku", "")
+
+  errors = []
+  errors = if String.length(name) < 3, do: [{:name, "must be at least 3 characters"} | errors], else: errors
+  errors = if price <= 0, do: [{:price, "must be positive"} | errors], else: errors
+  errors = if !Regex.match?(~r/^[A-Z]{3}-[0-9]{3}$/, sku), do: [{:sku, "must be format ABC-123"} | errors], else: errors
+
+  %{valid?: Enum.empty?(errors), errors: errors, changes: Map.take(attrs, ["name", "price", "sku"])}
 end
+#  Custom validation function checks SKU format with regex pattern matching.
 
-defp validate_sku_format(changeset) do
-  case get_change(changeset, :sku) do
-    nil -> changeset
-    sku ->
-      if Regex.match?(~r/^[A-Z]{3}-[0-9]{3}$/, sku) do
-        changeset
-      else
-        add_error(changeset, :sku, "must be format ABC-123")
-      end
+# 2. build_password_reset_changeset/2
+def build_password_reset_changeset(reset, attrs) do
+  password = Map.get(attrs, "password", "")
+  confirmation = Map.get(attrs, "password_confirmation", "")
+
+  errors = []
+  errors = if String.length(password) < 8, do: [{:password, "must be at least 8 characters"} | errors], else: errors
+  errors = if !Regex.match?(~r/[0-9]/, password), do: [{:password, "must contain a number"} | errors], else: errors
+  errors = if !Regex.match?(~r/[!@#$%^&*]/, password), do: [{:password, "must contain special character"} | errors], else: errors
+  errors = if password != confirmation, do: [{:password_confirmation, "does not match"} | errors], else: errors
+
+  %{valid?: Enum.empty?(errors), errors: errors}
+end
+#  Multiple validation rules ensure password meets security requirements.
+
+# 3. design_order_changeset_strategy/0
+def design_order_changeset_strategy do
+  \"\"\"
+  Use prepare_changes/2 for database-dependent validations:
+
+  def changeset(order, attrs) do
+    order
+    |> cast(attrs, [:user_id, :discount_code])
+    |> cast_assoc(:line_items, with: &LineItem.changeset/2)
+    |> calculate_total()
+    |> prepare_changes(&validate_inventory/1)
+    |> prepare_changes(&apply_discount/1)
   end
+
+  This allows database queries during validation while maintaining transactional integrity.
+  \"\"\"
 end
-
-# 2. Password reset changeset
-def changeset(reset, attrs) do
-  reset
-  |> cast(attrs, [:token, :password, :password_confirmation])
-  |> validate_required([:token, :password, :password_confirmation])
-  |> validate_length(:password, min: 8)
-  |> validate_password_complexity()
-  |> validate_confirmation(:password)
-end
-
-defp validate_password_complexity(changeset) do
-  case get_change(changeset, :password) do
-    nil -> changeset
-    password ->
-      has_number = Regex.match?(~r/[0-9]/, password)
-      has_special = Regex.match?(~r/[!@#$%^&*]/, password)
-
-      if has_number and has_special do
-        changeset
-      else
-        add_error(changeset, :password, "must contain number and special character")
-      end
-  end
-end
-
-# 3. Order changeset with database validation
-def changeset(order, attrs) do
-  order
-  |> cast(attrs, [:user_id, :discount_code])
-  |> validate_required([:user_id])
-  |> cast_assoc(:line_items, with: &LineItem.changeset/2)
-  |> calculate_total()
-  |> validate_inventory_available()
-  |> apply_discount_code()
-end
-
-defp validate_inventory_available(changeset) do
-  # This requires a database query, so we use a constraint approach:
-  changeset
-  |> prepare_changes(fn changeset ->
-    line_items = get_field(changeset, :line_items)
-
-    case check_inventory(line_items) do
-      :ok -> changeset
-      {:error, out_of_stock_items} ->
-        Enum.reduce(out_of_stock_items, changeset, fn item, acc ->
-          add_error(acc, :line_items, "#{item} is out of stock")
-        end)
-    end
-  end)
-end
-
-# Using prepare_changes/2 allows database access during changeset validation
+#  prepare_changes/2 enables complex validations that require database access.
 """
