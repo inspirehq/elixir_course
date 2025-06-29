@@ -418,7 +418,7 @@ defmodule DayTwo.TransactionExercises do
     #   email, creates a default profile, and logs the registration event. Handle
     #   the case where email sending fails but still complete registration.
     #   Return an Ecto.Multi struct
-    :not_implemented
+    nil  # TODO: Implement this exercise
   end
 
   @spec build_blog_publishing_multi(integer(), map()) :: Ecto.Multi.t()
@@ -427,7 +427,7 @@ defmodule DayTwo.TransactionExercises do
     #   category post counts, notifies subscribers, and schedules social media
     #   posts. Make social media scheduling optional based on user preferences.
     #   Return an Ecto.Multi struct
-    :not_implemented
+    nil  # TODO: Implement this exercise
   end
 
   @spec design_migration_strategy() :: binary()
@@ -436,7 +436,7 @@ defmodule DayTwo.TransactionExercises do
     #   tables, updates related records, and maintains audit logs. Include
     #   rollback compensation for external API calls that can't be undone.
     #   Return a description of the strategy including compensation patterns
-    :not_implemented
+    nil  # TODO: Implement this exercise
   end
 end
 

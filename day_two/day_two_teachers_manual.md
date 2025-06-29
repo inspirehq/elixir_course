@@ -977,6 +977,155 @@ end
 
 ---
 
+### 15. Introduction to Phoenix Plugs (60 minutes)
+
+#### 🎯 **Key Concepts**
+- **Plug Specification**: Understanding the conn-in, conn-out pattern
+- **Function vs Module Plugs**: Two approaches to building plugs
+- **Pipeline Composition**: Chaining plugs together for request processing
+- **Real-World Patterns**: Authentication, logging, CORS, rate limiting
+
+#### 📝 **Student Summary**
+*"Plugs are the fundamental building blocks of Phoenix applications. They transform HTTP connections through composable functions, enabling everything from authentication to logging in a standardized way."*
+
+#### 🎤 **Teacher Talking Points**
+
+**Plugs as Web Middleware:**
+"Think of plugs as middleware layers in web applications. Every request flows through a series of plugs, each one potentially transforming the connection. This pattern is simple but incredibly powerful - it's how Phoenix handles everything from parsing request bodies to enforcing authentication."
+
+**The Plug Contract:**
+"The beauty of plugs is their simplicity. Every plug follows the same contract:"
+```elixir
+# Function plug
+def my_plug(conn, opts) do
+  # Transform the connection
+  conn
+end
+
+# Module plug  
+defmodule MyPlug do
+  def init(opts), do: opts  # Compile-time setup
+  def call(conn, opts) do   # Runtime execution
+    # Transform the connection
+    conn
+  end
+end
+```
+
+**Why Two Types of Plugs?**
+- "**Function Plugs**: Simple, stateless transformations - perfect for logging, headers"
+- "**Module Plugs**: Complex logic with compile-time optimization - authentication, rate limiting"
+- "**Performance**: Module plugs can pre-process configuration at compile time"
+- "**Testing**: Both types are pure functions, making them easy to test"
+
+**Connection Lifecycle:**
+"The %Plug.Conn{} struct carries everything about an HTTP request/response:"
+- "Request data: method, path, headers, parameters"
+- "Response data: status, headers, body"
+- "Assigns: Key-value storage for request-scoped data"
+- "Halted flag: Stops pipeline processing when needed"
+
+**Pipeline Architecture:**
+"Phoenix applications are essentially plug pipelines:"
+```
+Request → Endpoint Plugs → Router Plugs → Controller Plugs → Action → Response
+```
+"Each layer can transform the connection, add data, or halt processing. This creates a clean separation of concerns."
+
+**Real-World Plug Categories:**
+1. **Infrastructure Plugs**: Request ID, logging, static files, parsing
+2. **Security Plugs**: CORS, CSRF, authentication, authorization  
+3. **Business Logic Plugs**: Tenant resolution, feature flags, API versioning
+4. **Monitoring Plugs**: Metrics collection, performance timing, error tracking
+
+**Common Patterns:**
+- "**Early Termination**: Use `halt(conn)` to stop processing (authentication failures)"
+- "**Data Loading**: Use `assign(conn, :key, value)` to store request-scoped data"
+- "**Header Management**: Security headers, CORS, API versioning"
+- "**Request Transformation**: Authentication token → user struct"
+
+**Performance Considerations:**
+"Plugs execute for every request, so performance matters:"
+- "Keep plug logic lightweight and focused"
+- "Use module plugs for expensive setup (compile-time optimization)"
+- "Consider caching for expensive operations"
+- "Profile plug performance in production scenarios"
+
+**Testing Philosophy:**
+"Plugs are pure functions, making them exceptionally testable:"
+- "Mock %Plug.Conn{} structs for unit testing"
+- "Test both success and failure scenarios"
+- "Verify conn transformation and assigns"
+- "Integration test entire plug pipelines"
+
+#### 💬 **Discussion Questions**
+1. **"How do plugs compare to middleware in other web frameworks you've used?"**
+   - *Explore functional vs. object-oriented approaches, composability*
+2. **"When would you choose a function plug vs. a module plug?"**
+   - *Complexity, reusability, configuration needs, performance*
+3. **"How might you structure plugs for a multi-tenant application?"**
+   - *Tenant resolution, authorization, data scoping*
+4. **"What security concerns should you consider when building authentication plugs?"**
+   - *Token handling, session management, timing attacks, error information leakage*
+5. **"How could you use plugs to implement feature flags or A/B testing?"**
+   - *Request routing, user segmentation, gradual rollouts*
+
+#### 🛠 **Common Implementation Patterns**
+
+**Authentication Pipeline:**
+```elixir
+# In router.ex
+pipeline :authenticated do
+  plug MyApp.AuthPlug
+  plug MyApp.LoadUserPlug
+  plug MyApp.RequireActivePlug
+end
+```
+
+**API Versioning:**
+```elixir
+defmodule MyApp.APIVersionPlug do
+  def call(conn, _opts) do
+    version = 
+      get_req_header(conn, "x-api-version") 
+      |> List.first() 
+      |> Kernel.||("v1")
+    
+    assign(conn, :api_version, version)
+  end
+end
+```
+
+**Request Timing:**
+```elixir
+# Start timer plug
+def start_timer(conn, _opts) do
+  assign(conn, :start_time, System.monotonic_time())
+end
+
+# End timer plug  
+def end_timer(conn, _opts) do
+  duration = System.monotonic_time() - conn.assigns.start_time
+  put_resp_header(conn, "x-response-time", "#{duration}ms")
+end
+```
+
+#### 🎯 **Teaching Tips**
+- **Start Simple**: Begin with basic function plugs before introducing module plugs
+- **Visual Pipeline**: Draw the request flow through different plug layers
+- **Live Coding**: Build plugs incrementally, showing conn transformation at each step
+- **Real Examples**: Use authentication, logging, and CORS as concrete use cases
+- **Error Handling**: Emphasize the importance of proper error responses and halting
+
+#### ⚠️ **Common Pitfalls**
+1. **Forgetting to Return Conn**: Students often forget that plugs must return the connection
+2. **Halting Without Response**: Using `halt()` without setting a response leads to confusing errors
+3. **Heavy Processing**: Putting expensive operations in plugs that run on every request
+4. **State Mutation**: Trying to mutate the connection instead of returning a new one
+5. **Error Handling**: Not handling edge cases in authentication or data parsing
+
+---
+
 ## 🎯 Teaching Strategies
 
 ### Day Two Progression

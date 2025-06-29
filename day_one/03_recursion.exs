@@ -1,9 +1,9 @@
-# Day 2 – Recursion in Elixir
+# Day 1, Lesson 3 – Recursion in Elixir
 #
 # This script can be run with:
-#     mix run day_two/00_recursion.exs
+#     mix run day_one/03_recursion.exs
 # or inside IEx with:
-#     iex -r day_two/00_recursion.exs
+#     iex -r day_one/03_recursion.exs
 #
 # Recursion is a fundamental programming technique where a function calls itself
 # to solve smaller versions of the same problem. In functional languages like
@@ -12,7 +12,7 @@
 
 IO.puts("\n📌 Example 1 – Basic recursion concepts and structure")
 
-defmodule DayTwo.RecursionBasics do
+defmodule DayOne.RecursionBasics do
   @moduledoc """
   Understanding the fundamental concepts of recursion in Elixir.
   """
@@ -71,20 +71,20 @@ defmodule DayTwo.RecursionBasics do
 end
 
 IO.puts("Recursion pattern:")
-IO.puts(DayTwo.RecursionBasics.explain_recursion_pattern())
+IO.puts(DayOne.RecursionBasics.explain_recursion_pattern())
 
 IO.puts("\nCountdown demonstration:")
-DayTwo.RecursionBasics.simple_countdown(5)
+DayOne.RecursionBasics.simple_countdown(5)
 
 IO.puts("\nFactorial calculation:")
-result = DayTwo.RecursionBasics.factorial(4)
+result = DayOne.RecursionBasics.factorial(4)
 IO.puts("factorial(4) = #{result}")
-IO.puts(DayTwo.RecursionBasics.show_factorial_trace())
+IO.puts(DayOne.RecursionBasics.show_factorial_trace())
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 2 – List recursion patterns")
 
-defmodule DayTwo.ListRecursion do
+defmodule DayOne.ListRecursion do
   @moduledoc """
   Common patterns for recursive list processing.
   """
@@ -132,19 +132,19 @@ defmodule DayTwo.ListRecursion do
 end
 
 IO.puts("List recursion patterns:")
-IO.puts(DayTwo.ListRecursion.show_list_patterns())
+IO.puts(DayOne.ListRecursion.show_list_patterns())
 
 test_list = [1, 2, 3, 4, 5]
 IO.puts("\nTesting with #{inspect(test_list)}:")
-IO.puts("Sum: #{DayTwo.ListRecursion.sum_list(test_list)}")
-IO.puts("Length: #{DayTwo.ListRecursion.length_list(test_list)}")
-IO.puts("Reversed: #{inspect(DayTwo.ListRecursion.reverse_list(test_list))}")
-IO.puts("Max: #{DayTwo.ListRecursion.find_max(test_list)}")
+IO.puts("Sum: #{DayOne.ListRecursion.sum_list(test_list)}")
+IO.puts("Length: #{DayOne.ListRecursion.length_list(test_list)}")
+IO.puts("Reversed: #{inspect(DayOne.ListRecursion.reverse_list(test_list))}")
+IO.puts("Max: #{DayOne.ListRecursion.find_max(test_list)}")
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 3 – Tail recursion and accumulators")
 
-defmodule DayTwo.TailRecursion do
+defmodule DayOne.TailRecursion do
   @moduledoc """
   Understanding tail recursion and accumulator patterns for efficiency.
   """
@@ -207,22 +207,22 @@ defmodule DayTwo.TailRecursion do
 end
 
 IO.puts("Tail recursion explanation:")
-IO.puts(DayTwo.TailRecursion.explain_tail_recursion())
+IO.puts(DayOne.TailRecursion.explain_tail_recursion())
 
 IO.puts("\nTail recursive examples:")
-IO.puts("Factorial (tail): #{DayTwo.TailRecursion.factorial_tail(5)}")
-IO.puts("Sum (tail): #{DayTwo.TailRecursion.sum_tail([1, 2, 3, 4, 5])}")
+IO.puts("Factorial (tail): #{DayOne.TailRecursion.factorial_tail(5)}")
+IO.puts("Sum (tail): #{DayOne.TailRecursion.sum_tail([1, 2, 3, 4, 5])}")
 
-mapped = DayTwo.TailRecursion.map_tail([1, 2, 3, 4], &(&1 * 2))
+mapped = DayOne.TailRecursion.map_tail([1, 2, 3, 4], &(&1 * 2))
 IO.puts("Map double (tail): #{inspect(mapped)}")
 
-filtered = DayTwo.TailRecursion.filter_tail([1, 2, 3, 4, 5, 6], &(rem(&1, 2) == 0))
+filtered = DayOne.TailRecursion.filter_tail([1, 2, 3, 4, 5, 6], &(rem(&1, 2) == 0))
 IO.puts("Filter even (tail): #{inspect(filtered)}")
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 4 – Tree and nested data recursion")
 
-defmodule DayTwo.TreeRecursion do
+defmodule DayOne.TreeRecursion do
   @moduledoc """
   Recursion with tree structures and nested data.
   """
@@ -306,12 +306,12 @@ defmodule DayTwo.TreeRecursion do
   end
 end
 
-DayTwo.TreeRecursion.demonstrate_tree_operations()
+DayOne.TreeRecursion.demonstrate_tree_operations()
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 5 – Real-world: File system traversal")
 
-defmodule DayTwo.FileSystemDemo do
+defmodule DayOne.FileSystemDemo do
   @moduledoc """
   Real-world recursion example: traversing directory structures.
   """
@@ -403,16 +403,16 @@ defmodule DayTwo.FileSystemDemo do
   end
 end
 
-DayTwo.FileSystemDemo.demonstrate_file_system()
+DayOne.FileSystemDemo.demonstrate_file_system()
 
-defmodule DayTwo.RecursionExercises do
+defmodule DayOne.RecursionExercises do
   @moduledoc """
   Run the tests with: mix test day_two/00_recursion.exs
   or in IEx:
   iex -r day_two/00_recursion.exs
-  DayTwo.RecursionExercisesTest.test_fibonacci/0
-  DayTwo.RecursionExercisesTest.test_list_operations/0
-  DayTwo.RecursionExercisesTest.test_nested_data_processing/0
+  DayOne.RecursionExercisesTest.test_fibonacci/0
+  DayOne.RecursionExercisesTest.test_list_operations/0
+  DayOne.RecursionExercisesTest.test_nested_data_processing/0
   """
 
   @spec fibonacci(non_neg_integer()) :: non_neg_integer()
@@ -421,7 +421,7 @@ defmodule DayTwo.RecursionExercises do
     #   fibonacci(0) = 0, fibonacci(1) = 1, fibonacci(n) = fibonacci(n-1) + fibonacci(n-2)
     #   Bonus: Implement both naive and tail-recursive versions.
     #   Example: fibonacci(6) => 8
-    :not_implemented
+    0  # TODO: Implement Fibonacci sequence using recursion
   end
 
   @spec flatten_list([any()]) :: [any()]
@@ -429,7 +429,7 @@ defmodule DayTwo.RecursionExercises do
     #   Recursively flatten a nested list structure.
     #   Transform [[1, 2], [3, [4, 5]], 6] into [1, 2, 3, 4, 5, 6]
     #   Handle arbitrarily deep nesting.
-    :not_implemented
+    []  # TODO: Implement recursive list flattening
   end
 
   @spec deep_count(any()) :: non_neg_integer()
@@ -437,16 +437,16 @@ defmodule DayTwo.RecursionExercises do
     #   Count all atomic values in a nested data structure.
     #   Handle lists, tuples, and maps recursively.
     #   Example: deep_count([1, {2, [3, 4]}, %{a: 5}]) => 5
-    :not_implemented
+    0  # TODO: Implement recursive deep counting
   end
 end
 
 ExUnit.start()
 
-defmodule DayTwo.RecursionExercisesTest do
+defmodule DayOne.RecursionExercisesTest do
   use ExUnit.Case, async: true
 
-  alias DayTwo.RecursionExercises, as: EX
+  alias DayOne.RecursionExercises, as: EX
 
   test "fibonacci/1 calculates Fibonacci numbers correctly" do
     assert EX.fibonacci(0) == 0

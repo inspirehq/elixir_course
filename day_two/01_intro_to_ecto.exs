@@ -184,7 +184,7 @@ defmodule DayTwo.EctoExercises do
     #   one advantage of using that database with Ecto.
     #   Return a list of maps with keys: :database, :advantage
     #   Example: [%{database: "PostgreSQL", advantage: "Advanced features like arrays"}]
-    :not_implemented
+    []  # TODO: Research and list 3 supported databases with advantages
   end
 
   @spec build_blog_repo() :: :ok
@@ -193,7 +193,7 @@ defmodule DayTwo.EctoExercises do
     #   functions for `insert_post/1`, `get_post/1`, and `list_posts/0`. Make
     #   them return fake blog post data with fields: id, title, content, published_at.
     #   Return :ok after creating and demonstrating the repo.
-    :not_implemented
+    :ok  # TODO: Implement blog repo with post functions
   end
 
   @spec explain_ecto_layers() :: map()
@@ -202,7 +202,7 @@ defmodule DayTwo.EctoExercises do
     #   Repo, Schema, Changeset, Query, Migration.
     #   Include a real-world analogy for each layer.
     #   Example: %{repo: "Database connection manager - like a librarian..."}
-    :not_implemented
+    %{}  # TODO: Explain each Ecto layer with analogies
   end
 end
 

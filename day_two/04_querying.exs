@@ -429,7 +429,7 @@ defmodule DayTwo.QueryExercises do
     #   ordered by their most recent post date. Include the user info and their
     #   post count in that period.
     #   Return the query as a string representation
-    :not_implemented
+    ""  # TODO: Build active users query with date filtering and aggregation
   end
 
   @spec build_related_posts_query(integer()) :: binary()
@@ -437,7 +437,7 @@ defmodule DayTwo.QueryExercises do
     #   Create a "related posts" query that finds posts with similar tags to a
     #   given post, excluding the original post, limited to 5 results.
     #   Return the query as a string representation
-    :not_implemented
+    ""  # TODO: Build related posts query with tag similarity and exclusion
   end
 
   @spec build_moderation_query() :: binary()
@@ -446,7 +446,7 @@ defmodule DayTwo.QueryExercises do
     #   comments needing approval (approved = false), includes the post title
     #   and author name, and groups by user to show repeat offenders first.
     #   Return the query as a string representation
-    :not_implemented
+    ""  # TODO: Build moderation query with grouping and filtering
   end
 end
 

@@ -1,9 +1,9 @@
 # Day 1 – The `Enum` Standard Library
 #
 # This script can be run with:
-#     mix run day_one/05_enum_library.exs
+#     mix run day_one/04_enum_library.exs
 # or inside IEx with:
-#     iex -r day_one/05_enum_library.exs
+#     iex -r day_one/04_enum_library.exs
 #
 # `Enum` provides a rich set of functions for working with *enumerables* – data
 # structures that implement the `Enumerable` protocol (lists, maps, ranges,
@@ -30,15 +30,20 @@ IO.puts("\n📌 Example 4 – Enum.group_by/3 to categorize structs")
 
 defmodule Pet do
   defstruct [:name, :type]
+
+  def demo do
+    pets = [
+      %__MODULE__{name: "Milo",  type: :dog},
+      %__MODULE__{name: "Luna",  type: :cat},
+      %__MODULE__{name: "Otto",  type: :dog}
+    ]
+
+    IO.inspect(Enum.group_by(pets, & &1.type))
+  end
 end
 
-pets = [
-  %Pet{name: "Milo",  type: :dog},
-  %Pet{name: "Luna",  type: :cat},
-  %Pet{name: "Otto",  type: :dog}
-]
-
-IO.inspect(Enum.group_by(pets, & &1.type))
+# Run the demo
+Pet.demo()
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 5 – Enum.into/2 to convert a range into a map")
@@ -69,20 +74,20 @@ IO.inspect(shipment_totals, label: "Shipped totals by customer ($)")
 
 defmodule DayOne.EnumExercises do
   @moduledoc """
-  Run the tests with: mix test day_one/05_enum_library.exs
+  Run the tests with: mix test day_one/04_enum_library.exs
   or in IEx:
-  iex -r day_one/05_enum_library.exs
+  iex -r day_one/04_enum_library.exs
   DayOne.EnumExercisesTest.test_sum_of_squares/0
   DayOne.EnumExercisesTest.test_my_max/0
   DayOne.EnumExercisesTest.test_word_frequencies/0
   """
 
   @spec sum_of_squares(Range.t()) :: integer()
-  def sum_of_squares(_range) do
+  def sum_of_squares(range) do
     #   Use Enum.reduce/3 to compute the sum of squares for the given range.
     #   Example: sum_of_squares(1..3) => 1² + 2² + 3² = 14
     #   Hint: The accumulator starts at 0, and each iteration adds n²
-    :not_implemented
+    0 # TODO: Implement sum of squares using Enum.reduce/3
   end
 
   @spec my_max([integer()]) :: integer() | nil
@@ -92,7 +97,7 @@ defmodule DayOne.EnumExercises do
     #   Example: my_max([3, 7, 2]) => 7
     #   Example: my_max([]) => nil
     #   Hint: Pattern match [head | tail] and use head as initial accumulator
-    :not_implemented
+    nil  # TODO: Implement max finding using Enum.reduce/3
   end
 
   @spec word_frequencies(String.t()) :: map()
@@ -101,7 +106,7 @@ defmodule DayOne.EnumExercises do
     #   Return a map like %{"hello" => 2, "world" => 1} using Enum functions only.
     #   Example: word_frequencies("hello world hello") => %{"hello" => 2, "world" => 1}
     #   Hint: Use String.split/1, then Enum.reduce/3 with Map.update/4
-    :not_implemented
+    %{}  # TODO: Implement word frequency counting using Enum.reduce/3
   end
 end
 

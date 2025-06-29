@@ -9,6 +9,14 @@
 # how variable *names* (bindings) can be rebound to new values.
 # ────────────────────────────────────────────────────────────────
 
+# Memory efficiency demonstration
+list1 = [1, 2, 3, 4, 5]
+list2 = [0 | list1]  # Prepends 0, shares tail with list1
+
+# Challenge students to trace memory usage
+user = %{name: "Alice", age: 25, city: "London"}
+updated_user = %{user | age: 26}  # Only age changes, rest is shared
+
 IO.puts("\n📌 Example 1 – Simple rebinding")
 # A variable (binding) can point to a new value, but the original value is left
 # untouched because all data is immutable.
@@ -104,7 +112,7 @@ defmodule DayOne.Exercises do
     #   Prove the original list is intact by printing both.
     #   Hint: Use Enum.map/2 to create a new list.
     #   Example: bump_each([1,2,3]) ⇒ [2,3,4]
-    :not_implemented
+    [1,2,3]  # TODO: Implement this function
   end
 
   @spec pin_demo() :: {integer(), integer(), integer()}
@@ -116,18 +124,18 @@ defmodule DayOne.Exercises do
     #   3. Return the resulting 3-tuple.
     #      A common answer is {1,2,3}, but any tuple that proves the concept
     #      is acceptable *as long as the outer elements are the pinned ones*.
-    :not_implemented
+    {0, 0, 0}  # TODO: Implement this function
   end
 
   @spec deep_update(map(), [term()], any()) :: map()
-  def deep_update(_data, _path, _value) do
+  def deep_update(data, _path, _value) do
     #   Produce and return a *new* map where the value located at `path` is
     #   replaced by `value`. The original map must stay unchanged.
     #   Hint: Use Kernel.put_in/3 or update_in/3.
     #   Example:
     #     deep_update(%{settings: %{theme: "light"}}, [:settings, :theme], "dark")
     #     #=> %{settings: %{theme: "dark"}}
-    :not_implemented
+    data  # TODO: Implement this function (currently returns unchanged data)
   end
 end
 

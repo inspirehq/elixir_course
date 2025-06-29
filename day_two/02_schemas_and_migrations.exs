@@ -358,7 +358,7 @@ defmodule DayTwo.SchemaExercises do
     #   description, price (as decimal), sku, in_stock (boolean), and category.
     #   Write the corresponding migration.
     #   Return {schema_module, migration_code}
-    :not_implemented
+    {nil, ""}  # TODO: Design product schema and migration
   end
 
   @spec design_order_system() :: [module()]
@@ -367,7 +367,7 @@ defmodule DayTwo.SchemaExercises do
     #   Each OrderItem should reference a Product and have a quantity field.
     #   Show all three schemas and their relationships.
     #   Return [Order, OrderItem, User] modules
-    :not_implemented
+    []  # TODO: Design order system schemas with relationships
   end
 
   @spec design_social_media_schema() :: {module(), binary()}
@@ -376,7 +376,7 @@ defmodule DayTwo.SchemaExercises do
     #   and `Like` entities. Users can like posts, and a like belongs to both
     #   a user and a post. Ensure you can't like the same post twice.
     #   Return {Like_schema, unique_constraint_migration}
-    :not_implemented
+    {nil, ""}  # TODO: Design social media schema with unique constraints
   end
 end
 

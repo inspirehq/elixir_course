@@ -387,7 +387,7 @@ defmodule DayTwo.BehaviourExercises do
     #   and `delete/1`. Implement it with `MemoryCache` and `RedisCache` modules.
     #   Show how the same code can work with either implementation.
     #   Return the behaviour definition as a string
-    :not_implemented
+    nil  # TODO: Implement this exercise
   end
 
   @spec build_data_validator_behaviour() :: [atom()]
@@ -396,7 +396,7 @@ defmodule DayTwo.BehaviourExercises do
     #   for `validate_field/2` and `format_errors/1`. Create implementations for
     #   `EmailValidator`, `PhoneValidator`, and `PasswordValidator`.
     #   Return a list of validator module names
-    :not_implemented
+    nil  # TODO: Implement this exercise
   end
 
   @spec design_job_processor_behaviour() :: map()
@@ -405,7 +405,7 @@ defmodule DayTwo.BehaviourExercises do
     #   Include callbacks for `enqueue/2`, `process/1`, and `retry/2`. Create
     #   implementations that simulate different queue backends (memory, database).
     #   Return a map with callbacks and implementation strategies
-    :not_implemented
+    nil  # TODO: Implement this exercise
   end
 end
 

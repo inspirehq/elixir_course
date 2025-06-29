@@ -9,14 +9,20 @@ Day One introduces students to core Elixir concepts that build the foundation fo
 By the end of Day One, students will:
 - Understand immutability and its implications for program design
 - Master pattern matching in various contexts
+- Apply recursion for list processing and functional problem solving
+- Leverage the Enum library effectively for data transformation
+- Apply streams for memory-efficient data processing
+- Recognize and apply tuple return patterns for robust APIs
 - Use the `with` clause for elegant error handling
-- Recognize and apply tuple return patterns
-- Leverage the Enum library effectively
 - Compose functions using the pipe operator
-- Understand OTP process primitives
-- Build and test GenServers
-- Apply supervision strategies
-- Debug and test concurrent systems
+- Understand OTP process primitives and concurrent programming
+- Build and test GenServers for stateful processes
+- Implement counter applications with GenServer patterns
+- Apply supervision strategies for fault-tolerant systems
+- Coordinate work distribution with queues and workers
+- Debug and test concurrent systems effectively
+- Use Agents for simple state management
+- Implement parallel processing with Tasks
 
 ---
 
@@ -231,7 +237,171 @@ end
 
 ---
 
-### 03. The `with` Clause (30 minutes)
+### 03. Recursion in Elixir (45 minutes)
+
+#### 🎯 **Key Concepts**
+- **Recursion Fundamentals**: Functions calling themselves to solve smaller subproblems
+- **Base Cases**: Conditions that stop recursion to prevent infinite loops
+- **Recursive Cases**: How problems are broken down into smaller versions
+- **List Processing**: Head/tail decomposition with `[head | tail]` pattern
+- **Tail Recursion**: Optimization for constant memory usage with accumulators
+- **Tree Recursion**: Processing nested data structures recursively
+
+#### 📝 **Student Summary**
+*"Recursion replaces loops in functional programming. Every recursive function needs a base case (when to stop) and a recursive case (how to break down the problem). Tail recursion with accumulators provides memory efficiency for large datasets."*
+
+#### 🎤 **Teacher Talking Points**
+
+**Why Recursion in Functional Programming:**
+"In imperative languages, you solve repetitive problems with loops - for, while, forEach. But loops rely on mutation: you change a counter variable, you modify an accumulator, you update array indices. Since Elixir has no mutation, we need a different approach: recursion."
+
+**The Mental Model Shift:**
+- "Instead of thinking 'do this action N times,' think 'solve this problem for one case, then solve it for the remaining cases'"
+- "It's like mathematical induction: prove it works for the base case, then prove that if it works for N, it works for N+1"
+- "The computer handles the 'repetition' by creating a new function call for each smaller problem"
+
+**Recursion vs. Loops Comparison:**
+```elixir
+# Imperative (what students might expect):
+# total = 0
+# for number in numbers:
+#     total += number
+# return total
+
+# Functional recursive approach:
+def sum([]), do: 0
+def sum([head | tail]), do: head + sum(tail)
+```
+
+**The Three-Part Structure:**
+"Every well-designed recursive function has exactly three parts:"
+1. **Base case**: "When do we stop? What's the simplest input we can handle directly?"
+2. **Decomposition**: "How do we break the current problem into a smaller version?"
+3. **Combination**: "How do we combine our answer with the answer from the smaller problem?"
+
+**Head/Tail List Processing:**
+- "Lists in Elixir are actually linked lists, not arrays"
+- "The `[head | tail]` pattern is incredibly powerful - it splits a list into 'the first thing' and 'everything else'"
+- "This pattern naturally leads to recursive solutions: process the head, recurse on the tail"
+- "Empty list `[]` is the natural base case for list recursion"
+
+**Real-World Example Walkthrough:**
+"Let's trace through `sum([1, 2, 3])` step by step:"
+```
+sum([1, 2, 3])
+= 1 + sum([2, 3])     # Break down: head=1, tail=[2,3]
+= 1 + (2 + sum([3]))  # Break down: head=2, tail=[3]
+= 1 + (2 + (3 + sum([]))) # Break down: head=3, tail=[]
+= 1 + (2 + (3 + 0))   # Base case: sum([]) = 0
+= 1 + (2 + 3)         # Combine: 3 + 0 = 3
+= 1 + 5               # Combine: 2 + 3 = 5
+= 6                   # Combine: 1 + 5 = 6
+```
+
+**Stack vs. Tail Recursion:**
+- "Regular recursion builds up a 'stack' of function calls - each call waits for the next one to finish"
+- "For `sum([1..1000000])`, you'd have a million function calls waiting on the stack - that's a lot of memory!"
+- "Tail recursion is an optimization where the recursive call is the LAST thing the function does"
+- "The computer can 'reuse' the same stack frame instead of creating new ones"
+
+**Accumulator Pattern Deep Dive:**
+"Accumulators are like carrying a running total as you walk through the data:"
+```elixir
+def sum(list), do: sum(list, 0)  # Start with accumulator = 0
+defp sum([], acc), do: acc       # Base case: return accumulator
+defp sum([h | t], acc), do: sum(t, acc + h)  # Add to accumulator, continue
+```
+
+**Tree Recursion for Nested Data:**
+"Not everything is a flat list. When you have nested structures like directories, JSON objects, or organization charts, you need tree recursion - recursion that can follow multiple branches."
+
+**Performance Considerations:**
+- "Elixir optimizes tail recursion automatically - it becomes as efficient as a loop"
+- "Non-tail recursion can cause stack overflows with large datasets"
+- "Sometimes the tail-recursive version is less readable - there's a trade-off"
+- "For small datasets (< 1000 items), readability often wins over optimization"
+
+**Common Recursion Patterns:**
+1. **Transformation**: Apply a function to each element (map)
+2. **Filtering**: Keep elements that match a condition
+3. **Reduction**: Combine all elements into a single value
+4. **Search**: Find the first element matching a condition
+5. **Validation**: Check if all elements meet a criteria
+
+**Debugging Recursive Functions:**
+- "Add `IO.inspect` calls to see the input at each recursive step"
+- "Start with the base case - make sure it handles the simplest input correctly"
+- "Test with small inputs first: single element, two elements, then scale up"
+- "Common bugs: forgetting the base case, infinite recursion, wrong decomposition"
+
+**When NOT to Use Recursion:**
+"In Elixir, the `Enum` module already provides optimized recursive implementations for common operations. Don't reinvent `Enum.map/2` or `Enum.reduce/3` unless you're learning or need special behavior."
+
+**Connection to Upcoming Topics:**
+- "The list processing patterns you learn here apply directly to `Enum` functions"
+- "Streams use lazy recursion for memory efficiency"
+- "GenServers often use recursive loops to maintain state"
+
+#### 💬 **Discussion Questions**
+1. **"Why can't we use traditional for/while loops in Elixir?"**
+   - *Guide toward immutability and lack of mutation*
+2. **"How does recursion relate to mathematical induction?"**
+   - *Base case + inductive step parallels*
+3. **"When might you prefer tail recursion over regular recursion?"**
+   - *Memory usage, stack overflow prevention*
+4. **"What happens if you forget the base case in a recursive function?"**
+   - *Infinite recursion, stack overflow*
+5. **"How do you decide what the base case should be?"**
+   - *Smallest/simplest input that can be handled directly*
+6. **"Can you think of real-world problems that are naturally recursive?"**
+   - *File systems, organizational hierarchies, mathematical sequences*
+
+#### 🔧 **Additional Examples**
+
+```elixir
+# Pattern progression for teaching:
+
+# 1. Start with simple numerical recursion
+def countdown(0), do: IO.puts("Blast off!")
+def countdown(n), do: (IO.puts(n); countdown(n - 1))
+
+# 2. Move to list processing
+def double_all([]), do: []
+def double_all([h | t]), do: [h * 2 | double_all(t)]
+
+# 3. Introduce tail recursion
+def reverse(list), do: reverse(list, [])
+defp reverse([], acc), do: acc
+defp reverse([h | t], acc), do: reverse(t, [h | acc])
+
+# 4. Tree recursion for nested structures
+def sum_nested([]), do: 0
+def sum_nested([h | t]) when is_list(h), do: sum_nested(h) + sum_nested(t)
+def sum_nested([h | t]) when is_number(h), do: h + sum_nested(t)
+```
+
+#### 🧠 **Teaching Tips**
+- **Start small**: Begin with countdown/factorial before moving to lists
+- **Visualize the stack**: Draw the call stack for non-tail recursion
+- **Trace execution**: Walk through examples step-by-step with students
+- **Compare patterns**: Show how similar problems have similar recursive structures
+- **Use analogies**: Russian dolls, fractals, mirrors reflecting mirrors
+
+#### ⚠️ **Common Pitfalls**
+- **Forgetting base cases**: Leads to infinite recursion and stack overflow
+- **Wrong decomposition**: Not making progress toward the base case
+- **Accumulator confusion**: Not understanding how to carry state forward
+- **Performance anxiety**: Worrying about recursion being "slow" (it's not in Elixir!)
+
+#### 📊 **Assessment Indicators**
+- **Beginning**: Can identify base and recursive cases in given functions
+- **Developing**: Can write simple recursive functions for numerical problems
+- **Proficient**: Can implement list processing functions with head/tail patterns
+- **Advanced**: Can write tail-recursive functions with accumulators and handle nested data
+
+---
+
+### 07. The `with` Clause (30 minutes)
 
 #### 🎯 **Key Concepts**
 - **Happy Path Programming**: Focus on the success case
@@ -344,7 +514,7 @@ end
 
 ---
 
-### 04. Tuple Return Patterns (30 minutes)
+### 06. Tuple Return Patterns (30 minutes)
 
 #### 🎯 **Key Concepts**
 - **Tagged Tuples**: Using atoms to categorize results
@@ -473,7 +643,7 @@ end
 
 ---
 
-### 05. Enum Library (45 minutes)
+### 04. Enum Library (45 minutes)
 
 #### 🎯 **Key Concepts**
 - **Functional Programming**: Data transformation without mutation
@@ -620,7 +790,7 @@ quarterly_totals =
 
 ---
 
-### 06. Pipe Operator (30 minutes)
+### 08. Pipe Operator (30 minutes)
 
 #### 🎯 **Key Concepts**
 - **Left-to-Right Reading**: Natural data flow visualization
@@ -753,7 +923,7 @@ end
 
 ---
 
-### 07. GenServer Primitives (45 minutes)
+### 09. GenServer Primitives (45 minutes)
 
 #### 🎯 **Key Concepts**
 - **Process Foundations**: spawn, send, receive
@@ -906,7 +1076,7 @@ end
 
 ---
 
-### 08. Intro to GenServers (60 minutes)
+### 10. Intro to GenServers (60 minutes)
 
 #### 🎯 **Key Concepts**
 - **Behaviour Pattern**: Implementing standardized callbacks
@@ -1084,7 +1254,7 @@ end
 
 ---
 
-### 09. Counter GenServer (45 minutes)
+### 11. Counter GenServer (45 minutes)
 
 #### 🎯 **Key Concepts**
 - **Guided Practice**: Implementing a complete GenServer
@@ -1159,24 +1329,151 @@ end
 
 ---
 
-### 10. Supervision Basics (45 minutes)
+### 12. Supervision Basics (45 minutes)
 
 #### 🎯 **Key Concepts**
-- **Fault Tolerance**: Let it crash philosophy
+- **Fault Tolerance**: Let it crash philosophy and process isolation
 - **Supervision Strategies**: one_for_one, one_for_all, rest_for_one
 - **Restart Strategies**: permanent, transient, temporary
-- **Supervision Trees**: Hierarchical fault tolerance
+- **Supervision Trees**: Hierarchical fault tolerance and escalation
+- **Child Specifications**: Configuring supervisor behavior
 
 #### 📝 **Student Summary**
-*"Supervisors watch over processes and restart them when they crash. This 'let it crash' approach leads to more robust systems than trying to handle every possible error."*
+*"Supervisors watch over processes and restart them when they crash. This 'let it crash' approach leads to more robust systems than trying to handle every possible error. Each supervisor manages a group of child processes according to configurable strategies."*
+
+#### 🎤 **Teacher Talking Points**
+
+**The Revolutionary "Let It Crash" Philosophy:**
+"Traditional programming teaches us to prevent errors at all costs - validate inputs, handle edge cases, use try/catch everywhere. Elixir flips this on its head: instead of trying to prevent crashes, we embrace them and build systems that recover gracefully."
+
+**Real-World Analogy - Circuit Breakers:**
+"Think of supervision like electrical circuit breakers in your house. When there's a fault (like a short circuit), the breaker trips to prevent damage to the whole system. Then you can reset the breaker and restore power. Similarly, when a process crashes, the supervisor 'resets' it by restarting it with a clean state."
+
+**Why "Let It Crash" Works:**
+- **Simplicity**: "Instead of writing complex error handling for every possible failure mode, we write simple, correct code for the happy path"
+- **Isolation**: "Process crashes can't corrupt other processes - they're completely isolated"
+- **Clean State**: "Restarted processes begin with a fresh, known-good state rather than potentially corrupted state"
+- **Fast Recovery**: "Process restart is extremely fast (microseconds) compared to system recovery"
+
+**Supervision Strategy Deep Dive:**
+
+**one_for_one (Most Common):**
+- "This is your default choice for most applications"
+- "Use when child processes are independent of each other"
+- "Example: Web requests - one failing request shouldn't affect others"
+- "Each process failure is isolated and only that process restarts"
+
+**one_for_all (Interdependent Processes):**
+- "Use when processes have shared state or dependencies"
+- "All children restart together, ensuring consistent system state"
+- "Example: Cache + Database connection - if DB fails, cache should also restart with fresh state"
+- "More disruptive but ensures consistency"
+
+**rest_for_one (Order Dependencies):**
+- "Use when later processes depend on earlier ones"
+- "Crashing process A restarts A and all processes started after A"
+- "Example: Configuration loader → Cache → HTTP server (if config fails, everything else needs to restart)"
+- "Maintains startup dependency order"
+
+**Restart Strategy Psychology:**
+"The restart strategy answers: 'How important is this process to the system?'"
+
+**permanent (Default):**
+- "This process is critical - always restart it"
+- "Use for: Core application logic, databases, web servers"
+- "System cannot function without these processes"
+
+**transient:**
+- "This process should restart only if it crashes abnormally"
+- "Normal termination (like finishing a job) won't trigger restart"
+- "Use for: Worker processes, background tasks"
+
+**temporary:**
+- "This process is optional - never restart it"
+- "Use for: One-off tasks, optional features, monitoring processes"
+- "Failure doesn't impact core functionality"
+
+**Supervision Tree Architecture:**
+"Think of supervision trees like military command structure - failures escalate up the chain of command until someone with sufficient authority can handle them."
+
+**Designing Supervision Trees:**
+- **Leaves**: "Worker processes that do actual work (GenServers, Tasks)"
+- **Branches**: "Supervisors that manage groups of related workers"
+- **Root**: "Application supervisor that manages the entire system"
+- **Escalation**: "If a supervisor can't handle failures (too many restarts), it crashes and lets its supervisor handle the situation"
+
+**Real-World Web Application Structure:**
+```
+Application Supervisor (root)
+├── Database Supervisor
+│   ├── Connection Pool
+│   └── Migration Runner
+├── Web Supervisor  
+│   ├── HTTP Server
+│   └── Session Store
+└── Background Job Supervisor
+    ├── Email Worker
+    ├── Report Generator
+    └── Cache Refresher
+```
+
+**Max Restarts and Escalation:**
+"Supervisors aren't infinite restart machines - they have limits to prevent cascade failures."
+- **max_restarts**: "Maximum number of restarts allowed"
+- **max_seconds**: "Time window for restart counting"
+- **Escalation**: "When limits exceeded, supervisor crashes and escalates to its supervisor"
+- **Circuit Breaking**: "This prevents infinite restart loops and forces human intervention"
+
+**Common Supervision Patterns:**
+
+**Database Connection Pattern:**
+"Database connections are permanent and critical - they should always restart. Connection pools manage multiple connections with one_for_one strategy."
+
+**Background Job Pattern:**
+"Job workers are typically transient - they should restart if they crash but not if they complete successfully. Use one_for_one since jobs are independent."
+
+**Cache Pattern:**
+"Cache processes are usually permanent (always restart) but the cached data might be temporary (cleared on restart). This is intentional - fresh start with clean cache."
+
+**Monitoring vs. Supervision:**
+"Don't confuse monitoring with supervision:"
+- **Monitoring**: "Observing system behavior for alerting and debugging"
+- **Supervision**: "Active recovery from failures through process restart"
+- **Both are needed**: "Supervision handles automatic recovery, monitoring handles human escalation"
+
+**Performance Implications:**
+- **Process Creation**: "Extremely fast in Elixir (microseconds) - don't worry about restart overhead"
+- **Memory**: "Each process has its own heap - crashes don't leak memory to other processes"
+- **Scheduling**: "Process restarts don't block other processes - system remains responsive"
+
+**Testing Supervision:**
+"How do you test something designed to handle crashes?"
+- **Deliberate Crashes**: "Use test functions that crash processes on command"
+- **Observer Tool**: "Watch supervision in action with `:observer.start()`"
+- **Process Monitoring**: "Use `Process.monitor/1` to watch process lifecycle"
+- **Restart Counters**: "Monitor restart frequency to tune max_restarts"
+
+**Common Misconceptions to Address:**
+- **"Crashes are bad"**: "In Elixir, crashes are normal and expected - they're part of the design"
+- **"More supervision is better"**: "Over-supervision can mask problems - not every process needs supervision"
+- **"Supervision prevents errors"**: "Supervision handles errors after they occur - it's recovery, not prevention"
+- **"Restart fixes bugs"**: "Supervision provides temporary recovery - bugs still need fixing"
 
 #### 💬 **Discussion Questions**
 1. **"Why is 'let it crash' better than defensive programming?"**
-   - *Discuss complexity vs. robustness trade-offs*
+   - *Guide toward: Simplicity, isolation, clean state recovery*
+   - *Compare: Exception handling complexity vs. restart simplicity*
 2. **"How do you choose between supervision strategies?"**
-   - *Explore dependencies between processes*
+   - *Explore: Process dependencies, shared state, startup order*
+   - *Real examples: Web servers, databases, caches*
 3. **"What kinds of processes should be permanent vs. temporary?"**
-   - *Discuss process lifecycle management*
+   - *Discuss: System criticality, job lifecycle, resource importance*
+4. **"How does supervision help with debugging production issues?"**
+   - *Introduce: Automatic recovery, error isolation, system observability*
+5. **"What happens when a supervisor itself crashes?"**
+   - *Explore: Escalation, supervision trees, system boundaries*
+6. **"How do you prevent infinite restart loops?"**
+   - *Discuss: max_restarts, max_seconds, escalation strategies*
 
 #### 🔧 **Additional Examples**
 
@@ -1239,24 +1536,191 @@ end
 
 ---
 
-### 11. Queue & Worker Coordination (45 minutes)
+### 13. Queue & Worker Coordination (45 minutes)
 
 #### 🎯 **Key Concepts**
 - **Producer/Consumer Pattern**: Decoupling work generation from processing
-- **Message Queues**: Buffering and backpressure management
+- **Message Queues**: Buffering and backpressure management  
 - **Worker Coordination**: Distributing work across multiple processes
-- **System Design**: Building scalable, concurrent systems
+- **Back-pressure**: Managing system load when consumers can't keep up
+- **Polling vs Push**: Different approaches to work distribution
+- **System Design**: Building scalable, fault-tolerant concurrent systems
 
 #### 📝 **Student Summary**
-*"Queue and worker patterns help us build systems that can handle varying loads. Producers create work, queues buffer it, and workers process it at their own pace."*
+*"Queue and worker patterns help us build systems that can handle varying loads. Producers create work, queues buffer it, and workers process it at their own pace. This decoupling prevents fast producers from overwhelming slow consumers and provides natural load balancing."*
+
+#### 🎤 **Teacher Talking Points**
+
+**The Fundamental Problem: Speed Mismatch**
+"In distributed systems, different components work at different speeds. Web requests come in bursts, database writes are slow, external APIs have rate limits. Without coordination, fast producers can overwhelm slow consumers, leading to memory exhaustion, timeouts, and system crashes."
+
+**Real-World Analogy - Restaurant Kitchen:**
+"Think of a busy restaurant kitchen. Orders (producers) come in from waiters, but the kitchen (consumers) can only prepare so many meals at once. Without a ticket system (queue), orders would pile up chaotically. The queue organizes work, provides visibility into backlog, and lets the kitchen work at a steady pace."
+
+**Producer/Consumer Pattern Deep Dive:**
+
+**Why Decouple Producers and Consumers?**
+- **Speed Independence**: "Producers and consumers can work at their natural speed"
+- **Failure Isolation**: "If a consumer crashes, producers keep working; queued work is preserved"
+- **Load Balancing**: "Multiple consumers can share work from the same queue"
+- **Buffering**: "Handles traffic spikes by absorbing burst load"
+
+**Queue as System Component:**
+"The queue isn't just a data structure - it's a system component with its own requirements:"
+- **Persistence**: "Should work survive process restarts?"
+- **Ordering**: "FIFO, LIFO, priority, or custom ordering?"
+- **Capacity**: "Bounded (back-pressure) or unbounded (memory risk)?"
+- **Durability**: "In-memory (fast) or disk-based (reliable)?"
+
+**Back-pressure: The Art of Saying No:**
+"Back-pressure is like a safety valve. When the queue fills up, we reject new work rather than consuming unlimited memory. This forces producers to slow down, implement their own buffering, or drop non-critical work."
+
+**Back-pressure Strategies:**
+- **Reject**: "Return error immediately (our example)"
+- **Block**: "Make producer wait until space available"
+- **Drop**: "Silently discard oldest or newest work"
+- **Degrade**: "Accept work but with reduced quality/features"
+
+**Worker Patterns:**
+
+**Polling Pattern (Our Example):**
+- **Pros**: "Simple to understand, easy error handling, natural back-pressure"
+- **Cons**: "Inefficient (constant polling), higher latency"
+- **Best for**: "Low-volume work, simple coordination, learning"
+
+**Push Pattern (Message Passing):**
+- **Pros**: "Efficient (no polling), lower latency"
+- **Cons**: "Complex flow control, harder back-pressure"
+- **Best for**: "High-volume work, real-time systems"
+
+**Work Distribution Strategies:**
+
+**Round-Robin (Implied in Our Example):**
+- "Each worker gets next available job"
+- "Simple and fair distribution"
+- "Doesn't account for job complexity or worker speed"
+
+**Worker Specialization:**
+- "Different workers handle different job types"
+- "Allows optimization per job type"
+- "Requires job classification and routing"
+
+**Priority-Based:**
+- "High-priority jobs processed first"
+- "Prevents important work from being blocked"
+- "Can lead to starvation of low-priority work"
+
+**Supervision and Worker Coordination:**
+
+**Supervisor Strategy for Worker Pools:**
+- **one_for_one**: "Worker crashes don't affect each other (our example)"
+- **one_for_all**: "All workers restart together (useful for shared state)"
+- **Dynamic Supervisors**: "Add/remove workers based on load"
+
+**Worker Lifecycle Management:**
+"Workers can be designed for different lifecycles:"
+- **Permanent**: "Always restart, for continuous polling"
+- **Temporary**: "One job then terminate, for batch processing"
+- **Transient**: "Restart only on abnormal termination"
+
+**Real-World Patterns:**
+
+**Background Job Processing:**
+```elixir
+# Typical pattern in web applications
+def handle_user_signup(params) do
+  # Immediate response to user
+  user = Users.create(params)
+  
+  # Queue background work
+  JobQueue.push({:send_welcome_email, user.id})
+  JobQueue.push({:update_analytics, user.id})
+  JobQueue.push({:sync_to_crm, user.id})
+  
+  {:ok, user}
+end
+```
+
+**Error Handling and Retries:**
+"Production systems need sophisticated error handling:"
+- **Retry Logic**: "Jobs can fail due to temporary issues (network, rate limits)"
+- **Dead Letter Queue**: "Permanently failed jobs go to DLQ for manual review"
+- **Exponential Backoff**: "Increasing delays between retries"
+- **Circuit Breaking**: "Stop trying if service is consistently failing"
+
+**Monitoring and Observability:**
+"Queue systems need comprehensive monitoring:"
+- **Queue Depth**: "How many jobs waiting? (indicates load)"
+- **Processing Rate**: "Jobs per second (indicates capacity)"
+- **Error Rate**: "Failed jobs / total jobs (indicates quality)"
+- **Worker Health**: "How many workers active? (indicates capacity)"
+- **Latency**: "Time from enqueue to completion (indicates performance)"
+
+**Scaling Considerations:**
+
+**Vertical Scaling:**
+- "More workers per node"
+- "Faster job processing per worker"
+- "Larger queue capacity"
+
+**Horizontal Scaling:**
+- "Multiple queue nodes"
+- "Worker nodes across machines"
+- "Distributed queue systems (Redis, RabbitMQ, SQS)"
+
+**Advanced Patterns:**
+
+**Competing Consumers:**
+"Multiple worker instances consuming from the same queue. Provides natural load balancing and fault tolerance."
+
+**Publisher/Subscriber:**
+"One producer, multiple consumers each getting a copy of every message. Used for event broadcasting."
+
+**Saga Pattern:**
+"Coordinating multiple services in a distributed transaction using queues to manage workflow state."
+
+**Performance Optimization:**
+
+**Batch Processing:**
+"Instead of processing one job at a time, workers can batch multiple jobs for efficiency."
+
+**Connection Pooling:**
+"Workers share database/HTTP connections to reduce overhead."
+
+**Prefetching:**
+"Workers get multiple jobs at once to reduce queue round-trips."
+
+**Common Anti-Patterns to Avoid:**
+- **Unbounded Queues**: "Can consume all system memory"
+- **No Error Handling**: "Failed jobs disappear forever"
+- **Tight Coupling**: "Producers know too much about consumers"
+- **No Monitoring**: "Can't detect or diagnose issues"
+- **Synchronous Processing**: "Defeats the purpose of queuing"
+
+**Comparing to Other Technologies:**
+- **GenStage/Broadway**: "Elixir's advanced streaming with back-pressure"
+- **Redis Streams**: "Persistent, distributed message streams"
+- **RabbitMQ**: "Full-featured message broker with advanced routing"
+- **Apache Kafka**: "High-throughput, distributed event streaming"
+- **Cloud Queues**: "AWS SQS, Google Cloud Tasks, Azure Service Bus"
 
 #### 💬 **Discussion Questions**
 1. **"How do queues help with system reliability?"**
-   - *Discuss buffering, backpressure, and failure isolation*
+   - *Guide toward: Failure isolation, work preservation, load buffering*
+   - *Real examples: Email sending, image processing, payment processing*
 2. **"What are the trade-offs between push and pull models?"**
-   - *Explore different work distribution strategies*
+   - *Compare: Latency, efficiency, complexity, back-pressure handling*
+   - *When to use each approach*
 3. **"How would you handle worker failures in this system?"**
-   - *Connect back to supervision strategies*
+   - *Connect to: Supervision strategies, job retry logic, error escalation*
+4. **"What happens when the queue grows faster than workers can process?"**
+   - *Explore: Back-pressure strategies, horizontal scaling, priority systems*
+5. **"How do you prevent a single slow job from blocking all workers?"**
+   - *Discuss: Timeouts, job complexity estimation, worker specialization*
+6. **"What metrics would you monitor in a production queue system?"**
+   - *Introduce: Queue depth, processing rates, error rates, latency*
+7. **"How does this pattern apply to web applications you've used?"**
+   - *Connect to: Email sending, file uploads, report generation, data sync*
 
 #### 🔧 **Additional Examples**
 
@@ -1340,77 +1804,685 @@ end
 
 ---
 
-### 12. Testing & Debug Tips (45 minutes)
+### 14. Testing & Debug Tips (45 minutes)
 
 #### 🎯 **Key Concepts**
-- **Testing Strategies**: Black-box vs. white-box testing
-- **Process Testing**: Verifying GenServer behavior
-- **Debugging Tools**: Observer, tracing, logging
-- **Production Debugging**: Runtime introspection techniques
+- **Testing Strategies**: Black-box vs. white-box testing approaches
+- **Process Testing**: Verifying GenServer behavior and lifecycle
+- **Concurrency Testing**: Handling timing, race conditions, and determinism
+- **Debugging Tools**: Observer, tracing, logging, and runtime introspection
+- **Production Debugging**: Live system inspection and troubleshooting
+- **Log Capture**: Testing side effects and system behavior
+- **Rate Limiting**: Testing time-based behaviors and constraints
 
 #### 📝 **Student Summary**
-*"Testing concurrent systems requires different strategies than testing pure functions. Focus on the public API and use the right tools to understand system behavior."*
+*"Testing concurrent systems requires different strategies than testing pure functions. Focus on the public API (black-box testing), use specialized tools for debugging distributed systems, and understand that concurrency introduces timing challenges that must be handled carefully."*
+
+#### 🎤 **Teacher Talking Points**
+
+**The Fundamental Shift in Testing Philosophy:**
+"Testing concurrent systems is fundamentally different from testing traditional sequential code. In a single-threaded program, if you call a function with specific inputs, you get predictable outputs every time. In concurrent systems, timing matters, processes can fail independently, and the same inputs might produce different outputs depending on scheduling, network delays, or system load."
+
+**Black-Box vs. White-Box Testing Deep Dive:**
+- **Black-box testing** (preferred): "Test through the public API - the contract your code provides to users"
+- "If you can't test something through the public API, maybe your API needs improvement"
+- "Black-box tests survive refactoring - you can completely change implementation without breaking tests"
+- **White-box testing** (use sparingly): "Sometimes you need to peek inside with `:sys.get_state/1` or `:sys.replace_state/2`"
+- "White-box testing couples your tests to implementation details - dangerous but sometimes necessary"
+- "Use white-box testing for: time-sensitive tests, complex state verification, debugging race conditions"
+
+**The Testing Pyramid for Concurrent Systems:**
+```
+       Integration Tests (few)
+         ↗︎
+    GenServer API Tests (some)
+      ↗︎
+Pure Function Tests (many)
+```
+
+**GenServer Testing Strategies:**
+"GenServers are just processes with a standardized protocol. Test them like any other process:"
+1. **Setup/Teardown**: Start fresh processes for each test to avoid state pollution
+2. **API Testing**: Use the public API functions, not GenServer.call/cast directly
+3. **Error Testing**: Verify error conditions and edge cases
+4. **Concurrent Testing**: Test multiple processes accessing the same GenServer
+5. **Crash Testing**: Verify behavior when linked processes crash
+
+**Handling Timing in Asynchronous Tests:**
+"The biggest challenge in testing concurrent code is timing. Here are strategies:"
+
+**Strategy 1: Make Async Operations Synchronous in Tests**
+```elixir
+# Production code uses cast (async)
+def async_update(server, value) do
+  GenServer.cast(server, {:update, value})
+end
+
+# Test helper uses call (sync)
+def sync_update_for_testing(server, value) do
+  GenServer.call(server, {:update, value})
+end
+```
+
+**Strategy 2: Use Process.sleep/1 Carefully**
+"Sleep is a code smell but sometimes necessary. Keep sleeps short (1-5ms) and document why they're needed."
+
+**Strategy 3: Poll for Expected State**
+```elixir
+def wait_for_state(server, expected_state, timeout \\ 1000) do
+  start_time = System.monotonic_time(:millisecond)
+  wait_for_state_loop(server, expected_state, start_time, timeout)
+end
+```
+
+**Strategy 4: Use Task.async/await for Concurrent Operations**
+"When testing concurrent behavior, spawn multiple tasks and wait for all to complete before assertions."
+
+**Log Capture for Side Effect Testing:**
+"Not everything returns a value - some code logs, sends emails, or writes to databases. Use `ExUnit.CaptureLog` to test these side effects:"
+- "Capture logs to verify that warning/error conditions are properly logged"
+- "Test that sensitive data is NOT logged"
+- "Verify log levels are appropriate for different scenarios"
+- "Use captured logs to understand system behavior during debugging"
+
+**Rate Limiting and Time-Based Testing:**
+"Testing time-based behavior is tricky because tests should be fast and deterministic:"
+- "Mock time using process state or dependency injection"
+- "Use smaller time windows in tests (seconds instead of minutes)"
+- "Test boundary conditions: exactly at the limit, just over the limit"
+- "Consider using libraries like `Hammox` or `Mox` for time mocking"
+
+**The Observer Tool - Your Window into the System:**
+"Observer is like Task Manager for Erlang/Elixir systems. Teach students to use it early and often:"
+- **Process Tab**: See all running processes, their memory usage, message queue lengths
+- **Memory Tab**: Track memory allocation patterns and potential leaks
+- **ETS Tab**: Inspect ETS tables and their contents
+- **Applications Tab**: See supervision trees and process relationships
+
+**Production Debugging Mindset:**
+"Debugging in production is different from development debugging:"
+- "You can't use traditional debuggers - the system must stay running"
+- "Logging becomes crucial - but you can't log everything (performance impact)"
+- "Remote observation: connect to running nodes to inspect state"
+- "Gradual degradation: systems should degrade gracefully, not crash completely"
+
+**Telemetry and Observability:**
+"Modern Elixir applications use telemetry for production debugging:"
+- "Metrics: response times, error rates, queue depths"
+- "Tracing: following requests through distributed systems"
+- "Health checks: verify system components are functioning"
+- "Alerting: automatic notification when things go wrong"
+
+**Common Testing Antipatterns:**
+1. **Testing Implementation Details**: Don't test private functions or internal state unless absolutely necessary
+2. **Flaky Tests**: Tests that sometimes pass, sometimes fail due to timing issues
+3. **Overly Complex Setup**: Tests should be simple and focused
+4. **Missing Edge Cases**: Not testing error conditions, boundary values, or failure scenarios
+5. **Ignoring Concurrency**: Writing tests as if code runs sequentially
+
+**Debugging Workflow - From Symptoms to Root Cause:**
+1. **Reproduce**: Can you make the bug happen consistently?
+2. **Isolate**: Is it in one process or multiple? One node or distributed?
+3. **Observe**: Use Observer, logs, or tracing to see what's happening
+4. **Hypothesize**: Form theories about what might be wrong
+5. **Test**: Create minimal test cases to verify or refute hypotheses
+6. **Fix**: Make the smallest change that solves the problem
+7. **Verify**: Ensure the fix works and doesn't break anything else
+
+**Testing Error Conditions:**
+"In concurrent systems, things fail constantly. Your tests should reflect this reality:"
+- "What happens when a linked process crashes?"
+- "How does your system behave under high load?"
+- "What if the database is temporarily unavailable?"
+- "How do you handle malformed input or unexpected messages?"
+
+**Load Testing and Performance:**
+"Don't wait for production to discover performance issues:"
+- "Use tools like `:observer_cli` or custom benchmarking to measure performance"
+- "Test with realistic data volumes and concurrency levels"
+- "Identify bottlenecks before they become problems"
+- "Measure memory usage, not just CPU time"
+
+**Property-Based Testing for Complex Systems:**
+"Sometimes traditional example-based tests miss edge cases. Property-based testing generates random inputs to find bugs you didn't think of. While not covered in detail today, it's powerful for testing concurrent systems."
 
 #### 💬 **Discussion Questions**
-1. **"When is it appropriate to test GenServer internal state?"**
-   - *Discuss black-box vs. white-box testing trade-offs*
-2. **"How do you test asynchronous operations?"**
-   - *Explore timing, synchronization, and determinism*
-3. **"What production debugging tools are available?"**
-   - *Introduce Observer, live system introspection*
+1. **"When is it appropriate to test GenServer internal state using :sys.get_state/1?"**
+   - *Guide discussion toward: debugging timing issues, verifying complex state transitions, testing migration logic, but generally preferring black-box approaches*
+2. **"How do you test asynchronous operations without making tests flaky?"**
+   - *Explore: synchronous test helpers, polling for expected state, using Task.async/await patterns, avoiding Process.sleep/1*
+3. **"What production debugging tools are available, and when would you use each?"**
+   - *Introduce: Observer for process inspection, :erlang.trace for message tracing, telemetry for metrics, distributed tracing for complex flows*
+4. **"How do you test rate limiting or other time-based behaviors?"**
+   - *Discuss: mocking time, using smaller windows in tests, testing boundary conditions, dependency injection for time functions*
+5. **"What makes a good test for a GenServer API?"**
+   - *Focus on: testing the public interface, handling both success and error cases, testing concurrent access, proper setup/teardown*
+6. **"How do you debug race conditions or timing-dependent bugs?"**
+   - *Strategies: adding logging, using Observer to watch message queues, writing stress tests, understanding Erlang scheduler behavior*
+7. **"What's the difference between testing pure functions vs. testing processes?"**
+   - *Compare: deterministic vs. non-deterministic behavior, state management, error handling, lifecycle management*
 
 #### 🔧 **Additional Examples**
 
 ```elixir
-# Comprehensive GenServer testing
+# Comprehensive GenServer testing with all scenarios
 defmodule BankAccountTest do
   use ExUnit.Case
-  
+  alias BankAccount
+  require Logger
+
+  # Setup fresh process for each test - prevents state pollution
   setup do
     {:ok, pid} = BankAccount.start_link(initial_balance: 100)
     %{account: pid}
   end
-  
+
+  # Basic black-box API testing
   test "initial balance is correct", %{account: account} do
     assert BankAccount.balance(account) == 100
   end
-  
+
   test "deposit increases balance", %{account: account} do
-    BankAccount.deposit(account, 50)
+    assert :ok = BankAccount.deposit(account, 50)
     assert BankAccount.balance(account) == 150
   end
-  
+
   test "withdraw decreases balance", %{account: account} do
-    BankAccount.withdraw(account, 30)
+    assert :ok = BankAccount.withdraw(account, 30)
     assert BankAccount.balance(account) == 70
   end
-  
+
+  # Error condition testing - crucial for robust systems
   test "withdraw more than balance fails", %{account: account} do
-    assert BankAccount.withdraw(account, 150) == {:error, :insufficient_funds}
+    assert {:error, :insufficient_funds} = BankAccount.withdraw(account, 150)
+    # Verify balance unchanged after failed operation
     assert BankAccount.balance(account) == 100
   end
-  
-  test "concurrent operations maintain consistency", %{account: account} do
+
+  test "deposit with negative amount fails", %{account: account} do
+    assert {:error, :invalid_amount} = BankAccount.deposit(account, -50)
+    assert BankAccount.balance(account) == 100
+  end
+
+  # Concurrent access testing - the real challenge
+  test "concurrent deposits are all processed", %{account: account} do
+    # Spawn 10 tasks each depositing $10
     tasks = for _ <- 1..10 do
       Task.async(fn -> BankAccount.deposit(account, 10) end)
     end
     
-    Enum.each(tasks, &Task.await/1)
+    # Wait for all to complete
+    results = Enum.map(tasks, &Task.await/1)
+    
+    # Verify all succeeded
+    assert Enum.all?(results, &(&1 == :ok))
+    
+    # Verify final balance is correct (no lost updates)
     assert BankAccount.balance(account) == 200
+  end
+
+  # Stress testing - find race conditions
+  test "mixed concurrent operations maintain consistency", %{account: account} do
+    # Mix of deposits and withdrawals
+    operations = [
+      fn -> BankAccount.deposit(account, 50) end,
+      fn -> BankAccount.withdraw(account, 30) end,
+      fn -> BankAccount.deposit(account, 20) end,
+      fn -> BankAccount.withdraw(account, 40) end
+    ]
+    
+    tasks = Enum.map(operations, &Task.async/1)
+    results = Enum.map(tasks, &Task.await/1)
+    
+    # Some operations might fail due to insufficient funds
+    # but the final balance should be consistent
+    final_balance = BankAccount.balance(account)
+    assert final_balance >= 0  # Never go negative
+    assert is_integer(final_balance)  # Always valid integer
+  end
+
+  # White-box testing when necessary (use sparingly)
+  test "internal state structure is correct", %{account: account} do
+    # Only use when black-box testing is insufficient
+    state = :sys.get_state(account)
+    assert %{balance: 100, transaction_count: 0} = state
+  end
+
+  # Log capture testing for side effects
+  test "large withdrawals are logged", %{account: account} do
+    log = ExUnit.CaptureLog.capture_log(fn ->
+      BankAccount.withdraw(account, 90)
+    end)
+    
+    assert log =~ "Large withdrawal"
+    assert log =~ "90"
+  end
+
+  # Testing process lifecycle and error recovery
+  test "account survives temporary crashes", %{account: account} do
+    # Force a crash and verify restart
+    Process.exit(account, :kill)
+    
+    # Wait for supervisor to restart
+    Process.sleep(10)
+    
+    # Should be restarted with initial state
+    # (In real systems, you'd persist state)
+    assert BankAccount.balance(account) == 100
+  end
+end
+
+# Rate limiting testing example
+defmodule ApiClientTest do
+  use ExUnit.Case
+  alias ApiClient
+
+  setup do
+    {:ok, _pid} = ApiClient.start_link(nil)
+    :ok
+  end
+
+  test "allows requests within rate limit" do
+    # Should allow 5 requests
+    for i <- 1..5 do
+      assert :ok = ApiClient.request()
+    end
+  end
+
+  test "blocks requests over rate limit" do
+    # Use up the rate limit
+    for _ <- 1..5, do: ApiClient.request()
+    
+    # Next request should be blocked
+    assert {:error, :rate_limited} = ApiClient.request()
+  end
+
+  test "rate limit resets after time window" do
+    # Use up rate limit
+    for _ <- 1..5, do: ApiClient.request()
+    assert {:error, :rate_limited} = ApiClient.request()
+    
+    # Mock time advancement or wait for window
+    # In production, you'd use dependency injection for time
+    :sys.replace_state(ApiClient, fn state ->
+      %{state | window: :erlang.monotonic_time(:second) - 61}
+    end)
+    
+    # Should allow requests again
+    assert :ok = ApiClient.request()
+  end
+end
+
+# Integration testing with multiple processes
+defmodule ChatRoomIntegrationTest do
+  use ExUnit.Case
+  
+  test "users can join room and receive messages" do
+    {:ok, room} = ChatRoom.start_link("general")
+    {:ok, user1} = ChatUser.start_link("alice")
+    {:ok, user2} = ChatUser.start_link("bob")
+    
+    # Users join room
+    ChatRoom.join(room, user1)
+    ChatRoom.join(room, user2)
+    
+    # Send message
+    ChatRoom.send_message(room, user1, "Hello World!")
+    
+    # Verify both users received it
+    assert_receive {:message, "alice", "Hello World!"}, 100
+    assert_receive {:message, "alice", "Hello World!"}, 100
   end
 end
 ```
 
 #### 🧠 **Teaching Tips**
-- **Emphasize testing strategy**: When to test what
-- **Show debugging workflow**: From symptoms to root cause
-- **Introduce production tools**: Observer, telemetry, distributed tracing
-- **Practice with real bugs**: Create broken code to debug together
+- **Start with fundamentals**: Emphasize that testing is about confidence, not just code coverage
+- **Show debugging workflow**: Create intentional bugs and debug them together live
+- **Use real examples**: Banking, chat systems, API clients - scenarios students understand
+- **Introduce tools gradually**: Observer first, then tracing, then advanced techniques
+- **Practice concurrent testing**: Most bugs in Elixir systems are concurrency-related
+- **Emphasize the mindset shift**: From deterministic to probabilistic thinking
+- **Connect to production**: Explain how testing strategies prevent production issues
+- **Live demonstration**: Use Observer to inspect running processes in real-time
 
 #### ⚠️ **Common Pitfalls**
-- Over-relying on white-box testing (testing implementation details)
-- Not accounting for timing in asynchronous tests
-- Forgetting to test error conditions and edge cases
+- **Over-relying on white-box testing**: Testing implementation details instead of behavior
+- **Flaky timing tests**: Using Process.sleep/1 without understanding why tests become unreliable
+- **Missing error conditions**: Only testing the "happy path" without considering failures
+- **Ignoring concurrency**: Writing tests as if code runs sequentially when it doesn't
+- **Complex test setup**: Making tests harder to understand than the code they're testing
+- **Not using proper cleanup**: Leaving processes running between tests causing interference
+- **Testing in isolation only**: Never testing how components work together
+- **Forgetting about production conditions**: Testing with perfect network/timing conditions only
+
+#### 🔍 **Advanced Debugging Techniques**
+
+**Using Erlang Tracing:**
+```elixir
+# Trace all calls to a specific function
+:erlang.trace_pattern({MyModule, :my_function, :_}, [])
+:erlang.trace(:all, true, [:call])
+
+# Trace message passing for specific processes  
+:erlang.trace(self(), true, [:send, :receive])
+```
+
+**Observer CLI for Remote Systems:**
+```elixir
+# Connect to remote node and observe
+:observer_cli.start()
+
+# Or connect to specific node
+Node.connect(:"app@production-server")
+:observer.start()
+```
+
+**Custom Telemetry for Debugging:**
+```elixir
+defmodule MyApp.Telemetry do
+  def debug_process_state(process_name) when is_atom(process_name) do
+    case Process.whereis(process_name) do
+      nil -> {:error, :not_found}
+      pid -> 
+        state = :sys.get_state(pid)
+        IO.inspect(state, label: "#{process_name} state")
+        {:ok, state}
+    end
+  end
+end
+```
+
+#### 🎯 **Learning Objectives Assessment**
+By the end of this lesson, students should be able to:
+- [ ] Choose between black-box and white-box testing approaches appropriately
+- [ ] Write comprehensive tests for GenServer APIs including error conditions
+- [ ] Handle timing issues in concurrent tests without making them flaky
+- [ ] Use ExUnit.CaptureLog to test side effects and logging behavior
+- [ ] Debug concurrent systems using Observer and other runtime tools
+- [ ] Test rate limiting and time-based behaviors correctly
+- [ ] Identify and avoid common testing antipatterns in concurrent systems
+- [ ] Design test suites that give confidence in production reliability
+
+---
+
+### 05. Streams: Lazy Evaluation & Memory Efficiency (45 minutes)
+
+#### 🎯 **Key Concepts**
+- **Lazy Evaluation**: Computations are deferred until results are actually needed
+- **Memory Efficiency**: Process large datasets without loading everything into memory
+- **Infinite Sequences**: Work with potentially infinite data streams
+- **Pipeline Composition**: Build complex transformations without intermediate collections
+- **Early Termination**: Stop processing as soon as you have what you need
+
+#### 📝 **Student Summary**
+*"Streams are like lazy Enums - they let you build complex data transformation pipelines that only compute what you actually need, when you need it. This makes them perfect for large datasets, files, and infinite sequences."*
+
+#### 🎤 **Teacher Talking Points**
+
+**The Problem with Eager Evaluation:**
+"Imagine you have a 1GB CSV file and you only need the first 10 rows that match a certain condition. With Enum, you'd read the entire file into memory, filter all rows, then take 10. With Stream, you read one line at a time, check if it matches, and stop after finding 10 matches. The difference in memory usage is dramatic."
+
+**Lazy vs. Eager Mental Model:**
+- "Think of Enum as a factory assembly line that processes everything immediately"
+- "Stream is like a blueprint for an assembly line - it describes what to do but doesn't do it until you ask for results"
+- "When you call `Enum.to_list()` on a stream, that's when the blueprint becomes reality"
+
+**Real-World Performance Impact:**
+```elixir
+# This loads 1 million numbers into memory
+1..1_000_000 |> Enum.map(&(&1 * 2)) |> Enum.take(5)
+
+# This only computes 5 numbers
+1..1_000_000 |> Stream.map(&(&1 * 2)) |> Enum.take(5)
+```
+
+**File Processing Revolution:**
+"Before streams, processing large files meant 'read everything, then process.' This could crash your application on large files. With `File.stream!/1`, you can process files line by line with constant memory usage, regardless of file size."
+
+**Infinite Sequences:**
+- "Streams let you work with infinite sequences - something impossible with lists"
+- "Generate Fibonacci numbers, prime numbers, or any mathematical sequence on demand"
+- "Only compute as many as you actually need"
+
+**Pipeline Composition Benefits:**
+- "Streams compose naturally - each transformation is lazy until the final evaluation"
+- "You can build complex pipelines without creating intermediate collections"
+- "Memory usage stays constant regardless of pipeline complexity"
+
+**Early Termination Power:**
+- "Stream.take_while/2 lets you process data until a condition is met"
+- "Perfect for log analysis: 'find all errors in the last hour' stops when you hit older logs"
+- "Search algorithms: stop as soon as you find what you're looking for"
+
+**When Streams Aren't the Answer:**
+- "For small datasets (< 1000 items), Enum is often simpler and faster"
+- "If you need all the data anyway, lazy evaluation adds overhead"
+- "When you need random access to elements (streams are sequential only)"
+
+**Common Stream Patterns:**
+1. **Data Processing**: Large file analysis, log processing
+2. **API Consumption**: Process paginated API responses without buffering
+3. **Mathematical Sequences**: Generate numbers, fractals, simulations
+4. **Resource Management**: Database cursors, network streams
+
+**Performance Considerations:**
+- "Streams have overhead - each transformation creates a new stream structure"
+- "For tiny datasets, this overhead can be larger than the data itself"
+- "The sweet spot is medium to large datasets where memory efficiency matters"
+
+**Debugging Streams:**
+"Streams can be harder to debug because nothing happens until evaluation. Use `Stream.map/2` with `IO.inspect/2` to see data flowing through the pipeline, or materialize intermediate results during development."
+
+#### 💬 **Discussion Questions**
+1. **"When would you choose Stream over Enum, and vice versa?"**
+   - *Guide students to think about dataset size, memory constraints, and processing requirements*
+2. **"How do streams help with file processing compared to File.read!/1?"**
+   - *Explore memory usage, file sizes, and crash prevention*
+3. **"What are the trade-offs of lazy evaluation?"**
+   - *Discuss overhead, debugging complexity, vs. memory benefits*
+4. **"How might streams change how you design data processing systems?"**
+   - *Think about pipeline architecture, scalability, resource usage*
+5. **"Can you think of scenarios where infinite streams would be useful?"**
+   - *Explore mathematical computing, simulations, game development*
+
+#### 🔧 **Additional Examples**
+
+```elixir
+# CSV processing without loading entire file
+File.stream!("large_data.csv")
+|> Stream.drop(1)  # Skip header
+|> Stream.map(&String.trim/1)
+|> Stream.map(&String.split(&1, ","))
+|> Stream.filter(&(length(&1) == 5))  # Valid rows only
+|> Stream.take(100)  # First 100 valid rows
+|> Enum.to_list()
+
+# API pagination with streams
+Stream.unfold(1, fn page ->
+  case fetch_page(page) do
+    {:ok, data, next_page} -> {data, next_page}
+    {:error, _} -> nil
+  end
+end)
+|> Stream.flat_map(& &1)  # Flatten page results
+|> Stream.take_while(&(&1.status == "active"))
+|> Enum.to_list()
+
+# Memory comparison demonstration
+# Eager: Creates intermediate list of 1M elements
+big_list = 1..1_000_000 |> Enum.map(&(&1 * 2)) |> Enum.filter(&(rem(&1, 1000) == 0))
+
+# Lazy: Only creates final filtered results
+small_list = 1..1_000_000 |> Stream.map(&(&1 * 2)) |> Stream.filter(&(rem(&1, 1000) == 0)) |> Enum.to_list()
+```
+
+#### 🧠 **Teaching Tips**
+- **Start with performance**: Show the dramatic memory difference with large ranges
+- **Use file examples**: Most students can relate to processing large files
+- **Demonstrate infinite streams**: The "infinite Fibonacci" is always impressive
+- **Compare side-by-side**: Show equivalent Enum vs Stream code with timing/memory measurements
+- **Emphasize the mental shift**: From "process everything" to "describe processing"
+
+#### ⚠️ **Common Pitfalls**
+- Overusing streams for small datasets (unnecessary overhead)
+- Forgetting that streams need to be materialized with Enum functions
+- Debugging stream pipelines without intermediate inspection
+- Not understanding that streams are single-use (can't enumerate twice)
+- Confusing Stream.take/2 with Enum.take/2 (both exist but behave differently in pipelines)
+
+---
+
+### 15. Agents and Tasks: Simple Abstractions Over GenServer (40 minutes)
+
+#### 🎯 **Key Concepts**
+- **Agent**: Simple state management abstraction over GenServer
+- **Task**: Asynchronous computation and parallel processing
+- **Task.Supervisor**: Supervised tasks for fault tolerance
+- **Choosing the Right Tool**: When to use Agent vs GenServer vs Task
+
+#### 📝 **Student Summary**
+*"Agents provide a simple way to manage state without writing full GenServers, while Tasks handle asynchronous operations and parallel processing. Both are built on GenServer but with focused, constrained APIs."*
+
+#### 🎤 **Teacher Talking Points**
+
+**The Abstraction Hierarchy:**
+"We've learned GenServer, which is the foundation of stateful processes in Elixir. But sometimes GenServer is overkill - you just want to store and update some data, or run some code asynchronously. That's where Agent and Task come in. They're like power tools built on top of GenServer for specific jobs."
+
+**Agent: State Made Simple:**
+- "Agent is like GenServer with training wheels - it handles all the callback boilerplate for you"
+- "If you find yourself writing a GenServer that only has `get` and `update` operations, Agent is probably a better choice"
+- "Perfect for: caches, configuration, counters, simple key-value stores"
+- "Not good for: complex logic, multiple types of operations, custom timeouts"
+
+**Agent vs GenServer Decision Tree:**
+```
+Do you need custom init logic? → GenServer
+Do you need handle_info callbacks? → GenServer  
+Do you need custom timeout handling? → GenServer
+Do you just need to store and update data? → Agent
+```
+
+**Task: Async Made Easy:**
+- "Task is like spawn/1 with a receipt - you can get the result back later"
+- "Think of it like ordering food for pickup - you start the process, do other things, then come back for the result"
+- "Perfect for: HTTP requests, file processing, expensive computations, parallel data processing"
+- "Tasks automatically link to the calling process for fault tolerance"
+
+**Parallel Processing Philosophy:**
+"Traditional programming is like doing laundry: wash, then dry, then fold, one load at a time. Tasks let you start multiple loads simultaneously - while load 1 is washing, load 2 can be drying, and you can be folding load 3. The total time dramatically decreases."
+
+**Task.async vs Task.async_stream:**
+- "`Task.async` is for starting individual async operations - like launching a few specific tasks"
+- "`Task.async_stream` is for processing collections in parallel - like mapping a function over a list using multiple processes"
+- "async_stream handles backpressure automatically - it won't overwhelm your system with too many processes"
+
+**Real-World Performance Impact:**
+"In a web application, you might need to fetch data from 3 different APIs to render a page. Sequential calls take the sum of all API response times. With Tasks, you wait only for the slowest API, potentially 3x faster."
+
+**Memory and Process Trade-offs:**
+- "Each Task creates a new process - this is cheap in Elixir but not free"
+- "For CPU-bound work, don't create more tasks than you have CPU cores"
+- "For I/O-bound work (HTTP, database), you can create many more tasks"
+- "Task.Supervisor lets tasks fail independently without crashing your main process"
+
+**Error Handling Strategy:**
+- "Tasks that fail will crash their linked process by default - this is often what you want"
+- "Use Task.Supervisor when you want tasks to fail safely"
+- "Use try/rescue around Task.await/1 when you want to handle failures explicitly"
+
+**When NOT to Use Tasks:**
+- "Don't use Tasks for fire-and-forget operations - use GenServer.cast or spawn instead"
+- "Don't use Tasks for long-running processes - use GenServer or raw processes"
+- "Don't use Tasks when you need complex communication patterns - use GenServer or Process messaging"
+
+#### 💬 **Discussion Questions**
+1. **"When would you choose Agent over GenServer for state management?"**
+   - *Guide students to think about complexity, API needs, and maintenance*
+2. **"How do Tasks differ from simply spawning processes?"**
+   - *Discuss linking, result collection, and supervisor integration*
+3. **"What are the performance implications of parallel vs sequential processing?"**
+   - *Explore CPU vs I/O bound operations, resource utilization*
+4. **"How might you use Task.async_stream to process a large dataset?"**
+   - *Think about memory usage, backpressure, error handling*
+5. **"When would you use Task.Supervisor vs regular Task.async?"**
+   - *Discuss fault tolerance, isolation, long-running operations*
+
+#### 🔧 **Additional Examples**
+
+```elixir
+# Agent for caching expensive computations
+defmodule ComputationCache do
+  def start_link() do
+    Agent.start_link(fn -> %{} end, name: __MODULE__)
+  end
+
+  def get_or_compute(key, computation_fn) do
+    Agent.get_and_update(__MODULE__, fn cache ->
+      case Map.get(cache, key) do
+        nil -> 
+          result = computation_fn.()
+          {result, Map.put(cache, key, result)}
+        cached_result -> 
+          {cached_result, cache}
+      end
+    end)
+  end
+end
+
+# Task for parallel API calls
+defmodule WeatherDashboard do
+  def get_weather_data(cities) do
+    # Instead of 5 sequential API calls taking 5 seconds total
+    cities
+    |> Task.async_stream(&fetch_weather/1, max_concurrency: 10)
+    |> Enum.map(fn {:ok, weather} -> weather end)
+    # Now all 5 calls happen in parallel, taking ~1 second total
+  end
+
+  defp fetch_weather(city) do
+    # Simulate API call
+    Process.sleep(1000)
+    %{city: city, temp: :rand.uniform(40), conditions: "sunny"}
+  end
+end
+
+# Performance comparison
+{:ok, _} = ComputationCache.start_link()
+
+# First call: expensive computation
+{time1, result1} = :timer.tc(fn -> 
+  ComputationCache.get_or_compute(:fibonacci_40, fn -> 
+    fibonacci(40) 
+  end) 
+end)
+
+# Second call: cached result
+{time2, result2} = :timer.tc(fn -> 
+  ComputationCache.get_or_compute(:fibonacci_40, fn -> 
+    fibonacci(40) 
+  end) 
+end)
+
+IO.puts("First call: #{time1 / 1000}ms")
+IO.puts("Cached call: #{time2 / 1000}ms")
+IO.puts("Speedup: #{Float.round(time1 / time2, 2)}x faster")
+```
+
+#### 🧠 **Teaching Tips**
+- **Start with the problem**: Show slow sequential code, then fix it with parallel Tasks
+- **Demonstrate Agent simplicity**: Compare a simple GenServer counter with Agent counter
+- **Use timing comparisons**: Nothing convinces like actual performance numbers
+- **Show real-world scenarios**: HTTP APIs, file processing, data transformation
+- **Emphasize tool selection**: Help students understand when to use what
+
+#### ⚠️ **Common Pitfalls**
+- Using Agent when GenServer's additional features are needed
+- Creating too many Tasks for CPU-bound work (more than CPU cores)
+- Forgetting that Tasks link to caller process (can crash parent)
+- Not using Task.Supervisor for fault tolerance in production
+- Trying to use Tasks for long-running or stateful operations
+- Forgetting to handle Task.await timeouts in slow operations
 
 ---
 

@@ -497,7 +497,7 @@ defmodule DayTwo.PubSubExercises do
     #   notification types (email, push, SMS) and show how a user action can
     #   trigger multiple notification methods.
     #   Return a list of topic names
-    :not_implemented
+    nil  # TODO: Implement this exercise
   end
 
   @spec build_dashboard_system() :: map()
@@ -506,7 +506,7 @@ defmodule DayTwo.PubSubExercises do
     #   different data topics (sales, users, errors). Show how data updates
     #   propagate to relevant widgets.
     #   Return a map with widget types and their subscribed topics
-    :not_implemented
+    nil  # TODO: Implement this exercise
   end
 
   @spec create_task_processing_system() :: binary()
@@ -515,7 +515,7 @@ defmodule DayTwo.PubSubExercises do
     #   subscribe to job topics based on their capabilities, and a dispatcher
     #   publishes jobs to appropriate topics.
     #   Return a description of the system architecture
-    :not_implemented
+    nil  # TODO: Implement this exercise
   end
 end
 

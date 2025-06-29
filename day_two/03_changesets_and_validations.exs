@@ -424,7 +424,7 @@ defmodule DayTwo.ChangesetExercises do
     #   at least 3 characters, and SKU follows format "ABC-123" (3 letters,
     #   dash, 3 numbers). Include a custom validation function.
     #   Return a changeset-like map with valid? and errors keys
-    :not_implemented
+    %{valid?: false, errors: []}  # TODO: Implement product changeset validation
   end
 
   @spec build_password_reset_changeset(map(), map()) :: map()
@@ -433,7 +433,7 @@ defmodule DayTwo.ChangesetExercises do
     #   the new password meets complexity requirements (8+ chars, has number
     #   and special character), and confirmation matches.
     #   Return a changeset-like map with valid? and errors keys
-    :not_implemented
+    %{valid?: false, errors: []}  # TODO: Implement password reset changeset validation
   end
 
   @spec design_order_changeset_strategy() :: binary()
@@ -442,7 +442,7 @@ defmodule DayTwo.ChangesetExercises do
     #   line items, validates inventory is available, and applies discount
     #   codes. Show how you'd handle the case where validation requires
     #   database queries. Return a description of your approach.
-    :not_implemented
+    ""  # TODO: Design order changeset strategy with database validations
   end
 end
 

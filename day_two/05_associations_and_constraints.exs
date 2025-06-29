@@ -528,7 +528,7 @@ defmodule DayTwo.AssociationExercises do
     #   entities. Books can have multiple authors, users can check out multiple
     #   books, but each book can only be checked out by one user at a time.
     #   Return a list of module names for the main entities
-    :not_implemented
+    nil  # TODO: Implement this exercise
   end
 
   @spec design_social_media_constraints() :: [binary()]
@@ -537,7 +537,7 @@ defmodule DayTwo.AssociationExercises do
     #   like posts. Add constraints to prevent users from liking their own
     #   posts and following themselves.
     #   Return a list of constraint definitions as strings
-    :not_implemented
+    nil  # TODO: Implement this exercise
   end
 
   @spec design_course_enrollment_system() :: map()
@@ -546,7 +546,7 @@ defmodule DayTwo.AssociationExercises do
     #   `Instructor`, and `Enrollment` entities. Include prerequisites (courses
     #   that must be completed before enrolling) and capacity limits.
     #   Return a map with keys for the main entities and their constraints
-    :not_implemented
+    nil  # TODO: Implement this exercise
   end
 end
 

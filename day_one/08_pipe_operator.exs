@@ -1,9 +1,9 @@
 # Day 1 – The Pipe Operator (`|>`)
 #
 # This script can be run with:
-#     mix run day_one/06_pipe_operator.exs
+#     mix run day_one/08_pipe_operator.exs
 # or inside IEx with:
-#     iex -r day_one/06_pipe_operator.exs
+#     iex -r day_one/08_pipe_operator.exs
 #
 # `|>` takes the result of the left expression and passes it as the *first*
 # argument to the function call on the right, enabling left-to-right data flow.
@@ -67,7 +67,7 @@ etl_result = raw_rows
                  id: String.to_integer(id),
                  name: String.capitalize(name),
                  total: String.to_integer(cents) / 100,
-                 status: String.to_existing_atom(status)
+                 status: String.to_atom(status)
                }
              end)
              # Load: keep only shipped orders and summarize revenue
@@ -78,20 +78,20 @@ IO.inspect(etl_result, label: "Total shipped revenue ($)")
 
 defmodule DayOne.PipeExercises do
   @moduledoc """
-  Run the tests with: mix test day_one/06_pipe_operator.exs
+  Run the tests with: mix test day_one/08_pipe_operator.exs
   or in IEx:
-  iex -r day_one/06_pipe_operator.exs
+  iex -r day_one/08_pipe_operator.exs
   DayOne.PipeExercisesTest.test_trim_and_upcase/0
   DayOne.PipeExercisesTest.test_square_filter_sum/0
   DayOne.PipeExercisesTest.test_file_line_count/0
   """
 
   @spec trim_and_upcase(String.t()) :: String.t()
-  def trim_and_upcase(_input) do
+  def trim_and_upcase(input) do
     #   Rewrite the expression `String.upcase(String.trim("  hi "))` using a pipe.
     #   Take the input string, trim whitespace, then convert to uppercase.
     #   Example: trim_and_upcase("  hello  ") => "HELLO"
-    :not_implemented
+    input  # TODO: Implement using pipe operator to trim and upcase
   end
 
   @spec square_filter_sum(Range.t()) :: integer()
@@ -102,7 +102,7 @@ defmodule DayOne.PipeExercises do
     #   - Square: [1, 4, 9, 16, 25]
     #   - Filter > 10: [16, 25]
     #   - Sum: 41
-    :not_implemented
+    0  # TODO: Implement using pipe operator to square, filter, and sum
   end
 
   @spec file_line_count(String.t()) :: integer()
@@ -114,7 +114,7 @@ defmodule DayOne.PipeExercises do
     #   - "empty.txt": ""
     #   - "missing.txt": file doesn't exist (should return 0)
     #   Hint: Use String.split/2 with "\n", Enum.reject/2, and length/1
-    :not_implemented
+    0  # TODO: Implement using pipe operator to read, split, filter, and count
   end
 
   # Helper function for testing file operations

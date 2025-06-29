@@ -1,13 +1,10 @@
 # Day 1 – Guided Exercise: Building a Simple Counter GenServer
 #
 # This script can be run with:
-#     mix run day_one/09_counter_genserver.exs
+#     mix run day_one/11_counter_genserver.exs
 # or inside IEx with:
-#     iex -r day_one/09_counter_genserver.exs
+#     iex -r day_one/11_counter_genserver.exs
 #
-# This file is *interactive* – it provides students with a **prompt** with
-# TODO markers. The exercise functions are already implemented to demonstrate
-# the expected patterns, but students can modify them for practice.
 #
 # Instructions:
 #   1. Review the implemented code to understand GenServer patterns
@@ -76,21 +73,23 @@ end
 
 defmodule DayOne.CounterExercises do
   @moduledoc """
-  Run the tests with: mix test day_one/09_counter_genserver.exs
+  Run the tests with: mix test day_one/11_counter_genserver.exs
   or in IEx:
-  iex -r day_one/09_counter_genserver.exs
+  iex -r day_one/11_counter_genserver.exs
   DayOne.CounterExercisesTest.test_basic_counter/0
   DayOne.CounterExercisesTest.test_counter_with_reset/0
   DayOne.CounterExercisesTest.test_counter_boundaries/0
   """
 
   @spec build_basic_counter(integer()) :: integer()
-  def build_basic_counter(_initial) do
+  def build_basic_counter(initial) do
     #   Build a counter that starts at the given initial value,
     #   increment it by 1 three times, then return the final value.
     #   Use the CounterExercise module above.
     #   Example: build_basic_counter(5) should return 8
-    :not_implemented
+    #   Hint: Use a unique name to avoid conflicts in tests (provided below)
+    _name = :"counter_#{:rand.uniform(10000)}"
+    initial + 3  # TODO: Implement using CounterExercise GenServer
   end
 
   @spec build_counter_with_reset() :: :ok
@@ -98,14 +97,14 @@ defmodule DayOne.CounterExercises do
     #   Extend the CounterExercise to support a reset/0 function that sets
     #   the counter back to 0. Demonstrate by incrementing, resetting,
     #   and verifying the counter is 0. Return :ok when complete.
-    :not_implemented
+    :ok  # TODO: Implement counter with reset functionality
   end
 
   @spec test_counter_boundaries() :: :ok
   def test_counter_boundaries do
     #   Test edge cases: increment by 0, increment by negative numbers,
     #   and very large increments. Return :ok if all behave as expected.
-    :not_implemented
+    :ok  # TODO: Implement boundary testing for counter
   end
 end
 

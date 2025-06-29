@@ -1,9 +1,9 @@
 # Day 1 – Tuple Return Patterns (`{:ok, ...}` / `{:error, ...}`)
 #
 # This script can be run with:
-#     mix run day_one/04_tuple_return_patterns.exs
+#     mix run day_one/06_tuple_return_patterns.exs
 # or inside IEx with:
-#     iex -r day_one/04_tuple_return_patterns.exs
+#     iex -r day_one/06_tuple_return_patterns.exs
 #
 # Returning tagged tuples is the idiomatic way to express success & failure in
 # Elixir. Below are several patterns and a longer example illustrating their
@@ -73,41 +73,47 @@ defmodule Bank.Account do
       {:error, :insufficient_funds}
     end
   end
+
+  # Demo function to showcase the bank account usage
+  def demo do
+    acct = %__MODULE__{id: "ABC", balance_cents: 10_00}
+
+    with {:ok, acct} <- deposit(acct, 5_00),
+         {:ok, acct} <- withdraw(acct, 12_00),
+         {:ok, acct} <- withdraw(acct, 5_00) do
+      IO.inspect(acct, label: "final account state")
+    else
+      {:error, reason} -> IO.inspect(reason, label: "operation failed")
+    end
+  end
 end
 
-acct = %Bank.Account{id: "ABC", balance_cents: 10_00}
-
-with {:ok, acct} <- Bank.Account.deposit(acct, 5_00),
-     {:ok, acct} <- Bank.Account.withdraw(acct, 12_00),
-     {:ok, acct} <- Bank.Account.withdraw(acct, 5_00) do
-  IO.inspect(acct, label: "final account state")
-else
-  {:error, reason} -> IO.inspect(reason, label: "operation failed")
-end
+# Run the demo
+Bank.Account.demo()
 
 defmodule DayOne.TupleExercises do
-  @moduledoc """
-  Run the tests with: mix test day_one/04_tuple_return_patterns.exs
+    @moduledoc """
+  Run the tests with: mix test day_one/06_tuple_return_patterns.exs
   or in IEx:
-  iex -r day_one/04_tuple_return_patterns.exs
+  iex -r day_one/06_tuple_return_patterns.exs
   DayOne.TupleExercisesTest.test_parse_bool/0
   DayOne.TupleExercisesTest.test_read_bool_file/0
   DayOne.TupleExercisesTest.test_bank_pipeline/0
   """
 
   @spec parse_bool(String.t()) :: {:ok, boolean()} | {:error, :invalid}
-  def parse_bool(_input) do
+  def parse_bool(input) do
     #   Write a function that accepts "true" | "false" strings and returns
     #   {:ok, boolean} or {:error, :invalid}.
     #   Example: parse_bool("true") => {:ok, true}
     #   Example: parse_bool("false") => {:ok, false}
     #   Example: parse_bool("maybe") => {:error, :invalid}
-    :not_implemented
+    {:error, :invalid}  # TODO: Implement boolean parsing with pattern matching
   end
 
   @spec read_bool_file(String.t()) :: {:ok, boolean()} | {:error, atom()}
-  def read_bool_file(_path) do
-    #   Using `with`, chain File.read/1 and parse_bool/1 to read a one-line
+  def read_bool_file(path) do
+    #   Using `with`, chain _mock_file_read/1 and parse_bool/1 to read a one-line
     #   file containing "true"/"false" and return the boolean.
     #   For testing purposes, simulate file reading:
     #   - "true.txt" contains "true"
@@ -115,26 +121,26 @@ defmodule DayOne.TupleExercises do
     #   - "invalid.txt" contains "maybe"
     #   - "missing.txt" doesn't exist
     #   Hint: Use String.trim/1 to clean up the file content
-    :not_implemented
+    {:error, :enoent}  # TODO: Implement file reading and boolean parsing chain
   end
 
   @spec bank_pipeline(Bank.Account.t(), Bank.Account.money(), Bank.Account.money()) ::
     {:ok, Bank.Account.t()} | {:error, atom()}
-  def bank_pipeline(_account, _deposit_amount, _withdraw_amount) do
+  def bank_pipeline(account, deposit_amount, withdraw_amount) do
     #   Convert the Bank.Account example into a `with` pipeline that
     #   deposits then withdraws, short-circuiting on the first error.
     #   Return either {:ok, final_account} or {:error, reason}
     #   Example: bank_pipeline(%Bank.Account{id: "TEST", balance_cents: 1000}, 500, 200)
     #   should deposit 500 cents, then withdraw 200 cents
-    :not_implemented
+    {:ok, account}  # TODO: Implement bank deposit/withdraw pipeline with with clause
   end
 
-  # Helper function for read_bool_file testing
-  defp mock_file_read("true.txt"), do: {:ok, "true\n"}
-  defp mock_file_read("false.txt"), do: {:ok, "false\n"}
-  defp mock_file_read("invalid.txt"), do: {:ok, "maybe\n"}
-  defp mock_file_read("missing.txt"), do: {:error, :enoent}
-  defp mock_file_read(_), do: {:error, :enoent}
+  # Helper function for read_bool_file testing (used in student implementation)
+  defp _mock_file_read("true.txt"), do: {:ok, "true\n"}
+  defp _mock_file_read("false.txt"), do: {:ok, "false\n"}
+  defp _mock_file_read("invalid.txt"), do: {:ok, "maybe\n"}
+  defp _mock_file_read("missing.txt"), do: {:error, :enoent}
+  defp _mock_file_read(_), do: {:error, :enoent}
 end
 
 ExUnit.start()
@@ -190,7 +196,7 @@ end
 
 # 2. read_bool_file/1
 def read_bool_file(path) do
-  with {:ok, raw} <- mock_file_read(path),
+  with {:ok, raw} <- _mock_file_read(path),
        {:ok, val} <- parse_bool(String.trim(raw)) do
     {:ok, val}
   end
