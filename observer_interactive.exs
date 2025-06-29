@@ -39,9 +39,11 @@ defmodule ObserverDemo do
 
   defp periodic_worker do
     Process.sleep(1000)
+
     Agent.update(:demo_counter, fn state ->
       Map.update(state, :count, 0, &(&1 + 1))
     end)
+
     periodic_worker()
   end
 

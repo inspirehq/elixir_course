@@ -18,7 +18,7 @@ defmodule DayTwo.BehaviourConcepts do
   """
 
   def explain_genserver_behaviour do
-    """
+    IO.puts(~S"""
     In Day 1, we learned GenServer is a *behaviour* that requires:
 
     • init/1 - Initialize process state
@@ -27,19 +27,27 @@ defmodule DayTwo.BehaviourConcepts do
     • handle_info/2 - Handle raw process messages
 
     When we wrote:
+    """)
 
-    defmodule CounterServer do
-      use GenServer
+    code =
+      quote do
+        defmodule CounterServer do
+          use GenServer
 
-      def init(count), do: {:ok, count}
-      def handle_call(:value, _from, count), do: {:reply, count, count}
-      def handle_cast(:inc, count), do: {:noreply, count + 1}
-    end
+          def init(count), do: {:ok, count}
+          def handle_call(:value, _from, count), do: {:reply, count, count}
+          def handle_cast(:inc, count), do: {:noreply, count + 1}
+        end
+      end
+
+    IO.puts(Macro.to_string(code))
+
+    IO.puts(~S"""
 
     We were implementing the GenServer behaviour's contract.
     The `use GenServer` macro provided default implementations and
     our module supplied the specific callback functions.
-    """
+    """)
   end
 
   def show_behaviour_benefits do
@@ -59,7 +67,7 @@ defmodule DayTwo.BehaviourConcepts do
 end
 
 IO.puts("GenServer as behaviour:")
-IO.puts(DayTwo.BehaviourConcepts.explain_genserver_behaviour())
+DayTwo.BehaviourConcepts.explain_genserver_behaviour()
 DayTwo.BehaviourConcepts.show_behaviour_benefits()
 
 # ────────────────────────────────────────────────────────────────
@@ -74,6 +82,12 @@ defmodule DayTwo.PaymentProcessor do
   Process a payment with the given amount and payment method.
   Returns {:ok, transaction_id} or {:error, reason}.
   """
+
+  # The line below uses Elixir's typespec notation. Let's break it down:
+  # `::` separates the function signature from its return type.
+  # `Decimal.t()` refers to the type of a Decimal struct.
+  # The `|` character means "or", so the function can return one of several types.
+  # Here, it returns either `{:ok, String.t()}` on success or `{:error, atom()}` on failure.
   @callback process_payment(amount :: Decimal.t(), payment_method :: map()) ::
     {:ok, String.t()} | {:error, atom()}
 
@@ -95,6 +109,8 @@ defmodule DayTwo.PaymentProcessor do
   Format amount for display in this processor's currency.
   """
   @callback format_amount(amount :: Decimal.t()) :: String.t()
+  # optional callbacks are not required to be implemented by the module that uses the behaviour
+  # but if they are implemented, they will override the default implementation
   @optional_callbacks format_amount: 1
 
   def format_amount_default(amount) do
@@ -376,35 +392,82 @@ defmodule DayTwo.BehaviourExercises do
   Run the tests with: mix test day_two/07_behaviour_refresher.exs
   or in IEx:
   iex -r day_two/07_behaviour_refresher.exs
-  DayTwo.BehaviourExercisesTest.test_cache_provider/0
-  DayTwo.BehaviourExercisesTest.test_data_validator/0
-  DayTwo.BehaviourExercisesTest.test_job_processor/0
+  DayTwo.BehaviourExercisesTest.test_define_cache_provider_behaviour/0
+  DayTwo.BehaviourExercisesTest.test_define_data_validator_behaviour/0
+  DayTwo.BehaviourExercisesTest.test_define_job_processor_behaviour/0
   """
 
+  @doc """
+  Defines a `CacheProvider` behaviour.
+
+  **Goal:** Create a contract for a key-value cache. This allows for different
+  caching implementations (e.g., in-memory, Redis) to be used interchangeably.
+
+  **Requirements:**
+  1.  Define a module named `CacheProvider`.
+  2.  Add a `@callback` for `get/1` that takes a `key` and returns `{:ok, value}` or `:error`.
+  3.  Add a `@callback` for `put/2` that takes a `key` and `value` and returns `:ok`.
+  4.  Add a `@callback` for `delete/1` that takes a `key` and returns `:ok`.
+
+  **Task:**
+  Return the complete module definition as a string. The tests will validate
+  that the string contains the required `@callback` definitions.
+  """
   @spec define_cache_provider_behaviour() :: binary()
   def define_cache_provider_behaviour do
-    #   Create a `CacheProvider` behaviour with callbacks for `get/1`, `put/2`,
-    #   and `delete/1`. Implement it with `MemoryCache` and `RedisCache` modules.
-    #   Show how the same code can work with either implementation.
-    #   Return the behaviour definition as a string
+    # Create a `CacheProvider` behaviour with callbacks for `get/1`, `put/2`,
+    # and `delete/1`. Return the behaviour definition as a string.
     nil  # TODO: Implement this exercise
   end
 
-  @spec build_data_validator_behaviour() :: [atom()]
-  def build_data_validator_behaviour do
-    #   Build a `DataValidator` behaviour for form validation. Include callbacks
-    #   for `validate_field/2` and `format_errors/1`. Create implementations for
-    #   `EmailValidator`, `PhoneValidator`, and `PasswordValidator`.
-    #   Return a list of validator module names
+  @doc """
+  Defines a `DataValidator` behaviour.
+
+  **Goal:** Create a generic contract for validating data structures. This
+  allows for creating specific validators (e.g., for users, posts, etc.)
+  that all share a common interface.
+
+  **Requirements:**
+  1.  Define a module named `DataValidator`.
+  2.  Add a `@callback` for `validate/2` that takes `data` and `opts` and
+      returns `:ok` or `{:error, list_of_errors}`.
+  3.  Add a `@callback` for `format_errors/1` that takes a `list_of_errors`
+      and returns them in a user-friendly format (e.g., a string or map).
+
+  **Task:**
+  Return the complete module definition as a string.
+  """
+  @spec define_data_validator_behaviour() :: binary()
+  def define_data_validator_behaviour do
+    # Build a `DataValidator` behaviour with callbacks for `validate/2` and
+    # `format_errors/1`. Return the behaviour definition as a string.
     nil  # TODO: Implement this exercise
   end
 
-  @spec design_job_processor_behaviour() :: map()
-  def design_job_processor_behaviour do
-    #   Design a `JobProcessor` behaviour for background job processing.
-    #   Include callbacks for `enqueue/2`, `process/1`, and `retry/2`. Create
-    #   implementations that simulate different queue backends (memory, database).
-    #   Return a map with callbacks and implementation strategies
+  @doc """
+  Defines a `JobProcessor` behaviour.
+
+  **Goal:** Design a contract for a background job processing system. This
+  abstracts the job execution logic from the queueing backend (e.g.,
+  in-memory, database, RabbitMQ).
+
+  **Requirements:**
+  1.  Define a module named `JobProcessor`.
+  2.  Add a `@callback` for `enqueue/2` that takes a `job` and `opts` and
+      returns `{:ok, job_id}` or `{:error, reason}`.
+  3.  Add a `@callback` for `perform/1` that takes a `job_id`. It should return
+      `:ok` on success, or `{:error, :retry | :discard, reason}` on failure,
+      allowing the system to decide whether to retry or discard the failed job.
+  4.  Add an optional `@callback` for `retry/2` that takes a `job_id` and `reason`
+      and returns `:ok` or `:error`.
+
+  **Task:**
+  Return the complete module definition as a string.
+  """
+  @spec define_job_processor_behaviour() :: binary()
+  def define_job_processor_behaviour do
+    # Design a `JobProcessor` behaviour with callbacks for `enqueue/2` and
+    # `perform/1`. Return the behaviour definition as a string.
     nil  # TODO: Implement this exercise
   end
 end
@@ -416,87 +479,103 @@ defmodule DayTwo.BehaviourExercisesTest do
 
   alias DayTwo.BehaviourExercises, as: EX
 
-  test "define_cache_provider_behaviour/0 includes all required callbacks" do
+  test "define_cache_provider_behaviour/0 returns a valid behaviour definition" do
     behaviour_def = EX.define_cache_provider_behaviour()
     assert is_binary(behaviour_def)
-    assert String.contains?(behaviour_def, "@callback get")
-    assert String.contains?(behaviour_def, "@callback put")
-    assert String.contains?(behaviour_def, "@callback delete")
+    assert String.contains?(behaviour_def, "@callback get(key :: any)")
+    assert String.contains?(behaviour_def, "@callback put(key :: any, value :: any)")
+    assert String.contains?(behaviour_def, "@callback delete(key :: any)")
   end
 
-  test "build_data_validator_behaviour/0 returns validator modules" do
-    validators = EX.build_data_validator_behaviour()
-    assert is_list(validators)
-    assert length(validators) >= 3
+  test "define_data_validator_behaviour/0 returns a valid behaviour definition" do
+    behaviour_def = EX.define_data_validator_behaviour()
+    assert is_binary(behaviour_def)
+    assert String.contains?(behaviour_def, "@callback validate(data :: any, opts :: keyword)")
+    assert String.contains?(behaviour_def, "@callback format_errors(errors :: list)")
   end
 
-  test "design_job_processor_behaviour/0 includes queue strategies" do
-    design = EX.design_job_processor_behaviour()
-    assert is_map(design)
-    assert Map.has_key?(design, :callbacks)
-    assert Map.has_key?(design, :implementations)
+  test "define_job_processor_behaviour/0 returns a valid behaviour definition" do
+    design = EX.define_job_processor_behaviour()
+    assert is_binary(design)
+    assert String.contains?(design, "@callback enqueue(job :: any, opts :: keyword)")
+    assert String.contains?(design, "@callback perform(job_id :: any)")
   end
 end
 
-"""
-🔑 ANSWERS & EXPLANATIONS
+defmodule DayTwo.Answers do
+  def answer_one do
+    quote do
+      defmodule CacheProvider do
+        @moduledoc """
+        A behaviour for a key-value cache.
+        """
+        @doc "Retrieves a value from the cache by key."
+        @callback get(key :: any) :: {:ok, any} | :error
 
-# 1. CacheProvider behaviour
-@callback get(key :: String.t()) :: {:ok, any()} | {:error, :not_found}
-@callback put(key :: String.t(), value :: any()) :: :ok
-@callback delete(key :: String.t()) :: :ok
+        @doc "Puts a value into the cache."
+        @callback put(key :: any, value :: any) :: :ok
 
-defmodule MemoryCache do
-  @behaviour CacheProvider
-  use GenServer
+        @doc "Deletes a value from the cache."
+        @callback delete(key :: any) :: :ok
+      end
+    end
+  end
 
-  def start_link(_), do: GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
+  def answer_two do
+    quote do
+      defmodule DataValidator do
+        @moduledoc """
+        A behaviour for data validation.
+        """
+        @doc "Validates the given data."
+        @callback validate(data :: any, opts :: keyword) :: :ok | {:error, list}
 
-  @impl true
-  def get(key), do: GenServer.call(__MODULE__, {:get, key})
+        @doc "Formats a list of validation errors into a user-friendly format."
+        @callback format_errors(errors :: list) :: any
+      end
+    end
+  end
 
-  @impl true
-  def put(key, value), do: GenServer.cast(__MODULE__, {:put, key, value})
+  def answer_three do
+    quote do
+      defmodule JobProcessor do
+        @moduledoc """
+        A behaviour for processing background jobs.
+        """
+        @doc "Adds a job to the queue."
+        @callback enqueue(job :: any, opts :: keyword) :: {:ok, any} | {:error, any}
 
-  @impl true
-  def delete(key), do: GenServer.cast(__MODULE__, {:delete, key})
-
-  # GenServer callbacks...
-  def handle_call({:get, key}, _from, state) do
-    case Map.get(state, key) do
-      nil -> {:reply, {:error, :not_found}, state}
-      value -> {:reply, {:ok, value}, state}
+        @doc "Performs a job from the queue."
+        @callback perform(job_id :: any) :: :ok | {:error, :retry | :discard, any}
+        @callback retry(job_id :: any, reason :: any) :: :ok | :error
+        @optional_callbacks retry: 2
+      end
     end
   end
 end
 
-# 2. DataValidator behaviour
-@callback validate_field(field :: String.t(), value :: any()) :: :ok | {:error, String.t()}
-@callback format_errors(errors :: list()) :: String.t()
+IO.puts("""
+ANSWERS & EXPLANATIONS
 
-defmodule EmailValidator do
-  @behaviour DataValidator
+# 1. CacheProvider Behaviour
+#{Macro.to_string(DayTwo.Answers.answer_one())}
+# This behaviour defines a contract for caching. Any module using it must
+# implement `get/1`, `put/2`, and `delete/1`, ensuring a consistent API for
+# different caching strategies (e.g., in-memory vs. Redis). This allows you
+# to swap out the cache implementation without changing the application code.
 
-  @impl true
-  def validate_field("email", value) when is_binary(value) do
-    if String.contains?(value, "@") do
-      :ok
-    else
-      {:error, "Email must contain @"}
-    end
-  end
+# 2. DataValidator Behaviour
+#{Macro.to_string(DayTwo.Answers.answer_two())}
+# This contract is for validating data. You could have different modules
+# that implement this behaviour for specific data types, like `UserValidator`
+# or `OrderValidator`, each with its own rules. This promotes reusable and
+# composable validation logic.
 
-  @impl true
-  def format_errors(errors) do
-    errors |> Enum.map(&"• #{&1}") |> Enum.join("\n")
-  end
-end
-
-# 3. JobProcessor behaviour
-@callback enqueue(job_type :: atom(), params :: map()) :: {:ok, String.t()}
-@callback process(job_id :: String.t()) :: :ok | {:error, any()}
-@callback retry(job_id :: String.t(), attempts :: integer()) :: :ok | {:error, any()}
-
-# The power of behaviours: same interface, different implementations
-# Enables testing, swapping providers, and consistent APIs across systems.
-"""
+# 3. JobProcessor Behaviour
+#{Macro.to_string(DayTwo.Answers.answer_three())}
+# This defines a standard interface for background job processors. You could have
+# one implementation that runs jobs in-memory for tests, and another that uses
+# a persistent database queue in production. The return tuple for `perform/1`
+# allows for sophisticated error handling, like deciding whether to retry or
+# discard a failed job.
+""")

@@ -10,12 +10,15 @@ IO.puts("  Elixir: #{System.version()}")
 
 # Test wx application
 IO.puts("\n🧪 Testing wx application...")
+
 case Application.start(:wx) do
   :ok ->
     IO.puts("  ✅ wx application started successfully")
     _ = Application.stop(:wx)
+
   {:error, {:already_started, :wx}} ->
     IO.puts("  ✅ wx application already running")
+
   {:error, reason} ->
     IO.puts("  ❌ wx application failed: #{inspect(reason)}")
     System.halt(1)

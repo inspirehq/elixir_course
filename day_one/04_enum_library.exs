@@ -141,29 +141,59 @@ defmodule DayOne.EnumExercisesTest do
   end
 end
 
-"""
+defmodule DayOne.Answers do
+  def answer_one do
+    quote do
+      def sum_of_squares(range) do
+        Enum.reduce(range, 0, fn n, acc -> acc + n * n end)
+      end
+    end
+  end
+
+  def answer_two do
+    quote do
+      def my_max([]), do: nil
+      def my_max([head | tail]) do
+        Enum.reduce(tail, head, fn x, acc ->
+          if x > acc, do: x, else: acc
+        end)
+      end
+    end
+  end
+
+  def answer_three do
+    quote do
+      def word_frequencies(sentence) do
+        sentence
+        |> String.split(" ", trim: true)
+        |> Enum.reduce(%{}, fn
+          "", acc -> acc
+          word, acc -> Map.update(acc, word, 1, &(&1 + 1))
+        end)
+      end
+    end
+  end
+end
+
+IO.puts("""
 ANSWERS & EXPLANATIONS
 
 # 1. sum_of_squares/1
-def sum_of_squares(range) do
-  Enum.reduce(range, 0, fn n, acc -> acc + n * n end)
-end
-#  Shows accumulator pattern where each iteration adds the square of the current number.
+#{Macro.to_string(DayOne.Answers.answer_one())}
+#  This is a classic use of `Enum.reduce/3`. The accumulator starts at `0`,
+#  and for each number `n` in the range, we add `n * n` to the accumulator,
+#  producing a final sum.
 
 # 2. my_max/1
-def my_max([]), do: nil
-def my_max([head | tail]) do
-  Enum.reduce(tail, head, &max/2)
-end
-#  Demonstrates custom reduce to replace built-in function; uses head as initial value.
+#{Macro.to_string(DayOne.Answers.answer_two())}
+#  This shows how to implement a common `Enum` function from scratch. By using
+#  the first element of the list as the initial accumulator, we can then reduce
+#  over the rest of the list, comparing each element to the current max.
 
 # 3. word_frequencies/1
-def word_frequencies(sentence) do
-  sentence
-  |> String.split()
-  |> Enum.reduce(%{}, fn word, acc ->
-    Map.update(acc, word, 1, &(&1 + 1))
-  end)
-end
-#  Combines string splitting with reduce to build frequency map immutably using Map.update/4.
-"""
+#{Macro.to_string(DayOne.Answers.answer_three())}
+#  This is a powerful pipeline that demonstrates multiple `Enum` concepts. It
+#  splits the string into words, then uses `reduce` with a map as the accumulator.
+#  `Map.update/4` is perfect here: it either inserts a key with a default value
+#  (1) or applies a function to update the existing value.
+""")

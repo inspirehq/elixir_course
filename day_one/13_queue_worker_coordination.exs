@@ -437,80 +437,198 @@ defmodule DayOne.QueueExercisesTest do
   end
 end
 
-"""
+defmodule DayOne.CoordinationExercises do
+  @moduledoc """
+  Run the tests with: mix test day_one/13_queue_worker_coordination.exs
+  or in IEx:
+  iex -r day_one/13_queue_worker_coordination.exs
+  DayOne.CoordinationExercisesTest.test_sized_queue/0
+  DayOne.CoordinationExercisesTest.test_limited_worker/0
+  DayOne.CoordinationExercisesTest.test_priority_queue/0
+  """
+
+  @spec test_sized_queue() :: :ok
+  def test_sized_queue do
+    # Utilize the SizedJobQueue module that can report its size.
+    # Demonstrate by pushing and popping jobs and printing the size.
+    :ok
+  end
+
+  @spec test_limited_worker() :: :ok
+  def test_limited_worker do
+    # Utilize the LimitedWorker module that only processes 3 jobs and then terminates.
+    # Supervise two of these workers and show that they are restarted.
+    :ok
+  end
+
+  @spec test_priority_queue() :: :ok
+  def test_priority_queue do
+    # Utilize the PriorityJobQueue module that supports :high and :low priority jobs.
+    # Show that high priority jobs are always processed first.
+    :ok
+  end
+end
+
+# Helper modules for exercises
+defmodule SizedJobQueue do
+  use GenServer
+  def start_link(_), do: GenServer.start_link(__MODULE__, :queue.new(), name: __MODULE__)
+  def push(job), do: GenServer.cast(__MODULE__, {:push, job})
+  def pop, do: GenServer.call(__MODULE__, :pop)
+  def size, do: GenServer.call(__MODULE__, :size)
+
+  @impl true
+  def init(q), do: {:ok, q}
+  @impl true
+  def handle_cast({:push, job}, q), do: {:noreply, :queue.in(job, q)}
+  @impl true
+  def handle_call(:pop, _from, q) do
+    case :queue.out(q) do
+      {{:value, job}, q2} -> {:reply, {:ok, job}, q2}
+      {:empty, _} -> {:reply, :empty, q}
+    end
+  end
+  @impl true
+  def handle_call(:size, _from, q), do: {:reply, :queue.len(q), q}
+end
+
+defmodule LimitedWorker do
+  use GenServer
+  def start_link(id), do: GenServer.start_link(__MODULE__, {id, 3}) # 3 jobs max
+  @impl true
+  def init(state) do
+    send(self(), :work)
+    {:ok, state}
+  end
+
+  @impl true
+  def handle_info(:work, {id, 0}) do
+    IO.puts("Worker #{id} finished its work.")
+    {:stop, :normal, {id, 0}}
+  end
+  def handle_info(:work, {id, remaining}) do
+    # For simplicity, we don't interact with a real queue here.
+    IO.puts("Worker #{id} processing job, #{remaining - 1} left.")
+    Process.sleep(100)
+    send(self(), :work)
+    {:noreply, {id, remaining - 1}}
+  end
+end
+
+defmodule PriorityJobQueue do
+  use GenServer
+  def start_link(_), do: GenServer.start_link(__MODULE__, {:queue.new(), :queue.new()})
+  def push(job, prio), do: GenServer.cast(__MODULE__, {:push, job, prio})
+  def pop, do: GenServer.call(__MODULE__, :pop)
+
+  @impl true
+  def init(state), do: {:ok, state}
+  @impl true
+  def handle_cast({:push, job, :high}, {high, low}), do: {:noreply, {:queue.in(job, high), low}}
+  def handle_cast({:push, job, :low}, {high, low}), do: {:noreply, {high, :queue.in(job, low)}}
+  @impl true
+  def handle_call(:pop, _from, {high, low}) do
+    case :queue.out(high) do
+      {{:value, job}, new_high} -> {:reply, {:ok, {job, :high}}, {new_high, low}}
+      {:empty, _} ->
+        case :queue.out(low) do
+          {{:value, job}, new_low} -> {:reply, {:ok, {job, :low}}, {high, new_low}}
+          {:empty, _} -> {:reply, :empty, {high, low}}
+        end
+    end
+  end
+end
+
+ExUnit.start()
+
+defmodule DayOne.CoordinationExercisesTest do
+  use ExUnit.Case, async: true
+  alias DayOne.CoordinationExercises, as: EX
+
+  test "sized queue reports its size correctly" do
+    assert EX.test_sized_queue() == :ok
+  end
+
+  test "limited worker is restarted by supervisor" do
+    assert EX.test_limited_worker() == :ok
+  end
+
+  test "priority queue serves high-priority jobs first" do
+    assert EX.test_priority_queue() == :ok
+  end
+end
+
+defmodule DayOne.Answers do
+  def answer_one do
+    quote do
+      def test_sized_queue do
+        {:ok, _} = SizedJobQueue.start_link(nil)
+        assert SizedJobQueue.size() == 0
+        SizedJobQueue.push({:job, 1})
+        SizedJobQueue.push({:job, 2})
+        assert SizedJobQueue.size() == 2
+        {:ok, _job} = SizedJobQueue.pop()
+        assert SizedJobQueue.size() == 1
+        :ok
+      end
+    end
+  end
+
+  def answer_two do
+    quote do
+      def test_limited_worker do
+        {:ok, sup} = Supervisor.start_link(
+          [
+            Supervisor.child_spec({LimitedWorker, 1}, id: :worker_1),
+            Supervisor.child_spec({LimitedWorker, 2}, id: :worker_2)
+          ],
+          strategy: :one_for_one
+        )
+        Process.sleep(1000) # Give time for workers to finish and be restarted
+        children = Supervisor.which_children(sup)
+        # Both workers should have been restarted and are now alive.
+        assert length(children) == 2
+        Supervisor.stop(sup)
+        :ok
+      end
+    end
+  end
+
+  def answer_three do
+    quote do
+      def test_priority_queue do
+        {:ok, _} = PriorityJobQueue.start_link(nil)
+        PriorityJobQueue.push({:job, "low1"}, :low)
+        PriorityJobQueue.push({:job, "high1"}, :high)
+        PriorityJobQueue.push({:job, "low2"}, :low)
+        PriorityJobQueue.push({:job, "high2"}, :high)
+
+        assert {:ok, {"high1", :high}} = PriorityJobQueue.pop()
+        assert {:ok, {"high2", :high}} = PriorityJobQueue.pop()
+        assert {:ok, {"low1", :low}} = PriorityJobQueue.pop()
+        assert {:ok, {"low2", :low}} = PriorityJobQueue.pop()
+        :ok
+      end
+    end
+  end
+end
+
+IO.puts("""
 ANSWERS & EXPLANATIONS
 
 # 1. test_sized_queue/0
-def test_sized_queue do
-  {:ok, _} = SizedJobQueue.start_link(nil)
-
-  initial_size = SizedJobQueue.size()
-  IO.puts("Initial queue size: \#{initial_size}")
-
-  SizedJobQueue.push({:job, 1})
-  SizedJobQueue.push({:job, 2})
-
-  after_push_size = SizedJobQueue.size()
-  IO.puts("Size after pushing 2 jobs: \#{after_push_size}")
-
-  {:ok, _job} = SizedJobQueue.pop()
-
-  after_pop_size = SizedJobQueue.size()
-  IO.puts("Size after popping 1 job: \#{after_pop_size}")
-
-  :ok
-end
+#{Macro.to_string(DayOne.Answers.answer_one())}
 #  Shows queue state tracking with size/0, useful for monitoring and backpressure.
 
 # 2. test_limited_worker/0
-def test_limited_worker do
-  {:ok, sup} = Supervisor.start_link([
-    JobQueue,
-    Supervisor.child_spec({LimitedWorker, 1}, id: :worker_1, restart: :permanent),
-    Supervisor.child_spec({LimitedWorker, 2}, id: :worker_2, restart: :permanent)
-  ], strategy: :one_for_one)
-
-  # Add jobs for workers to process
-  Enum.each(1..10, fn n -> JobQueue.push({:job, n}) end)
-
-  # Wait for workers to process jobs and terminate
-  Process.sleep(2000)
-
-  # Check that supervisor has restarted workers
-  children = Supervisor.which_children(sup)
-  IO.puts("Active children after worker restarts: \#{length(children)}")
-
-  Supervisor.stop(sup)
-  :ok
-end
+#{Macro.to_string(DayOne.Answers.answer_two())}
 #  Demonstrates worker lifecycle management and supervisor restart behavior.
+#  The worker stops itself normally, and the supervisor (with restart: :permanent)
+#  restarts it.
 
 # 3. test_priority_queue/0
-def test_priority_queue do
-  {:ok, _} = PriorityJobQueue.start_link(nil)
-
-  # Add mixed priority jobs
-  PriorityJobQueue.push({:job, "low1"}, :low)
-  PriorityJobQueue.push({:job, "high1"}, :high)
-  PriorityJobQueue.push({:job, "low2"}, :low)
-  PriorityJobQueue.push({:job, "high2"}, :high)
-
-  # Pop jobs - should get high priority first
-  {:ok, {job1, priority1}} = PriorityJobQueue.pop()
-  {:ok, {job2, priority2}} = PriorityJobQueue.pop()
-  {:ok, {job3, priority3}} = PriorityJobQueue.pop()
-  {:ok, {job4, priority4}} = PriorityJobQueue.pop()
-
-  IO.puts("Job order: \#{inspect(job1)} (\#{priority1}), \#{inspect(job2)} (\#{priority2})")
-  IO.puts("           \#{inspect(job3)} (\#{priority3}), \#{inspect(job4)} (\#{priority4})")
-
-  # Verify high priority jobs came first
-  if priority1 == :high and priority2 == :high and priority3 == :low and priority4 == :low do
-    :ok
-  else
-    {:error, :incorrect_priority_order}
-  end
-end
+#{Macro.to_string(DayOne.Answers.answer_three())}
 #  Highlights queue coordination by showing how to implement job priorities,
-#  demonstrating advanced queue management patterns.
-"""
+#  demonstrating advanced queue management patterns by having the state
+#  be a tuple of two queues.
+""")

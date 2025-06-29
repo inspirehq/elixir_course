@@ -69,100 +69,117 @@ defmodule DayTwo.StreamDataExamples do
   """
 
   def show_streamdata_setup do
-    """
-    # Add to mix.exs dependencies:
-    {:stream_data, "~> 0.5", only: :test}
+    IO.puts("# Add to mix.exs dependencies:")
+    IO.puts(~S'{:stream_data, "~> 0.5", only: :test}')
+    IO.puts("\n# Basic StreamData test:")
 
-    # Basic StreamData test:
-    defmodule MathTest do
-      use ExUnit.Case
-      use ExUnitProperties
+    code =
+      quote do
+        defmodule MathTest do
+          use ExUnit.Case
+          use ExUnitProperties
 
-      property "addition is commutative" do
-        check all a <- integer(),
-                  b <- integer() do
-          assert Math.add(a, b) == Math.add(b, a)
+          property "addition is commutative" do
+            check all a <- integer(),
+                      b <- integer() do
+              assert Math.add(a, b) == Math.add(b, a)
+            end
+          end
+
+          property "string reverse is involutive" do
+            check all s <- string(:printable) do
+              assert s |> String.reverse() |> String.reverse() == s
+            end
+          end
         end
       end
 
-      property "string reverse is involutive" do
-        check all s <- string(:printable) do
-          assert s |> String.reverse() |> String.reverse() == s
-        end
-      end
-    end
-    """
+    IO.puts(Macro.to_string(code))
   end
 
   def show_generators do
-    """
-    # Common StreamData generators:
+    IO.puts("# Common StreamData generators:")
+    IO.puts("\n# Basic types")
 
-    # Basic types
-    integer()                    # Any integer
-    integer(1..100)              # Integer in range
-    float()                      # Any float
-    boolean()                    # true or false
-    string(:printable)           # Printable strings
-    binary()                     # Random binary data
-
-    # Collections
-    list_of(integer())           # List of integers
-    list_of(string(), length: 1..10)  # Constrained list
-    map_of(string(), integer())  # Map with string keys, int values
-    tuple({integer(), string()}) # Fixed-size tuple
-
-    # Custom generators
-    user_generator =
-      gen all name <- string(:printable, min_length: 1),
-              age <- integer(1..120),
-              email <- string(:alphanumeric) do
-        %{name: name, age: age, email: email <> "@example.com"}
+    code =
+      quote do
+        integer()
+        integer(1..100)
+        float()
+        boolean()
+        string(:printable)
+        binary()
       end
-    """
+
+    IO.puts(Macro.to_string(code))
+    IO.puts("\n# Collections")
+
+    code =
+      quote do
+        list_of(integer())
+        list_of(string(), length: 1..10)
+        map_of(string(), integer())
+        tuple({integer(), string()})
+      end
+
+    IO.puts(Macro.to_string(code))
+    IO.puts("\n# Custom generators")
+
+    code =
+      quote do
+        user_generator =
+          gen all name <- string(:printable, min_length: 1),
+                  age <- integer(1..120),
+                  email <- string(:alphanumeric) do
+            %{name: name, age: age, email: email <> "@example.com"}
+          end
+      end
+
+    IO.puts(Macro.to_string(code))
   end
 
   def show_practical_examples do
-    """
-    # Practical property tests:
-    defmodule ListPropertiesTest do
-      use ExUnit.Case
-      use ExUnitProperties
+    IO.puts("# Practical property tests:")
 
-      property "sorting preserves length" do
-        check all list <- list_of(integer()) do
-          sorted = Enum.sort(list)
-          assert length(sorted) == length(list)
+    code =
+      quote do
+        defmodule ListPropertiesTest do
+          use ExUnit.Case
+          use ExUnitProperties
+
+          property "sorting preserves length" do
+            check all list <- list_of(integer()) do
+              sorted = Enum.sort(list)
+              assert length(sorted) == length(list)
+            end
+          end
+
+          property "sorting is idempotent" do
+            check all list <- list_of(integer()) do
+              sorted_once = Enum.sort(list)
+              sorted_twice = Enum.sort(sorted_once)
+              assert sorted_once == sorted_twice
+            end
+          end
+
+          property "map then filter vs filter then map" do
+            check all list <- list_of(integer()),
+                      fun <- member_of([&(&1 * 2), &(&1 + 1), &abs/1]) do
+              result1 = list |> Enum.map(fun) |> Enum.filter(&(&1 > 0))
+              result2 = list |> Enum.filter(&(fun.(&1) > 0)) |> Enum.map(fun)
+              assert Enum.all?(result1, &(&1 > 0))
+              assert Enum.all?(result2, &(&1 > 0))
+            end
+          end
         end
       end
 
-      property "sorting is idempotent" do
-        check all list <- list_of(integer()) do
-          sorted_once = Enum.sort(list)
-          sorted_twice = Enum.sort(sorted_once)
-          assert sorted_once == sorted_twice
-        end
-      end
-
-      property "map then filter vs filter then map" do
-        check all list <- list_of(integer()),
-                  fun <- member_of([&(&1 * 2), &(&1 + 1), &abs/1]) do
-
-          result1 = list |> Enum.map(fun) |> Enum.filter(&(&1 > 0))
-          result2 = list |> Enum.filter(&(fun.(&1) > 0)) |> Enum.map(fun)
-
-          # They might not be equal, but should have same positive elements
-          assert Enum.all?(result1, &(&1 > 0))
-          assert Enum.all?(result2, &(&1 > 0))
-        end
-      end
-    end
-    """
+    IO.puts(Macro.to_string(code))
   end
 end
 
 IO.puts("StreamData usage:")
-IO.puts(DayTwo.StreamDataExamples.show_streamdata_setup())
+DayTwo.StreamDataExamples.show_streamdata_setup()
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 3 – Advanced property testing patterns")
@@ -173,87 +190,95 @@ defmodule DayTwo.AdvancedPropertyTesting do
   """
 
   def show_shrinking_and_debugging do
-    """
-    # Shrinking helps find minimal failing cases:
-    property "string processing maintains certain properties" do
-      check all original <- string(:printable, min_length: 1),
-                max_runs: 1000 do  # Run more tests
+    IO.puts("# Shrinking helps find minimal failing cases:")
 
-        processed = MyModule.process_string(original)
-
-        # If this fails, StreamData will shrink to smallest failing input
-        assert String.length(processed) <= String.length(original)
-        assert String.valid?(processed)
-      end
-    end
-
-    # Custom generators for domain objects:
-    def valid_email_generator do
-      gen all local <- string(:alphanumeric, min_length: 1),
-              domain <- string(:alphanumeric, min_length: 1),
-              tld <- member_of(["com", "org", "net", "edu"]) do
-        "#{local}@#{domain}.#{tld}"
-      end
-    end
-
-    property "email validation works correctly" do
-      check all email <- valid_email_generator() do
-        assert EmailValidator.valid?(email) == true
-      end
-    end
-    """
-  end
-
-  def show_stateful_testing do
-    """
-    # Stateful property testing for GenServers:
-    defmodule CounterStatefulTest do
-      use ExUnit.Case
-      use ExUnitProperties
-
-      property "counter operations maintain consistency" do
-        check all operations <- list_of(
-                    one_of([
-                      {:inc, integer(1..10)},
-                      {:dec, integer(1..10)},
-                      :reset
-                    ]),
-                    max_length: 50
-                  ) do
-
-          {:ok, counter} = Counter.start_link(0)
-
-          expected_value = simulate_operations(operations, 0)
-          actual_value = apply_operations(counter, operations)
-
-          assert actual_value == expected_value
+    code =
+      quote do
+        property "string processing maintains certain properties" do
+          check all original <- string(:printable, min_length: 1),
+                    max_runs: 1000 do
+            processed = MyModule.process_string(original)
+            assert String.length(processed) <= String.length(original)
+            assert String.valid?(processed)
+          end
         end
       end
 
-      defp simulate_operations([], acc), do: acc
-      defp simulate_operations([{:inc, n} | rest], acc), do: simulate_operations(rest, acc + n)
-      defp simulate_operations([{:dec, n} | rest], acc), do: simulate_operations(rest, acc - n)
-      defp simulate_operations([:reset | rest], _acc), do: simulate_operations(rest, 0)
+    IO.puts(Macro.to_string(code))
+    IO.puts("\n# Custom generators for domain objects:")
 
-      defp apply_operations(counter, operations) do
-        Enum.each(operations, fn
-          {:inc, n} -> Counter.increment(counter, n)
-          {:dec, n} -> Counter.decrement(counter, n)
-          :reset -> Counter.reset(counter)
-        end)
+    code =
+      quote do
+        def valid_email_generator do
+          gen all local <- string(:alphanumeric, min_length: 1),
+                  domain <- string(:alphanumeric, min_length: 1),
+                  tld <- member_of(["com", "org", "net", "edu"]) do
+            "#{local}@#{domain}.#{tld}"
+          end
+        end
 
-        Counter.value(counter)
+        property "email validation works correctly" do
+          check all email <- valid_email_generator() do
+            assert EmailValidator.valid?(email) == true
+          end
+        end
       end
-    end
-    """
+
+    IO.puts(Macro.to_string(code))
+  end
+
+  def show_stateful_testing do
+    IO.puts("# Stateful property testing for GenServers:")
+
+    code =
+      quote do
+        defmodule CounterStatefulTest do
+          use ExUnit.Case
+          use ExUnitProperties
+
+          property "counter operations maintain consistency" do
+            check all operations <-
+                    list_of(
+                      one_of([
+                        {:inc, integer(1..10)},
+                        {:dec, integer(1..10)},
+                        :reset
+                      ]),
+                      max_length: 50
+                    ) do
+              {:ok, counter} = Counter.start_link(0)
+              expected_value = simulate_operations(operations, 0)
+              actual_value = apply_operations(counter, operations)
+              assert actual_value == expected_value
+            end
+          end
+
+          defp simulate_operations([], acc), do: acc
+          defp simulate_operations([{:inc, n} | rest], acc), do: simulate_operations(rest, acc + n)
+          defp simulate_operations([{:dec, n} | rest], acc), do: simulate_operations(rest, acc - n)
+          defp simulate_operations([:reset | rest], _acc), do: simulate_operations(rest, 0)
+
+          defp apply_operations(counter, operations) do
+            Enum.each(operations, fn
+              {:inc, n} -> Counter.increment(counter, n)
+              {:dec, n} -> Counter.decrement(counter, n)
+              :reset -> Counter.reset(counter)
+            end)
+
+            Counter.value(counter)
+          end
+        end
+      end
+
+    IO.puts(Macro.to_string(code))
   end
 end
 
-IO.puts("Advanced patterns:")
-IO.puts(DayTwo.AdvancedPropertyTesting.show_shrinking_and_debugging())
+DayTwo.AdvancedPropertyTesting.show_shrinking_and_debugging()
+DayTwo.AdvancedPropertyTesting.show_stateful_testing()
 
 # ────────────────────────────────────────────────────────────────
-IO.puts("\n📌 Example 4 – PropCheck and QuickCheck integration")
+IO.puts("\n📌 Example 4 – PropCheck for property testing")
 
 defmodule DayTwo.PropCheckExamples do
   @moduledoc """
@@ -414,96 +439,194 @@ DayTwo.APIPropertyTesting.show_api_property_benefits()
 # 3. (Challenge) Design a stateful property test for a chat room GenServer
 #    that verifies message ordering and user state consistency.
 
-"""
-🔑 ANSWERS & EXPLANATIONS
+defmodule DayTwo.PropertyTestExercises do
+  @moduledoc """
+  Run the tests with: mix test day_two/13_property_testing.exs
+  or in IEx:
+  iex -r day_two/13_property_testing.exs
+  DayTwo.PropertyTestExercisesTest.test_design_sorting_properties/0
+  DayTwo.PropertyTestExercisesTest.test_design_encoding_properties/0
+  DayTwo.PropertyTestExercisesTest.test_design_custom_data_generator/0
+  """
 
-# 1. URL parsing property tests
-defmodule URLPropertyTest do
-  use ExUnit.Case
-  use ExUnitProperties
+  @doc """
+  Designs property tests for a custom sorting function.
 
-  property "URL encoding/decoding round trip" do
-    check all url_string <- string(:printable) do
-      encoded = URL.encode(url_string)
-      decoded = URL.decode(encoded)
-      assert decoded == url_string
+  **Goal:** Instead of testing with a few example lists, define the essential
+  properties that any correct sorting algorithm must have.
+
+  **Function to Test:**
+  `MySorter.sort(list)`
+
+  **Task:**
+  Return a list of strings, where each string is a key property of a
+  correct sorting function. Examples include:
+  - "The output list has the same length as the input list."
+  - "Sorting a sorted list produces the same list (idempotency)."
+  - "All elements from the input list are present in the output list."
+  """
+  @spec design_sorting_properties() :: [binary()]
+  def design_sorting_properties do
+    # List the key properties that a sorting function must always satisfy.
+    # Return a list of strings describing these properties.
+    nil  # TODO: Implement this exercise
+  end
+
+  @doc """
+  Designs property tests for a simple encoding/decoding module.
+
+  **Goal:** Verify that a pair of `encode/1` and `decode/1` functions are
+  inverses of each other. This is a classic "round-trip" property.
+
+  **Functions to Test:**
+  `Codec.encode(string)` and `Codec.decode(encoded_string)`
+
+  **Task:**
+  Return a map that describes the property test:
+  - `:property_name`: A string naming the property (e.g., "encode/decode roundtrip").
+  - `:generator`: A string representing the `StreamData` generator for a
+    printable string (e.g., `string(:printable)`).
+  - `:assertion`: A string showing the core assertion of the test, which
+    checks that `decode(encode(original_string))` equals `original_string`.
+  """
+  @spec design_encoding_properties() :: map()
+  def design_encoding_properties do
+    # Design a round-trip property test for an encoder/decoder.
+    # Return a map with :property_name, :generator, and :assertion.
+    nil  # TODO: Implement this exercise
+  end
+
+  @doc """
+  Designs a custom `StreamData` generator for a domain-specific struct.
+
+  **Goal:** Learn to create complex data generators that produce valid
+  structs for your application's domain models.
+
+  **Struct to Generate:**
+  ```elixir
+  defmodule User do
+    defstruct [:id, :email, :age, :role]
+  end
+  ```
+
+  **Requirements:**
+  - `id` should be a positive integer.
+  - `email` should be a string that looks like a valid email.
+  - `age` should be an integer between 18 and 99.
+  - `role` should be one of the atoms `:guest`, `:member`, or `:admin`.
+
+  **Task:**
+  Return a string containing the complete definition of a `StreamData`
+  generator function named `user_generator/0` that produces valid `User` structs.
+  """
+  @spec design_custom_data_generator() :: binary()
+  def design_custom_data_generator do
+    # Write a custom StreamData generator for a User struct.
+    # Return the generator definition as a string.
+    nil  # TODO: Implement this exercise
+  end
+end
+
+ExUnit.start()
+
+defmodule DayTwo.PropertyTestExercisesTest do
+  use ExUnit.Case, async: true
+
+  alias DayTwo.PropertyTestExercises, as: EX
+
+  test "design_sorting_properties/0 returns key sorting properties" do
+    properties = EX.design_sorting_properties()
+    assert is_list(properties)
+    assert Enum.any?(properties, &String.contains?(&1, "length"))
+    assert Enum.any?(properties, &String.contains?(&1, "idempotent"))
+    assert Enum.any?(properties, &String.contains?(&1, "elements"))
+  end
+
+  test "design_encoding_properties/0 describes a round-trip test" do
+    design = EX.design_encoding_properties()
+    assert is_map(design)
+    assert Map.has_key?(design, :property_name)
+    assert Map.has_key?(design, :generator)
+    assert Map.has_key?(design, :assertion)
+    assert String.contains?(design.assertion, "decode(encode(")
+  end
+
+  test "design_custom_data_generator/0 returns a valid generator string" do
+    generator_string = EX.design_custom_data_generator()
+    assert is_binary(generator_string)
+    assert String.contains?(generator_string, "def user_generator")
+    assert String.contains?(generator_string, "gen all")
+    assert String.contains?(generator_string, "integer(1..")
+    assert String.contains?(generator_string, "member_of([:guest, :member, :admin])")
+    assert String.contains?(generator_string, "%User{")
+  end
+end
+
+defmodule DayTwo.Answers do
+  def answer_one do
+    quote do
+      [
+        "The output list has the same length as the input list.",
+        "Sorting is idempotent (sorting a sorted list doesn't change it).",
+        "The sorted list contains the exact same elements as the original.",
+        "Every element in the output is less than or equal to the element that follows it."
+      ]
     end
   end
 
-  property "valid URLs parse successfully" do
-    check all url <- valid_url_generator() do
-      assert {:ok, parsed} = URL.parse(url)
-      assert is_map(parsed)
-      assert Map.has_key?(parsed, :scheme)
-      assert Map.has_key?(parsed, :host)
+  def answer_two do
+    quote do
+      %{
+        property_name: "encode/decode functions are inverses (round-trip)",
+        generator: "string(:printable)",
+        assertion: "assert Codec.decode(Codec.encode(original)) == original"
+      }
     end
   end
 
-  def valid_url_generator do
-    gen all scheme <- member_of(["http", "https", "ftp"]),
-            host <- string(:alphanumeric, min_length: 1),
-            path <- string(:printable) do
-      "#{scheme}://#{host}.com/#{path}"
+  def answer_three do
+    quote do
+      """
+      def user_generator do
+        gen all id <- integer(1..100_000),
+                email_local_part <- string(:alphanumeric, min_length: 3),
+                age <- integer(18..99),
+                role <- member_of([:guest, :member, :admin]) do
+          %User{
+            id: id,
+            email: email_local_part <> "@example.com",
+            age: age,
+            role: role
+          }
+        end
+      end
+      """
     end
   end
 end
 
-# 2. Shopping cart property tests
-defmodule CartPropertyTest do
-  use ExUnit.Case
-  use ExUnitProperties
+IO.puts("""
+ANSWERS & EXPLANATIONS
 
-  property "cart total equals sum of item prices" do
-    check all items <- list_of(item_generator(), max_length: 20) do
-      cart = Cart.new()
-      final_cart = Enum.reduce(items, cart, &Cart.add_item(&2, &1))
+# 1. Properties of Sorting
+#{Macro.to_string(DayTwo.Answers.answer_one())}
+# This approach forces you to think about the definition of "sorted" rather
+# than just a few examples. A property-based test would check these invariants
+# against hundreds of randomly generated lists (empty, long, reversed, with
+# duplicates, etc.), providing much higher confidence than a simple example.
 
-      expected_total = items |> Enum.map(&(&1.price * &1.quantity)) |> Enum.sum()
-      actual_total = Cart.total(final_cart)
+# 2. Round-trip Property for Encoding
+#{Macro.to_string(DayTwo.Answers.answer_two())}
+# This is one of the most common and powerful uses of property testing. It's
+# perfect for testing serialization (JSON, binary, etc.), data conversion, or
+# any pair of functions that are supposed to be inverses of each other. The
+# test ensures that no data is lost or malformed during the two-way process.
 
-      assert_in_delta actual_total, expected_total, 0.01
-    end
-  end
-
-  def item_generator do
-    gen all name <- string(:alphanumeric, min_length: 1),
-            price <- float(min: 0.01, max: 1000.0),
-            quantity <- integer(1..10) do
-      %{name: name, price: price, quantity: quantity}
-    end
-  end
-end
-
-# 3. Chat room stateful testing
-defmodule ChatRoomStatefulTest do
-  use ExUnit.Case
-  use ExUnitProperties
-
-  property "chat room maintains message ordering" do
-    check all commands <- list_of(chat_command_generator(), max_length: 30) do
-      {:ok, room} = ChatRoom.start_link()
-
-      {messages, users} = execute_commands(room, commands)
-
-      # Messages should be in chronological order
-      timestamps = Enum.map(messages, & &1.timestamp)
-      assert timestamps == Enum.sort(timestamps)
-
-      # All users should be tracked correctly
-      assert MapSet.size(users) <= 10  # Max concurrent users
-    end
-  end
-
-  def chat_command_generator do
-    user_id = integer(1..5)
-
-    one_of([
-      {:join, user_id},
-      {:leave, user_id},
-      {:send_message, user_id, string(:printable, min_length: 1)}
-    ])
-  end
-end
-
-# Benefits: Comprehensive coverage, automatic edge case discovery, regression prevention
-"""
+# 3. Custom Data Generator
+#{Macro.to_string(DayTwo.Answers.answer_three())}
+# As your application grows, you'll need to test functions that take your own
+# custom structs. Building generators for them is key. This composed generator
+# combines simpler generators (`integer`, `string`, `member_of`) to build a
+# complex, valid `User` struct every time, making your property tests clean
+# and focused on the logic, not on data setup.
+""")

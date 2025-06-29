@@ -153,31 +153,58 @@ defmodule DayOne.PipeExercisesTest do
   end
 end
 
-"""
+defmodule DayOne.Answers do
+  def answer_one do
+    quote do
+      def trim_and_upcase(input) do
+        input
+        |> String.trim()
+        |> String.upcase()
+      end
+    end
+  end
+
+  def answer_two do
+    quote do
+      def square_filter_sum(range) do
+        range
+        |> Enum.map(&(&1 * &1))
+        |> Enum.filter(&(&1 > 10))
+        |> Enum.sum()
+      end
+    end
+  end
+
+  def answer_three do
+    quote do
+      def file_line_count(filename) do
+        filename
+        |> DayOne.PipeExercises.mock_file_read()
+        |> String.split("\n", trim: true)
+        |> Enum.count()
+      end
+    end
+  end
+end
+
+IO.puts("""
 ANSWERS & EXPLANATIONS
 
 # 1. trim_and_upcase/1
-def trim_and_upcase(input) do
-  input |> String.trim() |> String.upcase()
-end
-#  Pipe passes intermediate value left-to-right; clearer than nested calls.
+#{Macro.to_string(DayOne.Answers.answer_one())}
+#  This is a classic example of the pipe operator. Instead of writing
+#  `String.upcase(String.trim(input))`, the pipe `|>` makes the flow of
+#  data from left to right, which is much more natural to read.
 
 # 2. square_filter_sum/1
-def square_filter_sum(range) do
-  range
-  |> Enum.map(& &1 * &1)
-  |> Enum.filter(& &1 > 10)
-  |> Enum.sum()
-end
-#  Shows transformation stages in readable order with clear data flow.
+#{Macro.to_string(DayOne.Answers.answer_two())}
+#  The pipe operator shines when chaining multiple transformations, especially
+#  with the `Enum` module. Each step in the process is clear and laid out
+#  on its own line, describing the data's journey.
 
 # 3. file_line_count/1
-def file_line_count(filename) do
-  filename
-  |> mock_file_read()
-  |> String.split("\n")
-  |> Enum.reject(&(&1 == ""))
-  |> length()
-end
-#  Demonstrates IO + string operations in a pipeline with clear steps.
-"""
+#{Macro.to_string(DayOne.Answers.answer_three())}
+#  This shows a realistic pipeline: read data, transform it, and calculate a
+#  result. Using `String.split/2` with `trim: true` is a more robust way to
+#  handle newlines and avoids the need for a separate `reject` step.
+""")

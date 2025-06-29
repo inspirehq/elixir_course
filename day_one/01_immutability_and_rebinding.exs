@@ -173,31 +173,53 @@ defmodule DayOne.ExercisesTest do
   end
 end
 
-"""
+defmodule DayOne.Answers do
+  def answer_one do
+    quote do
+      def bump_each(ints) do
+        Enum.map(ints, &(&1 + 1))
+      end
+    end
+  end
+
+  def answer_two do
+    quote do
+      def pin_demo do
+        x = 1
+        y = 3
+        {^x, middle, ^y} = {1, 2, 3}
+        {x, middle, y}
+      end
+    end
+  end
+
+  def answer_three do
+    quote do
+      def deep_update(data, path, value) do
+        put_in(data, path, value)
+      end
+    end
+  end
+end
+
+IO.puts("""
 ANSWERS & EXPLANATIONS
 
 # 1. bump_each/1
-original = [1, 2, 3]
-new_list = Enum.map(original, &(&1 + 1))
-IO.inspect({original, new_list}, label: "orig vs new")
-#  Why correct?  Enum.map/2 never mutates `original`; it produces a brand-new
-#  list. Printing shows `original` remains [1,2,3].  This reinforces immutability.
+#{Macro.to_string(DayOne.Answers.answer_one())}
+#  This is the idiomatic way to transform a list in Elixir. `Enum.map/2`
+#  iterates over each element, applies the given function, and returns a
+#  completely new list, leaving the original unchanged.
 
-# 2. Pin demonstration
-x = 1
-y = 3
-{^x, middle, ^y} = {1, 2, 3}
-IO.inspect({x, middle, y})
-#  We pinned the first and last elements to enforce they match existing values
-#  of x and y. Only `middle` is rebound (to 2).  This shows selective rebinding.
+# 2. pin_demo/0
+#{Macro.to_string(DayOne.Answers.answer_two())}
+#  The pin operator `^` is crucial for pattern matching when you want to assert
+#  equality rather than rebind a variable. Here, `^x` means "match only if
+#  the value is the same as the current value of x".
 
-# 3. deep_update/3 (one-liner solution)
-user = %{settings: %{theme: "light"}}
-
-# put_in/3 walks the path and returns a *new* map with the change applied.
-updated = put_in(user, [:settings, :theme], "dark")
-
-IO.inspect(updated, label: "updated")
-#  Kernel.put_in/3 created a brand-new map; `user` is left untouched.  This
-#  shows how to update nested data immutably in a single line.
-"""
+# 3. deep_update/3
+#{Macro.to_string(DayOne.Answers.answer_three())}
+#  `put_in/3` is a powerful and concise function for immutably "updating"
+#  nested data structures. It returns a new copy of the data with the value at
+#  the specified path changed, without affecting the original data structure.
+""")

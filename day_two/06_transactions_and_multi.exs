@@ -18,16 +18,16 @@ defmodule DayTwo.TransactionBasics do
   """
 
   def explain_acid_properties do
-    """
-    ACID properties that transactions guarantee:
-
-    • Atomicity: All operations succeed or all fail
-    • Consistency: Database remains in valid state
-    • Isolation: Concurrent transactions don't interfere
-    • Durability: Committed changes persist after crashes
-
-    Without transactions, partial failures can leave data inconsistent.
-    """
+    quote do
+      # ACID properties that transactions guarantee:
+      #
+      # • Atomicity: All operations succeed or all fail
+      # • Consistency: Database remains in valid state
+      # • Isolation: Concurrent transactions don't interfere
+      # • Durability: Committed changes persist after crashes
+      #
+      # Without transactions, partial failures can leave data inconsistent.
+    end
   end
 
   def show_transaction_scenarios do
@@ -46,28 +46,35 @@ defmodule DayTwo.TransactionBasics do
   end
 
   def show_basic_transaction_syntax do
-    """
-    # Basic transaction with Repo.transaction/1
-    result = Repo.transaction(fn ->
-      # All operations here are wrapped in a transaction
-      user = Repo.insert!(%User{name: "Alice"})
-      profile = Repo.insert!(%Profile{user_id: user.id, bio: "Hello"})
+    quote do
+      # Basic transaction with Repo.transaction/1
+      result =
+        Repo.transaction(fn ->
+          # All operations here are wrapped in a transaction
+          user = Repo.insert!(%User{name: "Alice"})
+          profile = Repo.insert!(%Profile{user_id: user.id, bio: "Hello"})
 
-      # If any operation fails, entire transaction rolls back
-      {user, profile}
-    end)
+          # If any operation fails, entire transaction rolls back
+          {user, profile}
+        end)
 
-    case result do
-      {:ok, {user, profile}} -> # Success
-      {:error, reason} -> # Rollback occurred
+      case result do
+        {:ok, {user, profile}} ->
+          # Success
+          :ok
+        {:error, reason} ->
+          # Rollback occurred
+          :error
+      end
     end
-    """
   end
 end
 
 IO.puts("ACID properties:")
-IO.puts(DayTwo.TransactionBasics.explain_acid_properties())
+IO.puts(Macro.to_string(DayTwo.TransactionBasics.explain_acid_properties()))
 DayTwo.TransactionBasics.show_transaction_scenarios()
+IO.puts("\nBasic transaction syntax:")
+IO.puts(Macro.to_string(DayTwo.TransactionBasics.show_basic_transaction_syntax()))
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 2 – Ecto.Multi for composable transactions")
@@ -78,42 +85,44 @@ defmodule DayTwo.MultiBasics do
   """
 
   def show_multi_advantages do
-    """
-    Advantages of Ecto.Multi:
-
-    • Composable: Build transactions step by step
-    • Readable: Clear operation names and dependencies
-    • Testable: Inspect multi without executing
-    • Rollback safe: Automatic cleanup on any failure
-    • Result access: Use results from previous steps
-    """
+    quote do
+      # Advantages of Ecto.Multi:
+      #
+      # • Composable: Build transactions step by step
+      # • Readable: Clear operation names and dependencies
+      # • Testable: Inspect multi without executing
+      # • Rollback safe: Automatic cleanup on any failure
+      # • Result access: Use results from previous steps
+    end
   end
 
   def show_basic_multi_example do
-    """
-    # Building a Multi operation
-    alias Ecto.Multi
+    quote do
+      # Building a Multi operation
+      alias Ecto.Multi
 
-    multi = Multi.new()
-    |> Multi.insert(:user, %User{name: "Bob"})
-    |> Multi.insert(:profile, fn %{user: user} ->
-         %Profile{user_id: user.id, bio: "Hello"}
-       end)
-    |> Multi.update(:welcome_sent, fn %{user: user} ->
-         User.changeset(user, %{welcome_sent: true})
-       end)
+      multi =
+        Multi.new()
+        |> Multi.insert(:user, %User{name: "Bob"})
+        |> Multi.insert(:profile, fn %{user: user} ->
+          %Profile{user_id: user.id, bio: "Hello"}
+        end)
+        |> Multi.update(:welcome_sent, fn %{user: user} ->
+          User.changeset(user, %{welcome_sent: true})
+        end)
 
-    # Execute the transaction
-    case Repo.transaction(multi) do
-      {:ok, results} ->
-        %{user: user, profile: profile, welcome_sent: updated_user} = results
-
-      {:error, operation, changeset, changes_so_far} ->
-        # operation = the step that failed (:user, :profile, or :welcome_sent)
-        # changeset = the invalid changeset
-        # changes_so_far = successfully completed operations
+      # Execute the transaction
+      case Repo.transaction(multi) do
+        {:ok, results} ->
+          %{user: user, profile: profile, welcome_sent: updated_user} = results
+          :ok
+        {:error, operation, changeset, changes_so_far} ->
+          # operation = the step that failed (:user, :profile, or :welcome_sent)
+          # changeset = the invalid changeset
+          # changes_so_far = successfully completed operations
+          :error
+      end
     end
-    """
   end
 
   def show_multi_operations do
@@ -135,8 +144,10 @@ defmodule DayTwo.MultiBasics do
 end
 
 IO.puts("Multi advantages:")
-IO.puts(DayTwo.MultiBasics.show_multi_advantages())
+IO.puts(Macro.to_string(DayTwo.MultiBasics.show_multi_advantages()))
 DayTwo.MultiBasics.show_multi_operations()
+IO.puts("\nBasic Multi example:")
+IO.puts(Macro.to_string(DayTwo.MultiBasics.show_basic_multi_example()))
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 3 – Error handling and rollbacks")
@@ -147,72 +158,73 @@ defmodule DayTwo.ErrorHandling do
   """
 
   def show_rollback_scenarios do
-    """
-    Transactions rollback when:
+    quote do
+      # Transactions rollback when:
+      #
+      # • Changeset validation fails
+      # • Database constraint violation occurs
+      # • Exception is raised in transaction function
+      # • Repo.rollback/1 is explicitly called
+      # • Any Multi operation returns {:error, _}
+      #
+      # Explicit rollback:
+      Repo.transaction(fn ->
+        user = Repo.insert!(%User{name: "Charlie"})
 
-    • Changeset validation fails
-    • Database constraint violation occurs
-    • Exception is raised in transaction function
-    • Repo.rollback/1 is explicitly called
-    • Any Multi operation returns {:error, _}
+        if some_business_logic_fails?() do
+          Repo.rollback(:business_rule_violation)
+        end
 
-    # Explicit rollback:
-    Repo.transaction(fn ->
-      user = Repo.insert!(%User{name: "Charlie"})
-
-      if some_business_logic_fails?() do
-        Repo.rollback(:business_rule_violation)
-      end
-
-      user
-    end)
-    """
+        user
+      end)
+    end
   end
 
   def show_nested_transactions do
-    """
-    # Nested transactions use savepoints
-    Repo.transaction(fn ->
-      user = Repo.insert!(%User{name: "David"})
+    quote do
+      # Nested transactions use savepoints
+      Repo.transaction(fn ->
+        user = Repo.insert!(%User{name: "David"})
 
-      try do
-        Repo.transaction(fn ->
-          # This creates a savepoint
-          risky_operation()
-        end)
-      rescue
-        _ -> :ok  # Inner transaction failed, but outer continues
-      end
+        try do
+          Repo.transaction(fn ->
+            # This creates a savepoint
+            risky_operation()
+          end)
+        rescue
+          _ -> :ok # Inner transaction failed, but outer continues
+        end
 
-      user
-    end)
-    """
+        user
+      end)
+    end
   end
 
   def demonstrate_error_handling do
-    """
-    # Comprehensive error handling
-    case Repo.transaction(multi) do
-      {:ok, %{user: user, order: order}} ->
-        {:ok, {user, order}}
-
-      {:error, :user, changeset, _} ->
-        {:error, "User creation failed: #{format_errors(changeset)}"}
-
-      {:error, :payment, reason, _} ->
-        {:error, "Payment failed: #{reason}"}
-
-      {:error, :inventory, :out_of_stock, %{user: user}} ->
-        # Compensation: notify user about out of stock
-        send_out_of_stock_notification(user)
-        {:error, "Product out of stock"}
+    quote do
+      # Comprehensive error handling
+      case Repo.transaction(multi) do
+        {:ok, %{user: user, order: order}} ->
+          {:ok, {user, order}}
+        {:error, :user, changeset, _} ->
+          {:error, "User creation failed: #{format_errors(changeset)}"}
+        {:error, :payment, reason, _} ->
+          {:error, "Payment failed: #{reason}"}
+        {:error, :inventory, :out_of_stock, %{user: user}} ->
+          # Compensation: notify user about out of stock
+          send_out_of_stock_notification(user)
+          {:error, "Product out of stock"}
+      end
     end
-    """
   end
 end
 
 IO.puts("Rollback scenarios:")
-IO.puts(DayTwo.ErrorHandling.show_rollback_scenarios())
+IO.puts(Macro.to_string(DayTwo.ErrorHandling.show_rollback_scenarios()))
+IO.puts("\nNested transactions:")
+IO.puts(Macro.to_string(DayTwo.ErrorHandling.show_nested_transactions()))
+IO.puts("\nComprehensive error handling:")
+IO.puts(Macro.to_string(DayTwo.ErrorHandling.demonstrate_error_handling()))
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 4 – Advanced Multi patterns")
@@ -223,329 +235,374 @@ defmodule DayTwo.AdvancedMulti do
   """
 
   def show_conditional_operations do
-    """
-    # Conditional operations in Multi
-    def create_user_with_optional_promotion(attrs, should_promote) do
-      Multi.new()
-      |> Multi.insert(:user, User.changeset(%User{}, attrs))
-      |> Multi.run(:maybe_promote, fn repo, %{user: user} ->
-           if should_promote do
-             repo.update(User.promotion_changeset(user))
-           else
-             {:ok, user}
-           end
-         end)
-      |> Multi.run(:send_email, fn _repo, %{user: user, maybe_promote: promoted_user} ->
-           email_type = if promoted_user.promoted, do: :welcome_premium, else: :welcome
-           EmailService.send(user.email, email_type)
-         end)
+    quote do
+      # Conditional operations in Multi
+      def create_user_with_optional_promotion(attrs, should_promote) do
+        Multi.new()
+        |> Multi.insert(:user, User.changeset(%User{}, attrs))
+        |> Multi.run(:maybe_promote, fn repo, %{user: user} ->
+          if should_promote do
+            repo.update(User.promotion_changeset(user))
+          else
+            {:ok, user}
+          end
+        end)
+        |> Multi.run(:send_email, fn _repo, %{user: user, maybe_promote: promoted_user} ->
+          email_type = if promoted_user.promoted, do: :welcome_premium, else: :welcome
+          EmailService.send(user.email, email_type)
+        end)
+      end
     end
-    """
   end
 
   def show_dynamic_multi_building do
-    """
-    # Building Multi dynamically
-    def process_bulk_order(line_items) do
-      Enum.reduce(line_items, Multi.new(), fn {product_id, quantity}, multi ->
-        step_name = "reserve_#{product_id}"
-
-        Multi.run(multi, step_name, fn repo, _changes ->
-          case InventoryService.reserve(product_id, quantity) do
-            {:ok, reservation} -> {:ok, reservation}
-            {:error, reason} -> {:error, reason}
-          end
+    quote do
+      # Building Multi dynamically
+      def process_bulk_order(line_items) do
+        Enum.reduce(line_items, Multi.new(), fn {product_id, quantity}, multi ->
+          multi
+          |> Multi.run({:lock, product_id}, fn repo, _ ->
+            # Lock the product row to prevent race conditions
+            case repo.get_and_lock(Product, product_id) do
+              nil -> {:error, :not_found}
+              product -> {:ok, product}
+            end
+          end)
+          |> Multi.run({:check_inventory, product_id}, fn _, %{{:lock, ^product_id} => product} ->
+            if product.inventory >= quantity do
+              {:ok, product}
+            else
+              {:error, :out_of_stock}
+            end
+          end)
+          |> Multi.update(
+            {:update_inventory, product_id},
+            fn %{{:check_inventory, ^product_id} => product} ->
+              Product.changeset(product, %{inventory: product.inventory - quantity})
+            end
+          )
         end)
-      end)
-      |> Multi.run(:create_order, fn _repo, reservations ->
-           total = calculate_total(reservations)
-           {:ok, %Order{total: total}}
-         end)
+      end
     end
-    """
   end
 
-  def show_multi_composition do
-    """
-    # Composing Multi operations
-    def create_blog_post_multi(user, post_attrs) do
-      Multi.new()
-      |> Multi.insert(:post, Post.changeset(%Post{user_id: user.id}, post_attrs))
-      |> add_tags_multi(post_attrs["tags"])
-      |> add_notifications_multi(user)
-    end
+  def show_merging_multi do
+    quote do
+      # Merging two Multi operations
+      user_multi =
+        Multi.new()
+        |> Multi.insert(:user, %User{})
 
-    defp add_tags_multi(multi, nil), do: multi
-    defp add_tags_multi(multi, tag_names) do
-      Multi.run(multi, :tags, fn repo, %{post: post} ->
-        tags = create_or_find_tags(tag_names)
-        repo.update(Post.changeset(post, %{tags: tags}))
-      end)
-    end
+      profile_multi =
+        Multi.new()
+        |> Multi.insert(:profile, fn %{user: user} -> %Profile{user_id: user.id} end)
 
-    defp add_notifications_multi(multi, user) do
-      Multi.run(multi, :notifications, fn _repo, %{post: post} ->
-        NotificationService.notify_followers(user, post)
-      end)
+      # `user_multi` will be run before `profile_multi`
+      combined_multi = Multi.merge(user_multi, profile_multi)
+
+      Repo.transaction(combined_multi)
     end
-    """
   end
 end
 
-IO.puts("Conditional Multi operations:")
-IO.puts(DayTwo.AdvancedMulti.show_conditional_operations())
+IO.puts("Conditional operations:")
+IO.puts(Macro.to_string(DayTwo.AdvancedMulti.show_conditional_operations()))
+IO.puts("\nDynamic Multi building:")
+IO.puts(Macro.to_string(DayTwo.AdvancedMulti.show_dynamic_multi_building()))
+IO.puts("\nMerging Multi operations:")
+IO.puts(Macro.to_string(DayTwo.AdvancedMulti.show_merging_multi()))
 
 # ────────────────────────────────────────────────────────────────
-IO.puts("\n📌 Example 5 – Real-world: E-commerce order processing")
+IO.puts("\n📌 Example 5 – Real-world scenario: Bank transfer")
 
-defmodule DayTwo.OrderProcessing do
+defmodule DayTwo.BankTransfer do
   @moduledoc """
-  Complete e-commerce order processing using transactions and Multi.
+  A complete, real-world example of a bank transfer using Ecto.Multi.
   """
 
-  def show_order_processing_multi do
-    """
-    # Complete order processing pipeline
-    def process_order(user_id, cart_items, payment_info, shipping_address) do
-      Multi.new()
-      |> Multi.run(:validate_cart, fn _repo, _changes ->
-           validate_cart_items(cart_items)
-         end)
-      |> Multi.run(:reserve_inventory, fn _repo, %{validate_cart: valid_items} ->
-           reserve_inventory_for_items(valid_items)
-         end)
-      |> Multi.run(:calculate_totals, fn _repo, %{reserve_inventory: reservations} ->
-           {:ok, calculate_order_totals(reservations)}
-         end)
-      |> Multi.run(:process_payment, fn _repo, %{calculate_totals: totals} ->
-           PaymentService.charge(payment_info, totals.grand_total)
-         end)
-      |> Multi.insert(:order, fn %{calculate_totals: totals, process_payment: payment} ->
-           Order.changeset(%Order{}, %{
-             user_id: user_id,
-             total: totals.grand_total,
-             payment_id: payment.id,
-             shipping_address_id: shipping_address.id,
-             status: "confirmed"
-           })
-         end)
-      |> Multi.run(:create_order_items, fn repo, %{order: order, reserve_inventory: reservations} ->
-           create_order_items(repo, order, reservations)
-         end)
-      |> Multi.run(:send_confirmation, fn _repo, %{order: order} ->
-           EmailService.send_order_confirmation(order)
-         end)
-      |> Multi.run(:clear_cart, fn _repo, _changes ->
-           CartService.clear(user_id)
-         end)
+  def show_account_schema do
+    quote do
+      defmodule Bank.Account do
+        use Ecto.Schema
+        import Ecto.Changeset
+
+        schema "accounts" do
+          field :balance, :decimal, default: 0
+          field :currency, :string, size: 3
+          belongs_to :user, Bank.User
+        end
+
+        def changeset(account, attrs) do
+          account
+          |> cast(attrs, [:balance, :currency])
+          |> validate_required([:balance, :currency])
+          |> validate_number(:balance, greater_than_or_equal_to: 0)
+        end
+      end
     end
-    """
   end
 
-  def show_compensation_patterns do
-    """
-    # Handling partial failures with compensation
-    case Repo.transaction(order_multi) do
-      {:ok, %{order: order}} ->
-        {:ok, order}
+  def show_transfer_multi do
+    quote do
+      defmodule Bank.Transfers do
+        alias Ecto.Multi
+        alias Bank.Account
 
-      {:error, :reserve_inventory, {:out_of_stock, product_id}, changes} ->
-        # Compensation: Release any reservations made so far
-        if reservations = changes[:reserve_inventory] do
-          InventoryService.release_reservations(reservations)
+        def execute(from_account_id, to_account_id, amount) do
+          Multi.new()
+          # 1. Look up and lock both accounts to prevent concurrent updates
+          |> Multi.run(:from, &get_and_lock_account(&1, from_account_id))
+          |> Multi.run(:to, &get_and_lock_account(&1, to_account_id))
+          # 2. Validate the transfer
+          |> Multi.run(:validate, &validate_transfer(&1, amount))
+          # 3. Perform the updates
+          |> Multi.update(:debit, &debit_account(&1, amount))
+          |> Multi.update(:credit, &credit_account(&1, amount))
+          # 4. Record the transaction
+          |> Multi.insert(:transaction_log, &log_transaction(&1, amount))
+          |> Repo.transaction()
         end
-        {:error, :out_of_stock, product_id}
 
-      {:error, :process_payment, payment_error, changes} ->
-        # Compensation: Release inventory reservations
-        if reservations = changes[:reserve_inventory] do
-          InventoryService.release_reservations(reservations)
+        defp get_and_lock_account(repo, id) do
+          case repo.get_and_lock(Account, id) do
+            nil -> {:error, "Account not found"}
+            account -> {:ok, account}
+          end
         end
-        {:error, :payment_failed, payment_error}
 
-      {:error, operation, reason, _changes} ->
-        # Log unexpected errors for debugging
-        Logger.error("Order processing failed at #{operation}: #{inspect(reason)}")
-        {:error, :order_processing_failed}
+        defp validate_transfer(%{from: from, to: to}, amount) do
+          cond do
+            from.currency != to.currency -> {:error, "Currency mismatch"}
+            from.balance < amount -> {:error, "Insufficient funds"}
+            true -> {:ok, "Validation successful"}
+          end
+        end
+
+        defp debit_account(%{from: from}, amount) do
+          new_balance = from.balance - amount
+          Account.changeset(from, %{balance: new_balance})
+        end
+
+        defp credit_account(%{to: to}, amount) do
+          new_balance = to.balance + amount
+          Account.changeset(to, %{balance: new_balance})
+        end
+
+        defp log_transaction(results, amount) do
+          %{
+            from_account_id: results.from.id,
+            to_account_id: results.to.id,
+            amount: amount,
+            status: :completed
+          }
+        end
+      end
     end
-    """
-  end
-
-  def show_testing_patterns do
-    """
-    # Testing Multi operations
-    test "order processing creates all records" do
-      user = insert(:user)
-      product = insert(:product, inventory: 10)
-
-      multi = OrderProcessing.process_order(user.id, [
-        %{product_id: product.id, quantity: 2}
-      ], valid_payment_info(), valid_address())
-
-      # Test without executing
-      assert %Ecto.Multi{} = multi
-
-      # Test execution
-      {:ok, results} = Repo.transaction(multi)
-
-      assert %Order{status: "confirmed"} = results.order
-      assert length(results.create_order_items) == 1
-
-      # Verify side effects
-      updated_product = Repo.get!(Product, product.id)
-      assert updated_product.inventory == 8
-    end
-    """
   end
 end
 
-IO.puts("Order processing Multi:")
-IO.puts(DayTwo.OrderProcessing.show_order_processing_multi())
+IO.puts("Bank account schema:")
+IO.puts(Macro.to_string(DayTwo.BankTransfer.show_account_schema()))
+IO.puts("\nBank transfer Multi operation:")
+IO.puts(Macro.to_string(DayTwo.BankTransfer.show_transfer_multi()))
 
-defmodule DayTwo.TransactionExercises do
+# ────────────────────────────────────────────────────────────────
+IO.puts("\n📌 Exercises")
+
+defmodule DayTwo.MultiExercises do
   @moduledoc """
   Run the tests with: mix test day_two/06_transactions_and_multi.exs
   or in IEx:
   iex -r day_two/06_transactions_and_multi.exs
-  DayTwo.TransactionExercisesTest.test_user_registration_multi/0
-  DayTwo.TransactionExercisesTest.test_blog_publishing_multi/0
-  DayTwo.TransactionExercisesTest.test_data_migration_multi/0
+  DayTwo.MultiExercisesTest.test_transfer_funds_multi/0
+  DayTwo.MultiExercisesTest.test_create_user_and_team_multi/0
+  DayTwo.MultiExercisesTest.test_create_order_with_items_multi/0
   """
 
-  @spec build_user_registration_multi(map()) :: Ecto.Multi.t()
-  def build_user_registration_multi(_attrs) do
-    #   Create a user registration Multi that: creates the user, sends a welcome
-    #   email, creates a default profile, and logs the registration event. Handle
-    #   the case where email sending fails but still complete registration.
-    #   Return an Ecto.Multi struct
-    nil  # TODO: Implement this exercise
+  # These are dummy modules for the exercises. Assume they have
+  # the necessary fields and changeset functions.
+  defmodule User, do: defstruct [:id, :name, :email]
+  defmodule Team, do: defstruct [:id, :name]
+  defmodule Membership, do: defstruct [:id, :user_id, :team_id, :role]
+  defmodule Account, do: defstruct [:id, :balance]
+  defmodule Order, do: defstruct [:id, :user_id]
+  defmodule LineItem, do: defstruct [:id, :order_id, :product_id, :quantity]
+
+  # Dummy changeset function for the exercises
+  def changeset(struct, attrs), do: {struct, attrs}
+
+  @doc """
+  Builds a Multi pipeline to transfer funds between two accounts.
+
+  **Goal:** Create a transaction that atomically withdraws from one account
+  and deposits into another, then logs the event.
+
+  **Requirements:**
+  1.  Use `Multi.update` to withdraw the `amount` from `from_account`.
+      Name this step `:withdraw`.
+  2.  Use `Multi.update` to deposit the `amount` into the `to_account`.
+      Name this step `:deposit`.
+  3.  Use `Multi.run` to log that the transaction occurred.
+      Name this step `:log_transaction`. The function can just return `{:ok, :logged}`.
+
+  **Hint:** `Account.changeset/2` is a dummy function for this exercise. You can
+  call it like `Account.changeset(account, %{balance: new_balance})`.
+  """
+  @spec transfer_funds_multi(map(), map(), number()) :: Ecto.Multi.t()
+  def transfer_funds_multi(_from_account, _to_account, _amount) do
+    # TODO: Implement this exercise
+    nil
   end
 
-  @spec build_blog_publishing_multi(integer(), map()) :: Ecto.Multi.t()
-  def build_blog_publishing_multi(_post_id, _user_preferences) do
-    #   Build a blog post publishing Multi that: validates the post, updates
-    #   category post counts, notifies subscribers, and schedules social media
-    #   posts. Make social media scheduling optional based on user preferences.
-    #   Return an Ecto.Multi struct
-    nil  # TODO: Implement this exercise
+  @doc """
+  Builds a Multi pipeline for creating a user and their team.
+
+  **Goal:** Create a pipeline for a new user signup where a user, a team,
+  and a membership linking them are all created in a single transaction.
+
+  **Requirements:**
+  1.  Insert a `User` record from the provided `user_attrs`. Name this step `:user`.
+  2.  Insert a `Team` record. The team's attributes should be based on `team_attrs`
+      but also use the newly created user from the `:user` step. Name this step `:team`.
+  3.  Insert a `Membership` record that links the new user and team. The user
+      should be the "owner". Name this step `:membership`.
+
+  **Hint:** The anonymous functions you pass to `Multi.insert` for the `:team` and
+  `:membership` steps will receive a map of the results from previous steps.
+  """
+  @spec create_user_and_team_multi(map(), map()) :: Ecto.Multi.t()
+  def create_user_and_team_multi(_user_attrs, _team_attrs) do
+    # TODO: Implement this exercise
+    nil
   end
 
-  @spec design_migration_strategy() :: binary()
-  def design_migration_strategy do
-    #   Design a data migration Multi that moves user data between
-    #   tables, updates related records, and maintains audit logs. Include
-    #   rollback compensation for external API calls that can't be undone.
-    #   Return a description of the strategy including compensation patterns
-    nil  # TODO: Implement this exercise
+  @doc """
+  Builds a multi to create an order and all of its line items in bulk.
+
+  **Goal:** Create a transaction that inserts an order and then uses
+  `Multi.insert_all` to efficiently add all its associated line items.
+
+  **Requirements:**
+  1.  Insert a new `Order` for the given `user`. Name this step `:order`.
+  2.  Use `Multi.insert_all` to insert all `items` into the `LineItem` schema.
+      Name this step `:line_items`.
+  3.  The line items data needs the `order_id` from the `:order` step.
+
+  **`items` format:** `[%{product_id: 1, quantity: 2}, ...]`
+  """
+  @spec create_order_with_items_multi(map(), list()) :: Ecto.Multi.t()
+  def create_order_with_items_multi(_user, _items) do
+    # TODO: Implement this exercise
+    nil
   end
 end
 
 ExUnit.start()
 
-defmodule DayTwo.TransactionExercisesTest do
+defmodule DayTwo.MultiExercisesTest do
   use ExUnit.Case, async: true
 
-  alias DayTwo.TransactionExercises, as: EX
+  alias DayTwo.MultiExercises, as: EX
+  alias Ecto.Multi
 
-  test "build_user_registration_multi/1 creates proper Multi structure" do
-    attrs = %{"name" => "Alice", "email" => "alice@example.com"}
-    multi = EX.build_user_registration_multi(attrs)
-    assert %Ecto.Multi{} = multi
+  # Helper to check the operation names in a multi
+  defp get_op_names(multi) do
+    Enum.map(multi.operations, fn {name, _, _, _} -> name end)
   end
 
-  test "build_blog_publishing_multi/2 handles conditional operations" do
-    preferences = %{auto_social_share: true}
-    multi = EX.build_blog_publishing_multi(1, preferences)
-    assert %Ecto.Multi{} = multi
+  test "transfer_funds_multi/3 creates a withdraw, deposit, and log pipeline" do
+    multi = EX.transfer_funds_multi(%{balance: 100}, %{balance: 50}, 20)
+    assert %Multi{} = multi
+    assert get_op_names(multi) == [:withdraw, :deposit, :log_transaction]
   end
 
-  test "design_migration_strategy/0 includes compensation patterns" do
-    strategy = EX.design_migration_strategy()
-    assert is_binary(strategy)
-    assert String.contains?(strategy, "compensation")
-    assert String.contains?(strategy, "backup")
+  test "create_user_and_team_multi/2 creates user, team, and membership" do
+    multi = EX.create_user_and_team_multi(%{}, %{})
+    assert %Multi{} = multi
+    assert get_op_names(multi) == [:user, :team, :membership]
+  end
+
+  test "create_order_with_items_multi/2 creates order and bulk-inserts items" do
+    items = [%{product_id: 1, quantity: 2}]
+    multi = EX.create_order_with_items_multi(%{}, items)
+    assert %Multi{} = multi
+    assert get_op_names(multi) == [:order, :line_items]
+
+    # Check that the second operation is an insert_all
+    line_items_op = Enum.at(multi.operations, 1)
+    assert elem(line_items_op, 1) == :insert_all
   end
 end
 
-"""
-🔑 ANSWERS & EXPLANATIONS
+defmodule DayTwo.Answers do
+  def answer_one do
+    quote do
+      def transfer_funds_multi(from_account, to_account, amount) do
+        Ecto.Multi.new()
+        |> Ecto.Multi.update(:withdraw, EX.changeset(from_account, %{balance: from_account.balance - amount}))
+        |> Ecto.Multi.update(:deposit, EX.changeset(to_account, %{balance: to_account.balance + amount}))
+        |> Ecto.Multi.run(:log_transaction, fn _repo, _changes ->
+          {:ok, :logged}
+        end)
+      end
+    end
+  end
 
-# 1. User registration Multi with optional email
-def register_user_multi(attrs) do
-  Multi.new()
-  |> Multi.insert(:user, User.registration_changeset(%User{}, attrs))
-  |> Multi.insert(:profile, fn %{user: user} ->
-       Profile.changeset(%Profile{}, %{user_id: user.id, bio: ""})
-     end)
-  |> Multi.run(:welcome_email, fn _repo, %{user: user} ->
-       case EmailService.send_welcome(user.email) do
-         {:ok, _} -> {:ok, :sent}
-         {:error, _} -> {:ok, :failed}  # Don't fail transaction
-       end
-     end)
-  |> Multi.run(:log_registration, fn _repo, %{user: user, welcome_email: email_status} ->
-       AuditLog.log_event("user_registered", %{
-         user_id: user.id,
-         email_sent: email_status == :sent
-       })
-     end)
+  def answer_two do
+    quote do
+      def create_user_and_team_multi(user_attrs, team_attrs) do
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:user, EX.changeset(%EX.User{}, user_attrs))
+        |> Ecto.Multi.insert(:team, fn %{user: user} ->
+          team_name = team_attrs[:name] || "#{user.name}'s Team"
+          EX.changeset(%EX.Team{}, Map.put(team_attrs, :name, team_name))
+        end)
+        |> Ecto.Multi.insert(:membership, fn %{user: user, team: team} ->
+          EX.changeset(%EX.Membership{}, %{
+            user_id: user.id,
+            team_id: team.id,
+            role: "owner"
+          })
+        end)
+      end
+    end
+  end
+
+  def answer_three do
+    quote do
+      def create_order_with_items_multi(user, items) do
+        Ecto.Multi.new()
+        |> Ecto.Multi.insert(:order, EX.changeset(%EX.Order{}, %{user_id: user.id}))
+        |> Ecto.Multi.insert_all(:line_items, EX.LineItem, fn %{order: order} ->
+          Enum.map(items, fn item ->
+            %{order_id: order.id, product_id: item.product_id, quantity: item.quantity}
+          end)
+        end)
+      end
+    end
+  end
 end
 
-# 2. Blog post publishing Multi with conditional social media
-def publish_post_multi(post_id, user_preferences) do
-  Multi.new()
-  |> Multi.update(:post, fn _ ->
-       post = Repo.get!(Post, post_id)
-       Post.publish_changeset(post, %{published_at: DateTime.utc_now()})
-     end)
-  |> Multi.run(:update_category_count, fn repo, %{post: post} ->
-       category = repo.get!(Category, post.category_id)
-       repo.update(Category.changeset(category, %{post_count: category.post_count + 1}))
-     end)
-  |> Multi.run(:notify_subscribers, fn _repo, %{post: post} ->
-       NotificationService.notify_subscribers(post)
-     end)
-  |> maybe_schedule_social_media(user_preferences.auto_social_share)
-end
+IO.puts("""
+ANSWERS & EXPLANATIONS
 
-defp maybe_schedule_social_media(multi, false), do: multi
-defp maybe_schedule_social_media(multi, true) do
-  Multi.run(multi, :schedule_social, fn _repo, %{post: post} ->
-    SocialMediaService.schedule_post(post)
-  end)
-end
+# 1. transfer_funds_multi/3
+#{Macro.to_string(DayTwo.Answers.answer_one())}
+#  This multi ensures that both the withdrawal and the deposit succeed, or neither
+#  does, preventing money from being lost or created. `Multi.run` is used for a
+#  side-effect (logging) that is part of the transaction.
 
-# 3. Data migration Multi with compensation
-def migrate_user_data_multi(user_id) do
-  Multi.new()
-  |> Multi.run(:backup_data, fn repo, _ ->
-       user = repo.get!(User, user_id)
-       {:ok, %{original_user: user, backup_id: create_backup(user)}}
-     end)
-  |> Multi.run(:external_sync, fn _repo, %{backup_data: %{original_user: user}} ->
-       case ExternalAPI.sync_user(user) do
-         {:ok, external_id} -> {:ok, external_id}
-         error -> error
-       end
-     end)
-  |> Multi.update(:migrate_user, fn %{backup_data: %{original_user: user}} ->
-       User.migration_changeset(user, %{migrated: true, migrated_at: DateTime.utc_now()})
-     end)
-  |> Multi.run(:audit_log, fn _repo, changes ->
-       AuditLog.log_migration(user_id, changes)
-     end)
-end
+# 2. create_user_and_team_multi/2
+#{Macro.to_string(DayTwo.Answers.answer_two())}
+#  This shows how `Ecto.Multi` pipelines operations that depend on each other.
+#  The anonymous functions passed to `Multi.insert` receive a map of the
+#  results of previous successful steps, allowing you to use the `user` and `team`
+#  structs to create the final `membership`.
 
-# Compensation for external API failure:
-case Repo.transaction(migration_multi) do
-  {:error, :external_sync, reason, %{backup_data: backup}} ->
-    # Restore from backup since external sync failed
-    restore_from_backup(backup.backup_id)
-    {:error, :external_sync_failed, reason}
-end
-
-# Why these work:
-# 1. Uses Multi.run with :ok return for non-critical operations (email)
-# 2. Conditional composition with helper functions for optional features
-# 3. Comprehensive compensation strategy with backup/restore for irreversible operations
-"""
+# 3. create_order_with_items_multi/2
+#{Macro.to_string(DayTwo.Answers.answer_three())}
+#  This advanced example demonstrates building a multi dynamically using `Enum.reduce`.
+#  Each item in the order adds a new step to the multi. This is a very powerful
+#  pattern for handling variable-length transactional workflows. Using `update_all`
+#  with an increment is a good way to handle stock updates atomically.
+""")

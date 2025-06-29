@@ -332,49 +332,93 @@ defmodule DayOne.GenServerExercisesTest do
   end
 end
 
-# ANSWERS & EXPLANATIONS (in comments to avoid syntax issues)
-#
+defmodule DayOne.Answers do
+  def answer_one do
+    quote do
+      # The implementation is in the `TodoList` module provided in the exercise.
+      # This function demonstrates its use.
+      def build_todo_list do
+        {:ok, _pid} = TodoList.start_link(nil)
+        TodoList.add("Write tests")
+        TodoList.add("Refactor code")
+        TodoList.add("Deploy")
+        IO.inspect(TodoList.all(), label: "Initial Todos")
+        TodoList.remove("Refactor code")
+        IO.inspect(TodoList.all(), label: "Final Todos")
+        :ok
+      end
+    end
+  end
+
+  def answer_two do
+    quote do
+      # The implementation is in the `PersistentCounterServer` module provided.
+      # This function demonstrates its use.
+      def test_counter_persistence do
+        # Start fresh
+        File.rm(PersistentCounterServer.persist_file())
+
+        # Start, increment, and wait for it to persist
+        {:ok, pid} = PersistentCounterServer.start_link(nil)
+        PersistentCounterServer.inc(pid) # State is 1
+        Process.sleep(PersistentCounterServer.persist_interval() + 500)
+        GenServer.stop(pid)
+
+        # Restart and check if it loaded state
+        {:ok, _pid2} = PersistentCounterServer.start_link(nil)
+        assert PersistentCounterServer.value() == 1
+        :ok
+      end
+    end
+  end
+
+  def answer_three do
+    quote do
+      defmodule TimedOutServer do
+        use GenServer
+        # Implement a GenServer that times out after 1 second of inactivity
+        def start_link(_), do: GenServer.start_link(__MODULE__, nil)
+        def init(_), do: {:ok, %{}, 1000} # 1000 ms timeout
+        def handle_info(:timeout, state) do
+          # This is called when the server times out
+          IO.puts("Server is timing out due to inactivity!")
+          {:stop, :normal, state}
+        end
+      end
+
+      def test_intro_server_timeout do
+        {:ok, pid} = TimedOutServer.start_link(nil)
+        assert Process.alive?(pid)
+        # Wait for longer than the timeout
+        Process.sleep(1100)
+        refute Process.alive?(pid)
+        :ok
+      end
+    end
+  end
+end
+
+IO.puts("""
+ANSWERS & EXPLANATIONS
+
 # 1. build_todo_list/0
-# def build_todo_list do
-#   {:ok, _} = TodoList.start_link(nil)
-#   TodoList.add("buy milk")
-#   TodoList.add("write code")
-#   TodoList.add("exercise")
-#   TodoList.remove("buy milk")
-#   remaining = TodoList.all()
-#   IO.inspect(remaining, label: "remaining todos")
-#   :ok
-# end
-# Why correct? State is internal; public API shows GenServer encapsulation.
-# The TodoList keeps items in reverse order for O(1) prepend, then reverses for display.
-#
+#{Macro.to_string(DayOne.Answers.answer_one())}
+#  This is a standard GenServer implementation. `add` and `remove` use
+#  `cast` because the client doesn't need to wait for a reply (fire-and-forget).
+#  `all` uses `call` because the client needs the list of to-dos returned, so
+#  it must wait for a synchronous reply.
+
 # 2. test_counter_persistence/0
-# def test_counter_persistence do
-#   {:ok, _} = PersistentCounterServer.start_link(5)
-#   PersistentCounterServer.inc()
-#   PersistentCounterServer.inc()
-#   initial_value = PersistentCounterServer.value()
-#   # Wait for persistence to occur
-#   Process.sleep(6000)
-#   # Simulate restart by stopping current server and starting new one
-#   GenServer.stop(PersistentCounterServer)
-#   {:ok, _} = PersistentCounterServer.start_link(0)  # Would start at 0 without persistence
-#   reloaded_value = PersistentCounterServer.value()
-#   if initial_value == reloaded_value, do: :ok, else: {:error, {:values_differ, initial_value, reloaded_value}}
-# end
-# Explanation: demonstrates side-effects via handle_info while keeping API pure.
-# The counter loads from disk on startup and persists every 5 seconds.
-#
+#{Macro.to_string(DayOne.Answers.answer_two())}
+#  This shows how to use `Process.send_after/3` in `init` and `handle_info` to
+#  create a recurring task. The server sends itself a `:persist` message every
+#  few seconds. The `init` callback is also modified to read from the file on
+#  startup, making the state durable between restarts.
+
 # 3. test_intro_server_timeout/0
-# def test_intro_server_timeout do
-#   {:ok, pid} = TimeoutIntroServer.start_link()
-#   IO.inspect(pid, label: "server pid before timeout")
-#   result = TimeoutIntroServer.echo(pid, "test")
-#   IO.inspect(result, label: "echo result")
-#   Process.sleep(4000)  # Wait for timeout
-#   alive_after_timeout = Process.alive?(pid)
-#   IO.inspect(alive_after_timeout, label: "alive after timeout?")
-#   if alive_after_timeout == false, do: :ok, else: {:error, :server_did_not_timeout}
-# end
-# Explanation: After inactivity, the built-in idle timeout terminates the process,
-# showing how GenServer provides timeout handling out of the box.
+#{Macro.to_string(DayOne.Answers.answer_three())}
+#  GenServer has built-in support for timeouts. By returning a timeout value
+#  (in milliseconds) from `init` or any `handle_*` callback, you tell the
+#  GenServer to send itself a `:timeout` message if it doesn't receive any other
+#  message within that time. This is useful for cleaning up idle processes.
+""")

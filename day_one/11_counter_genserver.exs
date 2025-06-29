@@ -154,65 +154,79 @@ defmodule DayOne.CounterExercisesTest do
   end
 end
 
-"""
+defmodule DayOne.Answers do
+  def answer_one do
+    quote do
+      def build_basic_counter(initial) do
+        name = :"counter_#{System.unique_integer()}"
+        {:ok, _pid} = GenServer.start_link(CounterExercise, initial, name: name)
+        GenServer.cast(name, {:inc, 1})
+        GenServer.cast(name, {:inc, 1})
+        GenServer.cast(name, {:inc, 1})
+        GenServer.call(name, :value)
+      end
+    end
+  end
+
+  def answer_two do
+    quote do
+      # The implementation is in the `CounterWithReset` module provided.
+      # This function demonstrates its use.
+      def build_counter_with_reset do
+        {:ok, _pid} = CounterWithReset.start_link()
+        CounterWithReset.inc(10)
+        assert CounterWithReset.value() == 10
+        CounterWithReset.reset()
+        assert CounterWithReset.value() == 0
+        :ok
+      end
+    end
+  end
+
+  def answer_three do
+    quote do
+      def test_counter_boundaries do
+        name = :"boundary_counter_#{System.unique_integer()}"
+        {:ok, _pid} = GenServer.start_link(CounterExercise, 100, name: name)
+
+        # Test increment by 0
+        CounterExercise.inc(0) # Using the public API
+        assert GenServer.call(name, :value) == 100
+
+        # Test negative increment
+        CounterExercise.inc(-20)
+        assert GenServer.call(name, :value) == 80
+
+        # Test large increment
+        CounterExercise.inc(1_000_000)
+        assert GenServer.call(name, :value) == 1_000_080
+        :ok
+      end
+    end
+  end
+end
+
+IO.puts("""
 ANSWERS & EXPLANATIONS
 
-# build_basic_counter/1
-def build_basic_counter(initial) do
-  # Use a unique name to avoid conflicts in tests
-  name = :"counter_#{:rand.uniform(10000)}"
-  {:ok, _} = GenServer.start_link(CounterExercise, initial, name: name)
-  GenServer.cast(name, {:inc, 1})
-  GenServer.cast(name, {:inc, 1})
-  GenServer.cast(name, {:inc, 1})
-  GenServer.call(name, :value)
-end
-#  Explanation: Creates isolated counter instances to avoid test interference.
-#  Shows proper GenServer lifecycle: start -> multiple operations -> query final state.
+# 1. build_basic_counter/1
+#{Macro.to_string(DayOne.Answers.answer_one())}
+#  This solution correctly uses a unique name for each GenServer instance to
+#  prevent conflicts during concurrent tests. It then follows the standard
+#  lifecycle: start the server, send messages to it, and then query the final
+#  state.
 
-# build_counter_with_reset/0
-def build_counter_with_reset do
-  {:ok, _} = CounterWithReset.start_link(0)
-  CounterWithReset.inc(5)
-  CounterWithReset.inc(3)
-  CounterWithReset.reset()
-  final_value = CounterWithReset.value()
+# 2. build_counter_with_reset/0
+#{Macro.to_string(DayOne.Answers.answer_two())}
+#  The key part of this exercise is implementing the `:reset` `handle_cast`
+#  callback in the `CounterWithReset` module. It simply ignores the current
+#  state and returns `{:noreply, 0}`, effectively resetting the counter. This
+#  demonstrates how a GenServer can completely replace its state.
 
-  if final_value == 0 do
-    :ok
-  else
-    {:error, {:expected_zero_got, final_value}}
-  end
-end
-#  Explanation: Demonstrates extending GenServer with additional operations.
-#  Reset operation shows how cast can completely replace state rather than modify it.
-
-# test_counter_boundaries/0
-def test_counter_boundaries do
-  name = :"boundary_counter_#{:rand.uniform(10000)}"
-  {:ok, _} = GenServer.start_link(CounterExercise, 10, name: name)
-
-  # Test increment by 0
-  GenServer.cast(name, {:inc, 0})
-  val1 = GenServer.call(name, :value)
-
-  # Test negative increment
-  GenServer.cast(name, {:inc, -5})
-  val2 = GenServer.call(name, :value)
-
-  # Test large increment
-  GenServer.cast(name, {:inc, 1_000_000})
-  val3 = GenServer.call(name, :value)
-
-  if val1 == 10 and val2 == 5 and val3 == 1_000_005 do
-    :ok
-  else
-    {:error, {:unexpected_values, val1, val2, val3}}
-  end
-end
-#  Explanation: Tests demonstrate that integer arithmetic works as expected.
-#  GenServer state transitions are predictable even with edge case inputs.
-
-Separation of concerns: tests use only the public API, demonstrating
-black-box usage while the implementation details remain encapsulated.
-"""
+# 3. test_counter_boundaries/0
+#{Macro.to_string(DayOne.Answers.answer_three())}
+#  This shows that the logic inside a GenServer is just standard Elixir code.
+#  The `+` operator in the `handle_cast` callback handles positive, negative,
+#  and zero values correctly, so the GenServer's state transitions are always
+#  predictable.
+""")

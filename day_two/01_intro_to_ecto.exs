@@ -173,19 +173,8 @@ defmodule DayTwo.EctoExercises do
   Run the tests with: mix test day_two/01_intro_to_ecto.exs
   or in IEx:
   iex -r day_two/01_intro_to_ecto.exs
-  DayTwo.EctoExercisesTest.test_supported_databases/0
-  DayTwo.EctoExercisesTest.test_blog_repo/0
-  DayTwo.EctoExercisesTest.test_ecto_layers/0
+  DayTwo.EctoExercisesTest.test_build_blog_repo/0
   """
-
-  @spec research_supported_databases() :: [map()]
-  def research_supported_databases do
-    #   Research and list 3 databases that Ecto supports. For each, write down
-    #   one advantage of using that database with Ecto.
-    #   Return a list of maps with keys: :database, :advantage
-    #   Example: [%{database: "PostgreSQL", advantage: "Advanced features like arrays"}]
-    []  # TODO: Research and list 3 supported databases with advantages
-  end
 
   @spec build_blog_repo() :: :ok
   def build_blog_repo do
@@ -194,15 +183,6 @@ defmodule DayTwo.EctoExercises do
     #   them return fake blog post data with fields: id, title, content, published_at.
     #   Return :ok after creating and demonstrating the repo.
     :ok  # TODO: Implement blog repo with post functions
-  end
-
-  @spec explain_ecto_layers() :: map()
-  def explain_ecto_layers do
-    #   Write a function that returns a map describing what each layer does:
-    #   Repo, Schema, Changeset, Query, Migration.
-    #   Include a real-world analogy for each layer.
-    #   Example: %{repo: "Database connection manager - like a librarian..."}
-    %{}  # TODO: Explain each Ecto layer with analogies
   end
 end
 
@@ -242,76 +222,66 @@ defmodule DayTwo.EctoExercisesTest do
 
   alias DayTwo.EctoExercises, as: EX
 
-  test "research_supported_databases/0 returns database information" do
-    databases = EX.research_supported_databases()
-    assert is_list(databases)
-    assert length(databases) == 3
-
-    Enum.each(databases, fn db ->
-      assert Map.has_key?(db, :database)
-      assert Map.has_key?(db, :advantage)
-      assert is_binary(db.database)
-      assert is_binary(db.advantage)
-    end)
-  end
 
   test "build_blog_repo/0 creates and demonstrates blog repository" do
     assert EX.build_blog_repo() == :ok
   end
+end
 
-  test "explain_ecto_layers/0 describes Ecto architecture" do
-    layers = EX.explain_ecto_layers()
-    assert is_map(layers)
+defmodule DayTwo.Answers do
+  def answer_one do
+    quote do
+      defmodule BlogRepo do
+        def insert_post(attrs) do
+          post = %{
+            id: :rand.uniform(1000),
+            title: attrs.title || "Untitled",
+            content: attrs.content || "",
+            published_at: DateTime.utc_now()
+          }
+          {:ok, post}
+        end
 
-    required_keys = [:repo, :schema, :changeset, :query, :migration]
-    Enum.each(required_keys, fn key ->
-      assert Map.has_key?(layers, key)
-      assert is_binary(layers[key])
-      assert String.length(layers[key]) > 10
-    end)
+        def get_post(id) do
+          %{
+            id: id,
+            title: "Sample Blog Post",
+            content: "This is sample content...",
+            published_at: ~N[2023-12-01 10:00:00]
+          }
+        end
+
+        def list_posts do
+          [
+            %{id: 1, title: "First Post", content: "...", published_at: ~N[2023-12-01 10:00:00]},
+            %{id: 2, title: "Second Post", content: "...", published_at: ~N[2023-12-02 11:00:00]}
+          ]
+        end
+      end
+
+      def build_blog_repo do
+        # In a real scenario, the module definition itself is the implementation.
+        {:ok, post} = BlogRepo.insert_post(%{title: "New Post", content: "..."})
+        IO.inspect(post, label: "Inserted Post")
+
+        retrieved_post = BlogRepo.get_post(post.id)
+        IO.inspect(retrieved_post, label: "Retrieved Post")
+
+        posts = BlogRepo.list_posts()
+        IO.inspect(posts, label: "All Posts")
+
+        :ok
+      end
+    end
   end
 end
 
-"""
+IO.puts("""
 ANSWERS & EXPLANATIONS
 
-# 1. research_supported_databases/0
-def research_supported_databases do
-  [
-    %{database: "PostgreSQL", advantage: "Advanced features like arrays, JSON, full-text search"},
-    %{database: "MySQL", advantage: "Wide compatibility and good for legacy system integration"},
-    %{database: "SQLite", advantage: "Embedded database, perfect for development and testing"}
-  ]
-end
-#  Why correct? Ecto adapters exist for these major databases, each with
-#  specific strengths for different use cases.
-
-# 2. build_blog_repo/0
-def build_blog_repo do
-  # Demonstrate the BlogRepo functions
-  {:ok, post} = BlogRepo.insert_post(%{title: "Test Post", content: "Test content"})
-  IO.inspect(post, label: "Created post")
-
-  retrieved_post = BlogRepo.get_post(1)
-  IO.inspect(retrieved_post, label: "Retrieved post")
-
-  all_posts = BlogRepo.list_posts()
-  IO.inspect(all_posts, label: "All posts")
-
-  :ok
-end
-#  Shows how to create mock repository functions that return structured data
-#  mimicking real database operations.
-
-# 3. explain_ecto_layers/0
-def explain_ecto_layers do
-  %{
-    repo: "Database connection manager - like a librarian who handles all book checkouts",
-    schema: "Data structure definition - like a form template that defines required fields",
-    changeset: "Data validator and transformer - like a bouncer who checks IDs before entry",
-    query: "Database question composer - like a sophisticated search engine builder",
-    migration: "Database evolution tracker - like version control for your database structure"
-  }
-end
-#  Each layer has a clear responsibility, making the system modular and testable.
-"""
+# 1. build_blog_repo/0
+#{Macro.to_string(DayTwo.Answers.answer_one())}
+#  This shows a mock `BlogRepo` module. In a real application, this module would `use Ecto.Repo`
+#  and you would call functions like `BlogRepo.insert()` instead of defining `insert_post/1`.
+#  This exercise simulates the "Repo" pattern of having a dedicated module for database interactions.
+""")

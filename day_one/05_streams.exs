@@ -191,49 +191,68 @@ defmodule DayOne.StreamExercisesTest do
   end
 end
 
-"""
+defmodule DayOne.Answers do
+  defp is_perfect_square?(n) do
+    sqrt = :math.sqrt(n)
+    trunc(sqrt) * trunc(sqrt) == n
+  end
+
+  def answer_one do
+    quote do
+      def lazy_squares(range, limit) do
+        range
+        # The is_perfect_square? function is defined privately in DayOne.Answers
+        |> Stream.filter(&DayOne.Answers.is_perfect_square?/1)
+        |> Stream.take(limit)
+        |> Enum.to_list()
+      end
+    end
+  end
+
+  def answer_two do
+    quote do
+      def process_chunks(lines, chunk_size) do
+        lines
+        |> Stream.chunk_every(chunk_size)
+        |> Stream.map(&List.first/1)
+        |> Stream.map(&String.upcase/1)
+        |> Enum.to_list()
+      end
+    end
+  end
+
+  def answer_three do
+    quote do
+      def find_first_match(numbers, predicate) do
+        numbers
+        |> Stream.filter(predicate)
+        |> Enum.at(0)
+      end
+    end
+  end
+end
+
+IO.puts("""
 ANSWERS & EXPLANATIONS
 
 # 1. lazy_squares/2
-def lazy_squares(range, limit) do
-  range
-  |> Stream.filter(&_is_perfect_square?/1)
-  |> Stream.take(limit)
-  |> Enum.to_list()
-end
-#  Uses streams to lazily filter perfect squares and only take what's needed.
+#{Macro.to_string(DayOne.Answers.answer_one())}
+#  This is a perfect use case for streams. It creates a lazy pipeline that
+#  filters the range for perfect squares and then only takes the number required
+#  by the `limit`. No intermediate lists are created, making it very memory
+#  efficient for large ranges.
 
 # 2. process_chunks/2
-def process_chunks(lines, chunk_size) do
-  lines
-  |> Stream.chunk_every(chunk_size)
-  |> Stream.map(&List.first/1)
-  |> Stream.map(&String.upcase/1)
-  |> Enum.to_list()
-end
-#  Demonstrates chunking with lazy processing of each chunk's first element.
+#{Macro.to_string(DayOne.Answers.answer_two())}
+#  `Stream.chunk_every/2` is excellent for batch processing. This pipeline
+#  lazily groups lines into chunks, then maps over each chunk to take the first
+#  element and uppercase it. The final `Enum.to_list` is what executes the
+#  entire stream pipeline.
 
 # 3. find_first_match/2
-def find_first_match(numbers, predicate) do
-  numbers
-  |> Stream.filter(predicate)
-  |> Stream.take(1)
-  |> Enum.at(0)
-end
-#  Shows early termination - stops processing as soon as first match is found.
-
-**Stream vs. Enum - When to Choose:**
-
-Use Stream when:
-- Working with very large datasets
-- Reading from files or network streams
-- You might not need to process all data (early termination)
-- Memory usage is a concern
-- Building complex transformation pipelines
-
-Use Enum when:
-- Working with small to medium datasets
-- You need all the data processed immediately
-- The overhead of lazy evaluation isn't worth it
-- You need the result as a concrete collection right away
-"""
+#{Macro.to_string(DayOne.Answers.answer_three())}
+#  Streams excel at early termination. `Stream.filter/2` creates a lazy stream
+#  of matching numbers. `Enum.at(0)` then pulls from the stream only until it
+#  gets the first item (or the stream ends), avoiding unnecessary iteration
+#  through the rest of the collection.
+""")

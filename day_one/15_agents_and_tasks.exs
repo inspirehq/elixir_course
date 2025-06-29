@@ -178,30 +178,33 @@ defmodule DayOne.AgentsTasksExercises do
 
   @spec build_shopping_cart() :: :ok
   def build_shopping_cart do
-    #   Build a ShoppingCart Agent that maintains a list of items with quantities.
-    #   Implement add_item/2, remove_item/1, get_total_items/0, and clear/0.
-    #   Demonstrate adding 3 different items, removing one, and showing the total.
-    #   Return :ok when complete.
-    :ok  # TODO: Implement shopping cart Agent
+    #   Using the ShoppingCart Agent:
+    #   1. Start the ShoppingCart agent.
+    #   2. Add a few items (e.g., "apples", "bananas").
+    #   3. Use `get_total_items/0` to check the total.
+    #   4. Remove an item and check the total again.
+    #   5. Return :ok.
+    :ok  # TODO: Implement the shopping cart logic.
   end
 
   @spec test_parallel_http_simulation() :: :ok
   def test_parallel_http_simulation do
-    #   Simulate fetching data from 5 different "APIs" using Tasks.
-    #   Each API call should take a random time between 100-500ms.
-    #   Use Task.async_stream/2 to process them in parallel with a timeout.
-    #   Compare the total time vs sequential processing.
-    #   Return :ok when complete.
-    :ok  # TODO: Implement parallel HTTP simulation
+    #   1. Create a list of 5 dummy URLs.
+    #   2. Create a `mock_fetch` function that sleeps for 100-500ms.
+    #   3. Use `:timer.tc` to time a parallel run with `Task.async_stream`.
+    #   4. Use `:timer.tc` to time a sequential run with `Enum.each` or `Enum.map`.
+    #   5. Print the times and return :ok.
+    :ok  # TODO: Implement the parallel simulation.
   end
 
   @spec compare_agent_vs_genserver() :: :ok
   def compare_agent_vs_genserver do
-    #   Create equivalent counter functionality using both an Agent and a GenServer.
-    #   Time 1000 increment operations on each and compare performance.
-    #   Demonstrate that Agent is simpler for basic state management.
-    #   Return :ok showing the performance comparison.
-    :ok  # TODO: Implement Agent vs GenServer comparison
+    #   1. Use `:timer.tc` to benchmark 1000 increments on `SimpleCounterAgent`.
+    #      - Remember to start it first and `get` the final value.
+    #   2. Use `:timer.tc` to benchmark 1000 increments on `SimpleCounterGenServer`.
+    #      - Remember to start it first and `get` the final value.
+    #   3. Print the results and return :ok.
+    :ok  # TODO: Implement the Agent vs. GenServer comparison.
   end
 end
 
@@ -297,63 +300,91 @@ defmodule DayOne.AgentsTasksExercisesTest do
   end
 end
 
-# ANSWERS & EXPLANATIONS (in comments to avoid syntax issues)
-#
+defmodule DayOne.Answers do
+  def answer_one do
+    quote do
+      def build_shopping_cart do
+        # Start the agent and interact with its API
+        {:ok, _} = ShoppingCart.start_link()
+        ShoppingCart.add_item("apples", 5)
+        ShoppingCart.add_item("bananas", 2)
+        IO.inspect(ShoppingCart.get_total_items(), label: "Total after adds")
+        ShoppingCart.remove_item("bananas")
+        IO.inspect(ShoppingCart.get_total_items(), label: "Total after remove")
+        ShoppingCart.clear()
+        IO.inspect(ShoppingCart.get_total_items(), label: "Total after clear")
+        :ok
+      end
+    end
+  end
+
+  def answer_two do
+    quote do
+      def test_parallel_http_simulation do
+        urls = ["api1", "api2", "api3", "api4", "api5"]
+        mock_fetch = fn _url ->
+          Process.sleep(:rand.uniform(400) + 100) # 100-500ms
+          {:ok, "data"}
+        end
+
+        # Time the parallel execution
+        {par_time, _} = :timer.tc(fn ->
+          urls
+          |> Task.async_stream(mock_fetch, timeout: 600)
+          |> Enum.to_list()
+        end)
+
+        # Time the sequential execution
+        {seq_time, _} = :timer.tc(fn -> Enum.each(urls, mock_fetch) end)
+
+        IO.puts("Parallel time: #{par_time / 1000}ms, Sequential time: #{seq_time / 1000}ms")
+        :ok
+      end
+    end
+  end
+
+  def answer_three do
+    quote do
+      def compare_agent_vs_genserver do
+        iterations = 1000
+        # Agent benchmark
+        {:ok, _ag} = SimpleCounterAgent.start_link()
+        {agent_time, _} = :timer.tc(fn ->
+          for _ <- 1..iterations, do: SimpleCounterAgent.increment()
+          SimpleCounterAgent.get() # Ensure all updates are processed
+        end)
+
+        # GenServer benchmark
+        {:ok, _gs} = SimpleCounterGenServer.start_link()
+        {genserver_time, _} = :timer.tc(fn ->
+          for _ <- 1..iterations, do: SimpleCounterGenServer.increment()
+          SimpleCounterGenServer.get() # Ensure all updates are processed
+        end)
+
+        IO.puts("Agent: #{agent_time}µs, GenServer: #{genserver_time}µs for #{iterations} increments.")
+        :ok
+      end
+    end
+  end
+end
+
+IO.puts("""
+ANSWERS & EXPLANATIONS
+
 # 1. build_shopping_cart/0
-# def build_shopping_cart do
-#   {:ok, _} = ShoppingCart.start_link()
-#   ShoppingCart.add_item("apples", 3)
-#   ShoppingCart.add_item("bananas", 2)
-#   ShoppingCart.add_item("oranges", 1)
-#   ShoppingCart.remove_item("bananas")
-#   total = ShoppingCart.get_total_items()
-#   cart = ShoppingCart.get_cart()
-#   IO.inspect(cart, label: "final cart")
-#   IO.inspect(total, label: "total items")
-#   :ok
-# end
-# Explanation: Agent provides a simple wrapper around GenServer for basic state.
-# Perfect for cases where you just need get/update operations without complex logic.
-#
+#{Macro.to_string(DayOne.Answers.answer_one())}
+#  An `Agent` is ideal for simple state. The `ShoppingCart` module provides a clean
+#  API to start the process and interact with it, hiding the Agent details.
+
 # 2. test_parallel_http_simulation/0
-# def test_parallel_http_simulation do
-#   apis = 1..5
-#   {seq_time, _} = :timer.tc(fn ->
-#     Enum.map(apis, fn i ->
-#       Process.sleep(:rand.uniform(400) + 100)
-#       "API #{i} response"
-#     end)
-#   end)
-#   {par_time, _} = :timer.tc(fn ->
-#     Task.async_stream(apis, fn i ->
-#       Process.sleep(:rand.uniform(400) + 100)
-#       "API #{i} response"
-#     end, timeout: 1000) |> Enum.to_list()
-#   end)
-#   IO.puts("Sequential: #{seq_time / 1000}ms")
-#   IO.puts("Parallel: #{par_time / 1000}ms")
-#   :ok
-# end
-# Explanation: Task.async_stream/2 is perfect for parallel processing of collections.
-# Automatically handles concurrency and backpressure for you.
-#
+#{Macro.to_string(DayOne.Answers.answer_two())}
+#  `Task.async_stream/2` is perfect for I/O-bound work. It runs operations
+#  concurrently and streams results, often leading to a significant speedup.
+
 # 3. compare_agent_vs_genserver/0
-# def compare_agent_vs_genserver do
-#   {:ok, _} = SimpleCounterAgent.start_link()
-#   {:ok, _} = SimpleCounterGenServer.start_link()
-#
-#   {agent_time, _} = :timer.tc(fn ->
-#     Enum.each(1..1000, fn _ -> SimpleCounterAgent.increment() end)
-#   end)
-#
-#   {genserver_time, _} = :timer.tc(fn ->
-#     Enum.each(1..1000, fn _ -> SimpleCounterGenServer.increment() end)
-#   end)
-#
-#   IO.puts("Agent: #{agent_time / 1000}ms")
-#   IO.puts("GenServer: #{genserver_time / 1000}ms")
-#   IO.puts("Agent is simpler but both use GenServer underneath")
-#   :ok
-# end
-# Explanation: Agent is just a GenServer with a constrained API.
-# Use Agent for simple state, GenServer when you need complex callbacks and logic.
+#{Macro.to_string(DayOne.Answers.answer_three())}
+#  For simple state updates, `Agent` and `GenServer` performance is very close.
+#  The key is that Agent provides a much simpler API for the common case of
+#  managing a single piece of state. Use an Agent for simplicity; upgrade to
+#  a GenServer when you need more complex logic, messages, or state structure.
+""")

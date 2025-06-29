@@ -265,6 +265,25 @@ defmodule DayTwo.RateLimitPlug do
         :ok
     end
   end
+
+  def demonstrate_rate_limiting do
+    IO.puts("\nDemonstrating rate limiting plug:")
+
+    try do
+      # Test normal request - should pass
+      conn1 = Plug.Test.conn(:get, "/api/data")
+      result1 = DayTwo.RateLimitPlug.call(conn1, DayTwo.RateLimitPlug.init([]))
+      IO.puts("✅ Normal request: Passed rate limiting")
+
+      # Test blocked IP - would be rate limited in real scenario
+      IO.puts("✅ Rate limiting logic: Configured with max_requests: 100, window: 3600s")
+
+    rescue
+      error ->
+        IO.puts("📝 Demo note: #{inspect(error)}")
+        IO.puts("💡 Rate limiting protects APIs from abuse")
+    end
+  end
 end
 
 # Demonstrate the module plugs
@@ -316,72 +335,88 @@ DayTwo.ModulePlugDemo.demonstrate_auth_plug()
 DayTwo.ModulePlugDemo.demonstrate_rate_limit_plug()
 
 # ────────────────────────────────────────────────────────────────
-IO.puts("\n📌 Example 4 – Composing plugs in a pipeline")
+IO.puts("\n📌 Example 4 – Composing plugs in a router")
 
-defmodule DayTwo.PlugPipeline do
+defmodule DayTwo.RouterComposition do
   @moduledoc """
-  Demonstrates how plugs compose together to form processing pipelines
+  Demonstrating how plugs are composed in a Phoenix router.
   """
 
-  import Plug.Conn
+  def show_router_plugs do
+    IO.puts("# Plugs in a Phoenix Router:")
 
-  # Function plugs
-  def log_start(conn, _opts) do
-    IO.puts("🚀 Processing #{conn.method} #{conn.request_path}")
-    assign(conn, :start_time, System.monotonic_time())
+    code =
+      quote do
+        defmodule MyAppWeb.Router do
+          use MyAppWeb, :router
+
+          pipeline :browser do
+            plug :accepts, ["html"]
+            plug :fetch_session
+            plug :fetch_live_flash
+            plug :put_root_layout, html: {MyAppWeb.Layouts, :root}
+            plug :protect_from_forgery
+            plug :put_secure_browser_headers
+          end
+
+          pipeline :api do
+            plug :accepts, ["json"]
+            plug DayTwo.AuthPlug, realm: "API", required_role: :admin
+            plug DayTwo.RateLimitPlug, max_requests: 50, window_seconds: 60
+          end
+
+          scope "/", MyAppWeb do
+            pipe_through :browser
+            get "/", PageController, :home
+          end
+
+          scope "/api", MyAppWeb do
+            pipe_through :api
+            get "/users", UserController, :index
+          end
+        end
+      end
+
+    IO.puts(Macro.to_string(code))
   end
 
-  def add_security_headers(conn, _opts) do
-    conn
-    |> put_resp_header("x-frame-options", "DENY")
-    |> put_resp_header("x-content-type-options", "nosniff")
-    |> put_resp_header("x-xss-protection", "1; mode=block")
-  end
+  def show_controller_plugs do
+    IO.puts("# Plugs in a Phoenix Controller:")
 
-  def log_end(conn, _opts) do
-    start_time = conn.assigns[:start_time]
-    duration = System.monotonic_time() - start_time
-    duration_ms = System.convert_time_unit(duration, :native, :millisecond)
+    code =
+      quote do
+        defmodule MyAppWeb.PostController do
+          use MyAppWeb, :controller
 
-    IO.puts("✅ Completed in #{duration_ms}ms with status #{conn.status || "pending"}")
-    conn
-  end
+          plug DayTwo.AuthPlug, required_role: :editor
+          plug :load_post when action in [:show, :edit, :update, :delete]
+          plug :verify_ownership when action in [:edit, :update, :delete]
 
-  def demonstrate_pipeline do
-    IO.puts("\nProcessing through plug pipeline:")
+          def show(conn, %{"id" => id}) do
+            render(conn, :show, post: conn.assigns.post)
+          end
 
-    try do
-      # Create a test connection using Plug.Test helpers
-      conn = Plug.Test.conn(:post, "/api/posts")
-             |> Plug.Conn.put_req_header("authorization", "Bearer user_token")
+          defp load_post(conn, _opts) do
+            post = Posts.get_post!(conn.params["id"])
+            assign(conn, :post, post)
+          end
 
-      # Simulate a typical Phoenix pipeline
-      result = conn
-               |> log_start([])
-               |> add_security_headers([])
-               |> DayTwo.AuthPlug.call(DayTwo.AuthPlug.init([]))
-               |> DayTwo.RateLimitPlug.call(DayTwo.RateLimitPlug.init(max_requests: 50))
-               |> process_request()
-               |> log_end([])
+          defp verify_ownership(conn, _opts) do
+            if conn.assigns.current_user.id == conn.assigns.post.user_id do
+              conn
+            else
+              conn |> put_status(403) |> text("Forbidden") |> halt()
+            end
+          end
+        end
+      end
 
-      IO.puts("✅ Final assigns: #{inspect(result.assigns)}")
-      IO.puts("✅ Response headers count: #{length(result.resp_headers)}")
-    rescue
-      error ->
-        IO.puts("📝 Demo note: #{inspect(error)}")
-        IO.puts("💡 This demonstrates a complete plug pipeline:")
-        IO.puts("   Request → Logging → Security → Auth → Rate Limit → Processing → Logging")
-        IO.puts("   Each plug transforms the connection and passes it to the next plug")
-    end
-  end
-
-  defp process_request(conn) do
-    # Mock processing - just set a status
-    put_status(conn, 201)
+    IO.puts(Macro.to_string(code))
   end
 end
 
-DayTwo.PlugPipeline.demonstrate_pipeline()
+DayTwo.RouterComposition.show_router_plugs()
+DayTwo.RouterComposition.show_controller_plugs()
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 5 – Real-world plug examples")
@@ -462,112 +497,90 @@ defmodule DayTwo.PlugExercises do
   Run the tests with: mix test day_two/15_plugs.exs
   or in IEx:
   iex -r day_two/15_plugs.exs
-  DayTwo.PlugExercisesTest.test_request_timer/0
-  DayTwo.PlugExercisesTest.test_api_version_plug/0
-  DayTwo.PlugExercisesTest.test_tenant_resolver/0
+  DayTwo.PlugExercisesTest.test_design_request_id_plug/0
+  DayTwo.PlugExercisesTest.test_design_maintenance_mode_plug/0
+  DayTwo.PlugExercisesTest.test_design_api_versioning_plug/0
   """
 
-  @spec build_request_timer() :: {function(), function()}
-  def build_request_timer do
-    #   Create two function plugs: start_timer/2 and end_timer/2.
-    #   start_timer should store the current time in assigns.
-    #   end_timer should calculate duration and add it to response headers.
-    #   Return {start_timer_function, end_timer_function}
-    {nil, nil}  # TODO: Implement request timing plugs
+  @doc """
+  Designs a function plug to add a unique request ID to every connection.
+
+  **Goal:** Learn how to write a simple function plug that modifies the connection
+  by adding a request header and assigning a value for later use.
+
+  **Requirements:**
+  - The plug should be a simple function `add_request_id(conn, _opts)`.
+  - It should generate a unique ID (e.g., using `UUID.uuid4()`).
+  - It must add this ID to the response headers as `"x-request-id"`.
+  - It must also store the ID in the connection's `assigns` map under the
+    key `:request_id`.
+
+  **Task:**
+  Return a map describing the plug's actions:
+  - `:assigns_key`: The atom used as the key in `conn.assigns`.
+  - `:header_name`: The string for the response header name.
+  - `:implementation_hint`: A string describing the core logic, mentioning
+    `put_resp_header/3` and `assign/3`.
+  """
+  @spec design_request_id_plug() :: map()
+  def design_request_id_plug do
+    # Design a function plug that adds a unique request ID.
+    # Return a map with :assigns_key, :header_name, and :implementation_hint.
+    nil  # TODO: Implement this exercise
   end
 
-  @spec build_api_version_plug() :: module()
-  def build_api_version_plug do
-    #   Create a module plug that extracts API version from:
-    #   1. "X-API-Version" header
-    #   2. "version" query parameter
-    #   3. Defaults to "v1"
-    #   Store the version in conn.assigns.api_version
-    #   Return the module name
-    nil  # TODO: Implement API version extraction plug
+  @doc """
+  Designs a module plug for enabling a site-wide "maintenance mode".
+
+  **Goal:** Learn to write a module plug with an `init/1` function that can
+  be configured, and a `call/2` function that can halt the connection pipeline.
+
+  **Requirements:**
+  - The plug should be a module `MaintenanceModePlug`.
+  - The `init/1` function should accept an `:enabled` option (a boolean).
+  - The `call/2` function should check if maintenance mode is enabled.
+  - If it is enabled, the plug must:
+    - Halt the connection using `halt/1`.
+    - Set the HTTP status to 503 Service Unavailable.
+    - Send a simple response body like "Down for maintenance".
+  - If it is not enabled, the plug should just pass the connection through.
+
+  **Task:**
+  Return a string describing the architecture of this module plug, covering
+  both the `init/1` and `call/2` functions and how they work together.
+  """
+  @spec design_maintenance_mode_plug() :: binary()
+  def design_maintenance_mode_plug do
+    # Describe the architecture of a configurable MaintenanceModePlug.
+    # Cover the init/1 and call/2 functions.
+    nil  # TODO: Implement this exercise
   end
 
-  @spec build_tenant_resolver() :: module()
-  def build_tenant_resolver do
-    #   Create a module plug that resolves tenant from subdomain.
-    #   Extract tenant from "tenant.example.com" -> "tenant"
-    #   Store in conn.assigns.tenant
-    #   Halt with 404 if tenant not found in allowed list
-    #   Return the module name
-    nil  # TODO: Implement tenant resolution plug
-  end
-end
+  @doc """
+  Designs a plug for routing requests based on an API version in the `Accept` header.
 
-# Mock implementations for testing
-defmodule RequestTimer do
-  import Plug.Conn
+  **Goal:** Learn how to use plugs for advanced request routing by inspecting
+  headers and modifying the connection to influence downstream routing.
 
-  def start_timer(conn, _opts) do
-    assign(conn, :start_time, System.monotonic_time())
-  end
+  **Scenario:**
+  Your API supports versions `v1` and `v2`. The version is specified in the
+  `Accept` header, e.g., `"application/vnd.myapi.v1+json"`. The plug needs to
+  parse this header and store the detected version in `conn.assigns`.
 
-  def end_timer(conn, _opts) do
-    case conn.assigns[:start_time] do
-      nil -> conn
-      start_time ->
-        duration = System.monotonic_time() - start_time
-        duration_ms = System.convert_time_unit(duration, :native, :millisecond)
-        put_resp_header(conn, "x-response-time", "#{duration_ms}ms")
-    end
-  end
-end
-
-defmodule ApiVersionPlug do
-  import Plug.Conn
-
-  def init(opts), do: opts
-
-  def call(conn, _opts) do
-    version =
-      case get_req_header(conn, "x-api-version") do
-        [version] -> version
-        [] ->
-          # Fetch params if they haven't been fetched yet
-          conn = Plug.Conn.fetch_query_params(conn)
-          case conn.query_params do
-            %{"version" => version} -> version
-            _ -> "v1"
-          end
-      end
-
-    assign(conn, :api_version, version)
-  end
-end
-
-defmodule TenantResolverPlug do
-  import Plug.Conn
-
-  def init(opts) do
-    Keyword.get(opts, :allowed_tenants, ["acme", "demo", "test"])
-  end
-
-  def call(conn, allowed_tenants) do
-    case extract_tenant(conn) do
-      nil ->
-        conn |> send_resp(404, "Tenant not found") |> halt()
-      tenant ->
-        if tenant in allowed_tenants do
-          assign(conn, :tenant, tenant)
-        else
-          conn |> send_resp(404, "Tenant not found") |> halt()
-        end
-    end
-  end
-
-  defp extract_tenant(conn) do
-    case get_req_header(conn, "host") do
-      [host] ->
-        case String.split(host, ".") do
-          [tenant | _rest] when tenant not in ["www", "api"] -> tenant
-          _ -> nil
-        end
-      _ -> nil
-    end
+  **Task:**
+  Return a map that describes the plug's design:
+  - `:header_to_inspect`: The name of the request header to check.
+  - `:logic`: A string describing the logic inside the plug. It should explain
+    how it would parse the header and what it would do for a valid version, an
+    invalid version, and a missing header.
+  - `:downstream_use`: A string explaining how a Phoenix router or controller
+    could use the `:api_version` value from `conn.assigns`.
+  """
+  @spec design_api_versioning_plug() :: map()
+  def design_api_versioning_plug do
+    # Design a plug for API versioning via the Accept header.
+    # Return a map with :header_to_inspect, :logic, and :downstream_use.
+    nil  # TODO: Implement this exercise
   end
 end
 
@@ -578,147 +591,107 @@ defmodule DayTwo.PlugExercisesTest do
 
   alias DayTwo.PlugExercises, as: EX
 
-  test "build_request_timer/0 creates timing plugs" do
-    {start_fn, end_fn} = EX.build_request_timer()
-    assert is_function(start_fn, 2)
-    assert is_function(end_fn, 2)
+  test "design_request_id_plug/0 returns a valid design" do
+    design = EX.design_request_id_plug()
+    assert is_map(design)
+    assert design.assigns_key == :request_id
+    assert design.header_name == "x-request-id"
+    assert String.contains?(design.implementation_hint, "assign/3")
   end
 
-  test "build_api_version_plug/0 creates version extraction plug" do
-    module = EX.build_api_version_plug()
-    assert is_atom(module)
-    assert function_exported?(module, :init, 1)
-    assert function_exported?(module, :call, 2)
+  test "design_maintenance_mode_plug/0 describes the module plug architecture" do
+    description = EX.design_maintenance_mode_plug()
+    assert is_binary(description)
+    assert String.contains?(description, "init/1")
+    assert String.contains?(description, "call/2")
+    assert String.contains?(description, "halt/1")
+    assert String.contains?(description, "503")
   end
 
-  test "build_tenant_resolver/0 creates tenant resolution plug" do
-    module = EX.build_tenant_resolver()
-    assert is_atom(module)
-    assert function_exported?(module, :init, 1)
-    assert function_exported?(module, :call, 2)
-  end
-
-    test "RequestTimer plugs work correctly" do
-    import Plug.Conn
-
-    conn = Plug.Test.conn(:get, "/")
-
-    # Start timer
-    conn_with_timer = RequestTimer.start_timer(conn, [])
-    assert Map.has_key?(conn_with_timer.assigns, :start_time)
-
-    # End timer (after small delay)
-    Process.sleep(1)
-    final_conn = RequestTimer.end_timer(conn_with_timer, [])
-
-    # Should have response time header
-    time_headers = get_resp_header(final_conn, "x-response-time")
-    assert length(time_headers) == 1
-    assert String.ends_with?(hd(time_headers), "ms")
-  end
-
-    test "ApiVersionPlug extracts version correctly" do
-    import Plug.Conn
-
-    # Test header version
-    conn = Plug.Test.conn(:get, "/")
-           |> put_req_header("x-api-version", "v2")
-    result = ApiVersionPlug.call(conn, [])
-    assert result.assigns.api_version == "v2"
-
-    # Test query parameter version
-    conn2 = Plug.Test.conn(:get, "/?version=v3")
-    result2 = ApiVersionPlug.call(conn2, [])
-    assert result2.assigns.api_version == "v3"
-
-    # Test default version
-    conn3 = Plug.Test.conn(:get, "/")
-    result3 = ApiVersionPlug.call(conn3, [])
-    assert result3.assigns.api_version == "v1"
+  test "design_api_versioning_plug/0 returns a valid versioning design" do
+    design = EX.design_api_versioning_plug()
+    assert is_map(design)
+    assert design.header_to_inspect == "accept"
+    assert String.contains?(design.logic, "Regex.named_captures")
+    assert String.contains?(design.downstream_use, "controller action")
   end
 end
 
-"""
+defmodule DayTwo.Answers do
+  def answer_one do
+    quote do
+      %{
+        assigns_key: :request_id,
+        header_name: "x-request-id",
+        implementation_hint: "Use UUID.uuid4() to generate an ID, then pipe the conn through `assign/3` and `put_resp_header/3`."
+      }
+    end
+  end
+
+  def answer_two do
+    quote do
+      """
+      Architecture: Maintenance Mode Plug
+
+      1.  `init/1`: This function is called once when the application compiles. It
+          receives options from the router, like `plug MaintenanceModePlug, enabled: true`.
+          It processes these options and returns a simplified map, e.g., `%{enabled: true}`,
+          which is passed to `call/2` for every request.
+
+      2.  `call/2`: This function is called on every request. It receives the `conn`
+          and the options map from `init/1`. It uses a `cond` or `if` statement:
+          - If `opts.enabled` is `true`, it immediately builds a 503 response using
+            `put_status/2` and `send_resp/3`, and then calls `halt/1` to stop the
+            plug pipeline completely.
+          - If `opts.enabled` is `false`, it simply returns the `conn` unmodified,
+            allowing the request to proceed to the next plug in the pipeline.
+      """
+    end
+  end
+
+  def answer_three do
+    quote do
+      %{
+        header_to_inspect: "accept",
+        logic: """
+        The plug fetches the 'accept' header. It uses a regex like
+        `~r/vnd.myapi.v(?<version>\\d+)\\+json/` to capture the version number.
+        - If it matches, it calls `assign(conn, :api_version, version)`.
+        - If it doesn't match a known version, it halts with a 400 Bad Request error.
+        - If the header is missing, it defaults to the latest version.
+        """,
+        downstream_use: """
+        A controller action can pattern match on the `conn` to dispatch to the
+        correct implementation. `def show(%{assigns: %{api_version: "2"}} = conn, params) ...`
+        """
+      }
+    end
+  end
+end
+
+IO.puts("""
 ANSWERS & EXPLANATIONS
 
-# 1. build_request_timer/0
-def build_request_timer do
-  start_timer = fn conn, _opts ->
-    Plug.Conn.assign(conn, :start_time, System.monotonic_time())
-  end
+# 1. Request ID Plug
+#{Macro.to_string(DayTwo.Answers.answer_one())}
+# This is a classic function plug. It's great for cross-cutting concerns like
+# logging, metrics, or tracing. By adding an ID to both the `assigns` and the
+# response header, the ID is available for logging throughout the request and
+# can also be given to the client for support or debugging purposes.
 
-  end_timer = fn conn, _opts ->
-    case conn.assigns[:start_time] do
-      nil -> conn
-      start_time ->
-        duration = System.monotonic_time() - start_time
-        duration_ms = System.convert_time_unit(duration, :native, :millisecond)
-        Plug.Conn.put_resp_header(conn, "x-response-time", "\#{duration_ms}ms")
-    end
-  end
+# 2. Maintenance Mode Plug
+#{Macro.to_string(DayTwo.Answers.answer_two())}
+# This demonstrates the power of a configurable module plug. You can turn
+# maintenance mode on or off with a configuration change and application
+# restart, without any code changes. Using `halt/1` is key, as it cleanly
+# stops the request pipeline and prevents the request from hitting the router
+# or controllers.
 
-  {start_timer, end_timer}
-end
-#  Function plugs are perfect for simple transformations like timing.
-#  Using assigns to pass data between plugs in the same request.
-
-# 2. build_api_version_plug/0
-defmodule MyApiVersionPlug do
-  import Plug.Conn
-
-  def init(opts), do: opts
-
-  def call(conn, _opts) do
-    version =
-      case get_req_header(conn, "x-api-version") do
-        [version] -> version
-        [] ->
-          case conn.params["version"] do
-            nil -> "v1"
-            version -> version
-          end
-      end
-
-    assign(conn, :api_version, version)
-  end
-end
-
-{:ok, MyApiVersionPlug}
-#  Module plugs are better when you need configurable behavior.
-#  Always check multiple sources (headers, params) for flexibility.
-
-# 3. build_tenant_resolver/0
-defmodule MyTenantResolver do
-  import Plug.Conn
-
-  def init(opts) do
-    Keyword.get(opts, :allowed_tenants, ["demo", "test"])
-  end
-
-  def call(conn, allowed_tenants) do
-    case get_req_header(conn, "host") do
-      [host] ->
-        tenant = host |> String.split(".") |> hd()
-        if tenant in allowed_tenants do
-          assign(conn, :tenant, tenant)
-        else
-          conn |> send_resp(404, "Tenant not found") |> halt()
-        end
-      _ ->
-        conn |> send_resp(400, "Host header required") |> halt()
-    end
-  end
-end
-
-{:ok, MyTenantResolver}
-#  halt() stops the plug pipeline - crucial for authorization/validation plugs.
-#  Multi-tenant applications commonly use subdomain-based tenant resolution.
-
-Key Plug concepts demonstrated:
-• Function vs Module plugs - when to use each
-• Plug.Conn transformation patterns
-• Pipeline composition and data flow
-• Real-world authentication and authorization
-• Performance monitoring and request timing
-• Multi-tenancy and API versioning patterns
-"""
+# 3. API Versioning Plug
+#{Macro.to_string(DayTwo.Answers.answer_three())}
+# This shows how a plug can be used for pre-processing and routing logic. By
+# parsing the `Accept` header early in the pipeline, the plug enriches the
+# `conn` with data that downstream controllers can use to make decisions. This
+# keeps the versioning logic clean and separate from the core business logic
+# in the controller actions.
+""")

@@ -71,80 +71,87 @@ defmodule DayTwo.BasicStreams do
   """
 
   def show_liveview_stream_setup do
-    """
-    # LiveView with streams:
-    defmodule MyAppWeb.MessagesLive do
-      use MyAppWeb, :live_view
+    IO.puts("# LiveView with streams:")
 
-      def mount(_params, _session, socket) do
-        if connected?(socket) do
-          # Subscribe to message updates
-          Phoenix.PubSub.subscribe(MyApp.PubSub, "messages")
+    code =
+      quote do
+        defmodule MyAppWeb.MessagesLive do
+          use MyAppWeb, :live_view
+
+          def mount(_params, _session, socket) do
+            if connected?(socket) do
+              Phoenix.PubSub.subscribe(MyApp.PubSub, "messages")
+            end
+
+            messages = Messages.list_recent_messages(50)
+
+            socket =
+              socket
+              |> stream(:messages, messages)
+              |> assign(:message_count, length(messages))
+
+            {:ok, socket}
+          end
+
+          def handle_info({:message_created, message}, socket) do
+            socket =
+              socket
+              |> stream_insert(:messages, message, at: 0)
+              |> update(:message_count, &(&1 + 1))
+
+            {:noreply, socket}
+          end
+
+          def handle_info({:message_updated, message}, socket) do
+            socket = stream_insert(:messages, message)
+            {:noreply, socket}
+          end
+
+          def handle_info({:message_deleted, message}, socket) do
+            socket =
+              socket
+              |> stream_delete(:messages, message)
+              |> update(:message_count, &(&1 - 1))
+
+            {:noreply, socket}
+          end
         end
-
-        # Initialize stream with existing messages
-        messages = Messages.list_recent_messages(50)
-
-        socket = socket
-                |> stream(:messages, messages)
-                |> assign(:message_count, length(messages))
-
-        {:ok, socket}
       end
 
-      # Handle real-time message creation
-      def handle_info({:message_created, message}, socket) do
-        socket = socket
-                |> stream_insert(:messages, message, at: 0)  # Insert at top
-                |> update(:message_count, &(&1 + 1))
-
-        {:noreply, socket}
-      end
-
-      # Handle message updates
-      def handle_info({:message_updated, message}, socket) do
-        socket = stream_insert(:messages, message)  # Replace existing
-        {:noreply, socket}
-      end
-
-      # Handle message deletion
-      def handle_info({:message_deleted, message}, socket) do
-        socket = socket
-                |> stream_delete(:messages, message)
-                |> update(:message_count, &(&1 - 1))
-
-        {:noreply, socket}
-      end
-    end
-    """
+    IO.puts(Macro.to_string(code))
   end
 
   def show_stream_template do
-    """
-    <!-- Template with stream rendering -->
-    <div id="messages" phx-update="stream">
-      <div :for={{dom_id, message} <- @streams.messages} id={dom_id}>
-        <div class="message">
-          <strong><%= message.author %></strong>
-          <span class="timestamp"><%= message.inserted_at %></span>
-          <p><%= message.content %></p>
+    IO.puts("<!-- Template with stream rendering -->")
 
-          <button phx-click="delete_message" phx-value-id={message.id}>
-            Delete
-          </button>
+    code =
+      ~S"""
+      <div id="messages" phx-update="stream">
+        <div :for={{dom_id, message} <- @streams.messages} id={dom_id}>
+          <div class="message">
+            <strong><%= message.author %></strong>
+            <span class="timestamp"><%= message.inserted_at %></span>
+            <p><%= message.content %></p>
+
+            <button phx-click="delete_message" phx-value-id={message.id}>
+              Delete
+            </button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="message-count">
-      Total: <%= @message_count %> messages
-    </div>
-    """
+      <div class="message-count">
+        Total: <%= @message_count %> messages
+      </div>
+      """
+
+    IO.puts(code)
   end
 end
 
 IO.puts("Basic stream setup:")
-IO.puts(DayTwo.BasicStreams.show_liveview_stream_setup())
+DayTwo.BasicStreams.show_liveview_stream_setup()
+DayTwo.BasicStreams.show_stream_template()
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 3 – Advanced stream features")
@@ -155,82 +162,107 @@ defmodule DayTwo.AdvancedStreams do
   """
 
   def show_stream_options do
-    """
-    # Stream configuration options:
-    defmodule MyAppWeb.ProductsLive do
-      def mount(_params, _session, socket) do
-        products = Products.list_products()
+    IO.puts("# Stream configuration options:")
 
-        socket = stream(socket, :products, products,
-          limit: 50,          # Limit items in memory
-          reset: true,        # Reset on reconnect
-          at: 0              # Insert position for new items
-        )
+    code =
+      quote do
+        defmodule MyAppWeb.ProductsLive do
+          def mount(_params, _session, socket) do
+            products = Products.list_products()
 
-        {:ok, socket}
+            socket =
+              stream(socket, :products, products,
+                limit: 50,
+                reset: true,
+                at: 0
+              )
+
+            {:ok, socket}
+          end
+        end
       end
-    end
 
-    # Conditional stream updates:
-    def handle_info({:product_updated, product}, socket) do
-      if product.featured do
-        # Only stream featured products
-        socket = stream_insert(:products, product)
-        {:noreply, socket}
-      else
-        # Remove if no longer featured
-        socket = stream_delete(:products, product)
-        {:noreply, socket}
+    IO.puts(Macro.to_string(code))
+    IO.puts("\n# Conditional stream updates:")
+
+    code =
+      quote do
+        def handle_info({:product_updated, product}, socket) do
+          if product.featured do
+            socket = stream_insert(:products, product)
+            {:noreply, socket}
+          else
+            socket = stream_delete(:products, product)
+            {:noreply, socket}
+          end
+        end
       end
-    end
 
-    # Batch stream operations:
-    def handle_info({:bulk_update, products}, socket) do
-      socket = Enum.reduce(products, socket, fn product, acc ->
-        stream_insert(acc, :products, product)
-      end)
+    IO.puts(Macro.to_string(code))
+    IO.puts("\n# Batch stream operations:")
 
-      {:noreply, socket}
-    end
-    """
+    code =
+      quote do
+        def handle_info({:bulk_update, products}, socket) do
+          socket =
+            Enum.reduce(products, socket, fn product, acc ->
+              stream_insert(acc, :products, product)
+            end)
+
+          {:noreply, socket}
+        end
+      end
+
+    IO.puts(Macro.to_string(code))
   end
 
   def show_stream_pagination do
-    """
-    # Infinite scroll with streams:
-    defmodule MyAppWeb.PostsLive do
-      def handle_event("load_more", _params, socket) do
-        page = socket.assigns.current_page + 1
-        posts = Posts.list_posts(page: page, per_page: 20)
+    IO.puts("# Infinite scroll with streams:")
 
-        socket = socket
-                |> stream(:posts, posts, at: -1)  # Append to end
-                |> assign(:current_page, page)
-                |> assign(:has_more, length(posts) == 20)
+    code =
+      quote do
+        defmodule MyAppWeb.PostsLive do
+          def handle_event("load_more", _params, socket) do
+            page = socket.assigns.current_page + 1
+            posts = Posts.list_posts(page: page, per_page: 20)
 
-        {:noreply, socket}
+            socket =
+              socket
+              |> stream(:posts, posts, at: -1)
+              |> assign(:current_page, page)
+              |> assign(:has_more, length(posts) == 20)
+
+            {:noreply, socket}
+          end
+        end
       end
-    end
 
-    # Template with load more button:
-    <!-- posts.html.heex -->
-    <div id="posts" phx-update="stream">
-      <article :for={{dom_id, post} <- @streams.posts} id={dom_id}>
-        <!-- post content -->
-      </article>
-    </div>
+    IO.puts(Macro.to_string(code))
+    IO.puts("\n# Template with load more button:")
 
-    <button :if={@has_more}
-            phx-click="load_more"
-            class="load-more-btn">
-      Load More Posts
-    </button>
-    """
+    code =
+      ~S"""
+      <!-- posts.html.heex -->
+      <div id="posts" phx-update="stream">
+        <article :for={{dom_id, post} <- @streams.posts} id={dom_id}>
+          <!-- post content -->
+        </article>
+      </div>
+
+      <button :if={@has_more}
+              phx-click="load_more"
+              class="load-more-btn">
+        Load More Posts
+      </button>
+      """
+
+    IO.puts(code)
   end
 end
 
 IO.puts("Advanced stream features:")
-IO.puts(DayTwo.AdvancedStreams.show_stream_options())
+DayTwo.AdvancedStreams.show_stream_options()
+DayTwo.AdvancedStreams.show_stream_pagination()
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 4 – Stream performance and optimization")
@@ -241,42 +273,30 @@ defmodule DayTwo.StreamOptimization do
   """
 
   def show_memory_management do
-    """
-    # Memory-efficient streams:
-    defmodule MyAppWeb.AnalyticsLive do
-      def mount(_params, _session, socket) do
-        # Only load initial batch
-        events = Analytics.recent_events(limit: 100)
+    IO.puts("# Memory-efficient streams:")
 
-        socket = socket
-                |> stream(:events, events, limit: 1000)  # Keep max 1000 in memory
-                |> assign(:total_events, Analytics.count_events())
+    code =
+      quote do
+        defmodule MyAppWeb.AnalyticsLive do
+          def mount(_params, _session, socket) do
+            events = Analytics.recent_events(limit: 100)
 
-        {:ok, socket}
+            socket =
+              stream(socket, :events, events,
+                limit: 200,
+                reset: true
+              )
+
+            {:ok, socket}
+          end
+
+          def handle_info({:new_event, event}, socket) do
+            {:noreply, stream_insert(socket, :events, event, at: 0)}
+          end
+        end
       end
 
-      # Efficient updates for high-frequency data
-      def handle_info({:batch_events, events}, socket) do
-        # Group multiple events into single update
-        socket = stream(:events, events, at: 0, limit: 1000)
-        {:noreply, socket}
-      end
-    end
-
-    # Database-level optimizations:
-    defmodule Analytics do
-      def recent_events(opts \\ []) do
-        limit = Keyword.get(opts, :limit, 50)
-
-        from(e in Event,
-          order_by: [desc: e.inserted_at],
-          limit: ^limit,
-          preload: [:user]  # Eager load associations
-        )
-        |> Repo.all()
-      end
-    end
-    """
+    IO.puts(Macro.to_string(code))
   end
 
   def show_debouncing_strategies do
@@ -320,13 +340,62 @@ defmodule DayTwo.StreamOptimization do
     end
     """
   end
+
+  def show_optimistic_updates do
+    IO.puts("# Optimistic UI updates with streams:")
+
+    code =
+      quote do
+        def handle_event("create_post", %{"post" => post_params}, socket) do
+          temp_id = "temp-" <> Ecto.UUID.generate()
+          current_user = socket.assigns.current_user
+
+          temp_post = %{
+            id: temp_id,
+            author: current_user.name,
+            content: post_params["content"],
+            status: :saving
+          }
+
+          socket = stream_insert(socket, :posts, temp_post)
+
+          Task.start(fn ->
+            case Posts.create_post(current_user, post_params) do
+              {:ok, new_post} ->
+                Phoenix.PubSub.broadcast(
+                  MyApp.PubSub,
+                  "posts",
+                  {:post_created, new_post, temp_id}
+                )
+
+              {:error, changeset} ->
+                Phoenix.PubSub.broadcast(
+                  MyApp.PubSub,
+                  "posts",
+                  {:post_error, changeset, temp_id}
+                )
+            end
+          end)
+
+          {:noreply, socket}
+        end
+
+        def handle_info({:post_created, new_post, temp_id}, socket) do
+          socket = stream_delete(socket, :posts, %{id: temp_id})
+          socket = stream_insert(socket, :posts, new_post)
+          {:noreply, socket}
+        end
+      end
+
+    IO.puts(Macro.to_string(code))
+  end
 end
 
-IO.puts("Stream optimization:")
-IO.puts(DayTwo.StreamOptimization.show_memory_management())
+DayTwo.StreamOptimization.show_memory_management()
+DayTwo.StreamOptimization.show_optimistic_updates()
 
 # ────────────────────────────────────────────────────────────────
-IO.puts("\n📌 Example 5 – Real-world: Live dashboard with streams")
+IO.puts("\n📌 Example 5 – Real-world Stream use cases")
 
 defmodule DayTwo.DashboardDemo do
   @moduledoc """
@@ -382,67 +451,198 @@ DayTwo.DashboardDemo.show_dashboard_features()
 # 3. (Challenge) Design a live collaborative drawing canvas where multiple users
 #    can draw simultaneously with streams handling the drawing operations.
 
-"""
-🔑 ANSWERS & EXPLANATIONS
+defmodule DayTwo.StreamExercises do
+  @moduledoc """
+  Run the tests with: mix test day_two/11_streams_backend.exs
+  or in IEx:
+  iex -r day_two/11_streams_backend.exs
+  DayTwo.StreamExercisesTest.test_design_live_comment_stream/0
+  DayTwo.StreamExercisesTest.test_design_product_catalog_stream/0
+  DayTwo.StreamExercisesTest.test_design_activity_feed_stream/0
+  """
 
-# 1. Live comment system
-defmodule CommentsLive do
-  def mount(%{"post_id" => post_id}, _session, socket) do
-    if connected?(socket) do
-      Phoenix.PubSub.subscribe(MyApp.PubSub, "post:#{post_id}:comments")
+  @doc """
+  Designs a stream for a live comment section on a blog post.
+
+  **Goal:** Create a real-time comment feed where new comments appear at the
+  top and deleted comments are removed.
+
+  **Requirements:**
+  - The stream should be named `:comments`.
+  - New comments should be inserted at the beginning of the stream.
+  - The `handle_info` for a new comment should be for a `{:new_comment, comment}` message.
+  - The `handle_event` for deleting a comment should be for a `"delete_comment"`
+    event with a `phx-value-id` containing the comment's ID.
+
+  **Task:**
+  Return a map describing the stream design, including:
+  - `:stream_name`: The atom used to name the stream.
+  - `:insert_at`: The position where new items are inserted (integer).
+  - `:handle_info_tuple`: The tuple pattern for handling new comment messages.
+  - `:handle_event_string`: The string for handling the delete event.
+  """
+  @spec design_live_comment_stream() :: map()
+  def design_live_comment_stream do
+    # Design a stream for a live comment section.
+    # Return a map with :stream_name, :insert_at, :handle_info_tuple, and :handle_event_string.
+    nil  # TODO: Implement this exercise
+  end
+
+  @doc """
+  Designs a stream for a filterable product catalog.
+
+  **Goal:** Create a product catalog that can be filtered in real-time by a
+  category, using streams to efficiently update the list.
+
+  **Requirements:**
+  - The stream is named `:products`.
+  - A `handle_event` for `"filter_changed"` receives a payload like
+    `%{"category" => "electronics"}`.
+  - When the filter changes, the stream must be **reset**. This is done by
+    calling `stream(socket, :products, new_products, reset: true)`. This is
+    more efficient than deleting all old items and inserting all new ones.
+
+  **Task:**
+  Return a string describing the architecture for handling filter changes.
+  The description should explain:
+  1.  The `handle_event` function that responds to the filter change.
+  2.  Why using `stream(..., reset: true)` is the correct approach for this scenario.
+  """
+  @spec design_product_catalog_stream() :: binary()
+  def design_product_catalog_stream do
+    # Describe the architecture for a stream-based filterable product catalog.
+    # Explain the handle_event and the use of `reset: true`.
+    nil  # TODO: Implement this exercise
+  end
+
+  @doc """
+  Designs a stream for a user's activity feed with "load more" pagination.
+
+  **Goal:** Create an infinite-scrolling activity feed that loads older items
+  on demand without replacing the existing items.
+
+  **Requirements:**
+  - The stream is named `:activities`.
+  - A `handle_event` for `"load_more"` will fetch the next page of activities.
+  - New (older) items must be appended to the **end** of the stream. This is
+    done by inserting at index `-1`.
+  - The socket should track the current page number.
+
+  **Task:**
+  Return a map describing the stream design for pagination, including:
+  - `:stream_name`: The atom for the stream.
+  - `:handle_event`: The event string for loading more items.
+  - `:insert_at`: The position for appending new items.
+  - `:socket_assigns`: A list of atoms that should be stored in the socket
+    to manage the feed's state (e.g., page number).
+  """
+  @spec design_activity_feed_stream() :: map()
+  def design_activity_feed_stream do
+    # Design a stream for a paginated activity feed.
+    # Return a map with :stream_name, :handle_event, :insert_at, and :socket_assigns.
+    nil  # TODO: Implement this exercise
+  end
+end
+
+ExUnit.start()
+
+defmodule DayTwo.StreamExercisesTest do
+  use ExUnit.Case, async: true
+
+  alias DayTwo.StreamExercises, as: EX
+
+  test "design_live_comment_stream/0 returns a valid design" do
+    design = EX.design_live_comment_stream()
+    assert is_map(design)
+    assert design.stream_name == :comments
+    assert design.insert_at == 0
+    assert design.handle_info_tuple == {:new_comment, :comment}
+    assert design.handle_event_string == "delete_comment"
+  end
+
+  test "design_product_catalog_stream/0 describes the reset mechanism" do
+    description = EX.design_product_catalog_stream()
+    assert is_binary(description)
+    assert String.contains?(description, "reset: true")
+    assert String.contains?(description, "filter_changed")
+  end
+
+  test "design_activity_feed_stream/0 returns a valid pagination design" do
+    design = EX.design_activity_feed_stream()
+    assert is_map(design)
+    assert design.stream_name == :activities
+    assert design.handle_event == "load_more"
+    assert design.insert_at == -1
+    assert :current_page in design.socket_assigns
+  end
+end
+
+defmodule DayTwo.Answers do
+  def answer_one do
+    quote do
+      %{
+        stream_name: :comments,
+        insert_at: 0,
+        handle_info_tuple: {:new_comment, :comment},
+        handle_event_string: "delete_comment"
+      }
     end
-
-    comments = Comments.list_with_replies(post_id)
-
-    socket = socket
-            |> assign(:post_id, post_id)
-            |> stream(:comments, comments)
-
-    {:ok, socket}
   end
 
-  def handle_info({:comment_created, comment}, socket) do
-    socket = stream_insert(:comments, comment, at: -1)
-    {:noreply, socket}
+  def answer_two do
+    quote do
+      """
+      Architecture: Filterable Product Stream
+
+      1. `handle_event("filter_changed", payload, socket)`:
+      This function is triggered when the user selects a new category. It
+      takes the category from the payload, fetches the new list of products
+      from the database, and then updates the stream.
+
+      2. Using `stream(socket, :products, new_products, reset: true)`:
+      The `reset: true` option is crucial here. It tells Phoenix to discard the
+      entire existing `:products` stream on the client and replace it with the
+      new set. This is far more efficient than calculating the difference
+      between the old and new sets (which would involve numerous inserts and
+      deletes). It's the ideal approach for when the entire dataset changes,
+      such as with filtering or sorting.
+      """
+    end
   end
 
-  def handle_event("add_comment", params, socket) do
-    # Optimistic update
-    temp_comment = %{id: "temp_#{System.unique_integer()}", content: params["content"]}
-    socket = stream_insert(:comments, temp_comment)
-
-    # Async save
-    Task.start(fn -> Comments.create_comment(params) end)
-
-    {:noreply, socket}
-  end
-end
-
-# 2. Live leaderboard
-defmodule LeaderboardLive do
-  def handle_info({:score_updated, user_id, new_score}, socket) do
-    # Find user in stream and update position
-    updated_user = %{id: user_id, score: new_score, rank: calculate_rank(new_score)}
-
-    socket = stream_insert(:leaderboard, updated_user)
-    {:noreply, socket}
+  def answer_three do
+    quote do
+      %{
+        stream_name: :activities,
+        handle_event: "load_more",
+        insert_at: -1,
+        socket_assigns: [:current_page, :has_more_items?]
+      }
+    end
   end
 end
 
-# 3. Collaborative drawing canvas
-defmodule DrawingLive do
-  def handle_event("draw_stroke", stroke_data, socket) do
-    stroke = %{id: generate_id(), data: stroke_data, user: socket.assigns.user}
+IO.puts("""
+ANSWERS & EXPLANATIONS
 
-    # Stream the drawing operation
-    socket = stream_insert(:strokes, stroke)
+# 1. Live Comment Stream
+#{Macro.to_string(DayTwo.Answers.answer_one())}
+# This design covers the core operations of a real-time list. Using `at: 0`
+# for `stream_insert` ensures new comments appear at the top, which is typical
+# for feeds. The delete event uses `stream_delete` to efficiently remove the
+# specific element from the DOM without affecting the others.
 
-    # Broadcast to other users
-    broadcast_from(socket, "stroke_drawn", stroke)
+# 2. Filterable Product Catalog Stream
+#{Macro.to_string(DayTwo.Answers.answer_two())}
+# This architecture highlights the power of `reset: true`. For filter or sort
+# operations where the entire list changes, resetting the stream is the most
+# performant option. Phoenix handles the client-side replacement cleanly,
+# providing a fast and smooth user experience.
 
-    {:noreply, socket}
-  end
-end
-
-# Benefits: Automatic updates, optimized rendering, consistent state management
-"""
+# 3. Activity Feed Stream with "Load More"
+#{Macro.to_string(DayTwo.Answers.answer_three())}
+# This is the standard pattern for infinite scrolling. Using `stream_insert` with
+# `at: -1` appends the new page of items to the end of the list. The socket
+# must maintain the state (`:current_page`) to know which page to fetch next.
+# A `:has_more_items?` flag is used to know when to hide the "Load More" button.
+""")

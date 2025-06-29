@@ -486,36 +486,86 @@ defmodule DayTwo.PubSubExercises do
   Run the tests with: mix test day_two/08_phoenix_pubsub.exs
   or in IEx:
   iex -r day_two/08_phoenix_pubsub.exs
-  DayTwo.PubSubExercisesTest.test_notification_system/0
-  DayTwo.PubSubExercisesTest.test_dashboard_system/0
-  DayTwo.PubSubExercisesTest.test_task_processing_system/0
+  DayTwo.PubSubExercisesTest.test_design_notification_system_topics/0
+  DayTwo.PubSubExercisesTest.test_design_dashboard_widget_subscriptions/0
+  DayTwo.PubSubExercisesTest.test_design_task_processing_architecture/0
   """
 
-  @spec design_notification_system() :: [binary()]
-  def design_notification_system do
-    #   Design a notification system using PubSub. Create topics for different
-    #   notification types (email, push, SMS) and show how a user action can
-    #   trigger multiple notification methods.
-    #   Return a list of topic names
-    nil  # TODO: Implement this exercise
+  @doc """
+  Designs the PubSub topics for a multi-channel notification system.
+
+  **Goal:** Create a topic structure that can route notifications for different
+  events (e.g., new comment, friend request) to various delivery channels
+  (e.g., email, push notification) for a specific user.
+
+  **Requirements:**
+  - Return a map describing the topic design.
+  - The map should have a key `:user_notifications` with a value that is an
+    example topic string for a specific user and channel. The topic should
+    include placeholders. E.g., "users:USER_ID:notifications:CHANNEL".
+  - It should also have a key `:event_triggers` with a list of example
+    event messages (the payload) that would be broadcast.
+
+  **Example `event` payload:**
+  `%{event: "new_comment", post_id: 123, user_id: 456}`
+
+  **Task:**
+  Return a map matching the requirements.
+  """
+  @spec design_notification_system_topics() :: map()
+  def design_notification_system_topics do
+    # Design a topic structure for a notification system.
+    # Return a map with keys :user_notifications and :event_triggers.
+    nil # TODO: Implement this exercise
   end
 
-  @spec build_dashboard_system() :: map()
-  def build_dashboard_system do
-    #   Build a real-time dashboard system where multiple widgets subscribe to
-    #   different data topics (sales, users, errors). Show how data updates
-    #   propagate to relevant widgets.
-    #   Return a map with widget types and their subscribed topics
-    nil  # TODO: Implement this exercise
+  @doc """
+  Maps real-time dashboard widgets to their PubSub topics.
+
+  **Goal:** Create a subscription map for a live dashboard where different
+  UI components (widgets) get updates from different data sources.
+
+  **Requirements:**
+  - Return a map where keys are widget names (atoms) and values are the
+    topic strings they should subscribe to.
+  - Include at least three widgets:
+    - `:sales_ticker`: Subscribes to new sales events.
+    - `:user_activity_feed`: Subscribes to user signups.
+    - `:error_monitor`: Subscribes to critical system errors.
+
+  **Task:**
+  Return a map matching the widget-to-topic structure.
+  """
+  @spec design_dashboard_widget_subscriptions() :: map()
+  def design_dashboard_widget_subscriptions do
+    # Build a map where keys are widget names (e.g., :sales_ticker) and
+    # values are the PubSub topics they subscribe to (e.g., "sales:new").
+    nil # TODO: Implement this exercise
   end
 
-  @spec create_task_processing_system() :: binary()
-  def create_task_processing_system do
-    #   Create a distributed task processing system where workers
-    #   subscribe to job topics based on their capabilities, and a dispatcher
-    #   publishes jobs to appropriate topics.
-    #   Return a description of the system architecture
-    nil  # TODO: Implement this exercise
+  @doc """
+  Designs the architecture for a distributed task processing system.
+
+  **Goal:** Architect a system where tasks can be published from anywhere
+  and picked up by available workers that are specialized for certain tasks.
+
+  **Scenario:**
+  You have workers for `image_processing`, `video_encoding`, and `report_generation`.
+  A web server needs to publish jobs for these workers to consume.
+
+  **Task:**
+  Return a string describing the architecture. It should cover:
+  1.  The **topic naming convention** for different job types.
+  2.  How a **dispatcher** would publish a job.
+  3.  How a **worker** would subscribe to receive jobs.
+  4.  The benefits of this approach (e.g., scalability, decoupling).
+  """
+  @spec design_task_processing_architecture() :: binary()
+  def design_task_processing_architecture do
+    # Describe a distributed task processing system using PubSub.
+    # The description should include topic design, and the roles of
+    # dispatchers and workers.
+    nil # TODO: Implement this exercise
   end
 end
 
@@ -526,79 +576,108 @@ defmodule DayTwo.PubSubExercisesTest do
 
   alias DayTwo.PubSubExercises, as: EX
 
-  test "design_notification_system/0 returns notification topics" do
-    topics = EX.design_notification_system()
-    assert is_list(topics)
-    assert Enum.any?(topics, fn t -> String.contains?(t, "email") end)
-    assert Enum.any?(topics, fn t -> String.contains?(t, "push") end)
-    assert Enum.any?(topics, fn t -> String.contains?(t, "sms") end)
+  test "design_notification_system_topics/0 returns a valid topic map" do
+    design = EX.design_notification_system_topics()
+    assert is_map(design)
+    assert Map.has_key?(design, :user_notifications)
+    assert Map.has_key?(design, :event_triggers)
+    assert is_binary(design.user_notifications)
+    assert is_list(design.event_triggers)
   end
 
-  test "build_dashboard_system/0 maps widgets to topics" do
-    system = EX.build_dashboard_system()
-    assert is_map(system)
-    assert Map.has_key?(system, :widgets)
-    assert Map.has_key?(system, :topics)
+  test "design_dashboard_widget_subscriptions/0 maps widgets to topics" do
+    subscriptions = EX.design_dashboard_widget_subscriptions()
+    assert is_map(subscriptions)
+    assert Map.has_key?(subscriptions, :sales_ticker)
+    assert Map.has_key?(subscriptions, :user_activity_feed)
+    assert Map.has_key?(subscriptions, :error_monitor)
+    assert is_binary(subscriptions[:sales_ticker])
   end
 
-  test "create_task_processing_system/0 describes worker distribution" do
-    description = EX.create_task_processing_system()
+  test "design_task_processing_architecture/0 describes a valid architecture" do
+    description = EX.design_task_processing_architecture()
     assert is_binary(description)
-    assert String.contains?(description, "worker")
     assert String.contains?(description, "topic")
+    assert String.contains?(description, "worker")
+    assert String.contains?(description, "dispatcher")
     assert String.length(description) > 100
   end
 end
 
-"""
-🔑 ANSWERS & EXPLANATIONS
+defmodule DayTwo.Answers do
+  def answer_one do
+    quote do
+      %{
+        user_notifications: "users:USER_ID:notifications:CHANNEL",
+        event_triggers: [
+          %{event: "new_comment", user_id: 456, post_id: 123},
+          %{event: "friend_request", user_id: 789, from_user_id: 101}
+        ]
+      }
+    end
+  end
 
-# 1. Notification system with PubSub
-defmodule NotificationSystem do
-  def send_notification(user_id, message, types \\ [:email, :push, :sms]) do
-    # Publish to specific notification channels
-    Enum.each(types, fn type ->
-      topic = "notifications:#{type}"
-      Phoenix.PubSub.broadcast(MyApp.PubSub, topic, {
-        :notification_requested,
-        %{user_id: user_id, message: message, type: type}
-      })
-    end)
+  def answer_two do
+    quote do
+      %{
+        sales_ticker: "sales:new",
+        user_activity_feed: "users:new",
+        error_monitor: "errors:critical"
+      }
+    end
+  end
+
+  def answer_three do
+    quote do
+      """
+      Architecture: Distributed Task Processing via PubSub
+
+      1. Topic Naming Convention:
+      Jobs are categorized by topic. The convention is `jobs:TYPE`.
+      Examples: `jobs:image_processing`, `jobs:video_encoding`, `jobs:report_generation`.
+
+      2. Dispatcher (Publisher):
+      A dispatcher (e.g., a web server controller) publishes a job by broadcasting
+      a message to the relevant topic. The message contains the job payload.
+      `Phoenix.PubSub.broadcast(MyApp.PubSub, "jobs:image_processing", {:process, job_data})`
+
+      3. Worker (Subscriber):
+      Worker processes subscribe to the topics they are equipped to handle. A pool of
+      image processing workers would all subscribe to `"jobs:image_processing"`.
+      `Phoenix.PubSub.subscribe(MyApp.PubSub, "jobs:image_processing")`
+
+      4. Benefits:
+      - Decoupling: The web server doesn't need to know about specific workers.
+      - Scalability: To handle more image processing jobs, just add more worker nodes.
+        They will automatically subscribe and start receiving work.
+      - Resilience: If a worker crashes, the job wasn't sent to it directly, so it can
+        be picked up by another worker (with appropriate logic).
+      """
+    end
   end
 end
 
-# Each notification service subscribes to its topic:
-# EmailService subscribes to "notifications:email"
-# PushService subscribes to "notifications:push"
-# SMSService subscribes to "notifications:sms"
+IO.puts("""
+ANSWERS & EXPLANATIONS
 
-# 2. Real-time dashboard system
-defmodule DashboardUpdater do
-  def update_sales_data(data) do
-    Phoenix.PubSub.broadcast(MyApp.PubSub, "dashboard:sales", {:sales_update, data})
-  end
+# 1. Design Notification System Topics
+#{Macro.to_string(DayTwo.Answers.answer_one())}
+# This structure separates the *triggering event* from the *delivery mechanism*. An
+# event like a new comment is published once. A separate listener process receives
+# this event, looks up the user's notification preferences, and then publishes a
+# targeted message to the correct channel topic (e.g., "users:456:notifications:email").
 
-  def update_user_count(count) do
-    Phoenix.PubSub.broadcast(MyApp.PubSub, "dashboard:users", {:user_count, count})
-  end
-end
+# 2. Design Dashboard Widget Subscriptions
+#{Macro.to_string(DayTwo.Answers.answer_two())}
+# This mapping provides a clean separation of concerns. The backend system that
+# processes sales only needs to know to broadcast on "sales:new". It doesn't
+# care about which UI components are listening. This makes it easy to add or
+# change dashboard widgets without touching the backend logic.
 
-# Widgets subscribe to relevant topics:
-# SalesWidget subscribes to "dashboard:sales"
-# UserWidget subscribes to "dashboard:users"
-
-# 3. Distributed task processing
-defmodule TaskDispatcher do
-  def dispatch_job(job_type, job_data) do
-    topic = "jobs:#{job_type}"
-    Phoenix.PubSub.broadcast(MyApp.PubSub, topic, {:job_available, job_data})
-  end
-end
-
-# Workers subscribe based on capabilities:
-# ImageWorker subscribes to "jobs:image_processing"
-# EmailWorker subscribes to "jobs:email_sending"
-# DataWorker subscribes to "jobs:data_processing"
-
-# Benefits: Loose coupling, scalability, fault tolerance, easy monitoring
-"""
+# 3. Design Task Processing Architecture
+#{Macro.to_string(DayTwo.Answers.answer_three())}
+# This is a classic "work queue" pattern implemented with PubSub. It's highly
+# scalable and resilient. Dispatchers fire and forget jobs, and a dynamic pool
+# of workers consumes them. This allows different parts of the system to be
+# scaled independently based on load.
+""")

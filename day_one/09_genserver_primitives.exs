@@ -229,66 +229,100 @@ defmodule DayOne.PrimitivesExercisesTest do
   end
 end
 
-"""
+defmodule DayOne.Answers do
+  def answer_one do
+    quote do
+      def spawn_sum(a, b) do
+        parent = self()
+        # Spawn a process that will do the work.
+        spawn(fn ->
+          # Send the result back to the parent process.
+          send(parent, a + b)
+        end)
+        # Wait to receive the result from the spawned process.
+        receive do
+          result when is_integer(result) -> result
+        after
+          1000 -> :timeout
+        end
+      end
+    end
+  end
+
+  def answer_two do
+    quote do
+      # This function demonstrates the new functionality. The implementation
+      # is in the `KVLoopWithDelete` module provided in the exercise.
+      def kv_loop_with_delete do
+        store = KVLoopWithDelete.start_link(%{a: 1})
+        # Put
+        send(store, {:put, :b, 2})
+        send(store, {:get, :b, self()})
+        assert receive(do: (val -> val)) == 2
+        # Delete
+        send(store, {:delete, :b})
+        send(store, {:get, :b, self()})
+        assert receive(do: (val -> val)) == nil
+        # Stop
+        send(store, :stop)
+        :ok
+      end
+    end
+  end
+
+  def answer_three do
+    quote do
+      def ping_pong(n) do
+        # Get a reference to the current process (the "parent")
+        parent = self()
+        # Spawn player_one, giving it the parent's PID
+        player_one_pid = spawn_link(fn -> player_one(parent, n) end)
+        # Send the "ball" to player one to start the game
+        send(player_one_pid, {:ball, self()})
+        # Wait for the game to be over
+        receive do
+          :game_over -> :ok
+        end
+      end
+
+      # Player one waits for the ball from player two
+      defp player_one(player_two_pid, 0) do
+        # Base case: game is over, tell the parent
+        send(player_two_pid, :game_over)
+      end
+      defp player_one(player_two_pid, n) do
+        receive do
+          # Got the ball, send it back to player two
+          {:ball, _} -> send(player_two_pid, {:ball, self()})
+        end
+        # Recurse with n-1
+        player_one(player_two_pid, n - 1)
+      end
+    end
+  end
+end
+
+IO.puts("""
 ANSWERS & EXPLANATIONS
 
 # 1. spawn_sum/2
-def spawn_sum(a, b) do
-  parent = self()
-  spawn(fn -> send(parent, a + b) end)
-  receive do
-    result -> result
-  after 1000 -> :timeout
-  end
-end
-#  Explanation: the spawned process has its own mailbox; by sending the parent
-#  the computed sum we avoid shared state—reinforcing message-passing.
+#{Macro.to_string(DayOne.Answers.answer_one())}
+#  This demonstrates the fundamental "client-server" pattern in Erlang/Elixir.
+#  The parent process (`self()`) acts as the client, spawning a server process
+#  to do some work. The client sends a message and then enters a `receive`
+#  block to await the response.
 
 # 2. kv_loop_with_delete/0
-def kv_loop_with_delete do
-  store = KVLoopWithDelete.start_link()
-  send(store, {:put, :test, "value"})
-  send(store, {:delete, :test})
-  send(store, {:get, :test, self()})
-  result = receive do
-    val -> val
-  after 1000 -> :timeout
-  end
-  send(store, :stop)
-  # Should be nil since key was deleted
-  if result == nil, do: :ok, else: {:error, :unexpected_value}
-end
-#  Explanation: rather than mutating, we build a *new* map via Map.delete/2 and
-#  tail-recurse, keeping the loop pattern pure.
+#{Macro.to_string(DayOne.Answers.answer_two())}
+#  This shows how to extend a stateful process loop. By adding a new `receive`
+#  clause for `{:delete, key}`, we can handle a new type of message. The state
+#  (the map) is immutable, so `Map.delete/2` returns a *new* map, which is then
+#  passed into the next iteration of the `loop`.
 
 # 3. ping_pong/1
-def ping_pong(n) do
-  parent = self()
-  p1 = spawn_link(fn -> ping_process(parent) end)
-  p2 = spawn_link(fn -> pong_process() end)
-  send(p1, {:ball, n, p2})
-  receive do
-    :done -> :ok
-  after 5000 -> :timeout
-  end
-end
-
-defp ping_process(parent) do
-  receive do
-    {:ball, 0, _from} -> send(parent, :done)
-    {:ball, k, from} ->
-      send(from, {:ball, k - 1, self()})
-      ping_process(parent)
-  end
-end
-
-defp pong_process do
-  receive do
-    {:ball, k, from} ->
-      send(from, {:ball, k, self()})
-      pong_process()
-  end
-end
-#  Explanation: the atom :ball is bounced n times; counting down in the message
-#  payload avoids external counters and demonstrates cooperative recursion.
-"""
+#{Macro.to_string(DayOne.Answers.answer_three())}
+#  This is a more complex example of two processes communicating. It shows how
+#  PIDs are passed around to allow processes to know who to send messages to.
+#  The recursive calls with a decreasing counter (`n`) serve as the state that
+#  determines when the process should stop.
+""")

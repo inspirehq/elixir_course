@@ -315,28 +315,26 @@ defmodule DayOne.TestingExercises do
 
   @spec test_demo_server_assertion() :: :ok
   def test_demo_server_assertion do
-    #   Write an assertion that TestableServer starts with the expected initial value.
-    #   Start a fresh TestableServer instance with value 0 and verify its initial state.
-    #   Use TestableServer.start_link(0) and TestableServer.value(pid).
-    #   Return :ok if the assertion passes.
-    :ok  # TODO: Implement server assertion test
+    #   Build a test for the TestableServer that asserts its initial value is 0.
+    #   Use the public API only (black-box testing).
+    #   Return :ok on success.
+    :ok  # TODO: Implement black-box test assertion
   end
 
   @spec test_log_capture() :: :ok
   def test_log_capture do
-    #   Capture the log produced by `Logger.warn("oops")` and assert it contains
-    #   "oops". Use ExUnit.CaptureLog.capture_log/1 and String.contains?/2.
-    #   Return :ok if the log capture and assertion work correctly.
+    #   Use `ExUnit.CaptureLog` to assert that calling a function logs a
+    #   specific warning message.
+    #   Return :ok on success.
     :ok  # TODO: Implement log capture test
   end
 
   @spec test_white_box_state() :: :ok
   def test_white_box_state do
-    #   Use `:sys.get_state/1` to assert that after bumping TestableServer twice
-    #   the internal state is 2 (white-box test). Start with TestableServer.start_link(0),
-    #   call TestableServer.bump(pid) twice, then check state with :sys.get_state(pid).
-    #   Return :ok if assertion passes.
-    :ok  # TODO: Implement white-box state testing
+    #   Use `:sys.get_state/1` to test the internal state of a TestableServer
+    #   after sending it two `:bump` messages.
+    #   Return :ok on success.
+    :ok  # TODO: Implement white-box test using get_state
   end
 end
 
@@ -346,87 +344,75 @@ defmodule DayOne.TestingExercisesTest do
   use ExUnit.Case, async: true
 
   alias DayOne.TestingExercises, as: EX
-  require Logger
 
-  test "test_demo_server_assertion/0 verifies server initial state" do
+  test "demo server assertion works" do
     assert EX.test_demo_server_assertion() == :ok
   end
 
-  test "test_log_capture/0 captures and verifies log output" do
+  test "log capture works" do
     assert EX.test_log_capture() == :ok
   end
 
-  test "test_white_box_state/0 uses sys.get_state for internal assertion" do
+  test "white box state test works" do
     assert EX.test_white_box_state() == :ok
-  end
-
-  test "ApiClient enforces rate limits correctly" do
-    {:ok, _} = ApiClient.start_link(nil)
-
-    # Should allow 5 requests
-    Enum.each(1..5, fn _ ->
-      assert :ok == ApiClient.request()
-    end)
-
-    # 6th request should be rate limited
-    assert {:error, :rate_limited} == ApiClient.request()
   end
 end
 
-"""
+defmodule DayOne.Answers do
+  def answer_one do
+    quote do
+      def test_demo_server_assertion do
+        {:ok, pid} = TestableServer.start_link(0)
+        assert TestableServer.value(pid) == 0
+        GenServer.stop(pid)
+        :ok
+      end
+    end
+  end
+
+  def answer_two do
+    quote do
+      def test_log_capture do
+        log = ExUnit.CaptureLog.capture_log(fn ->
+          Logger.warning("oops")
+        end)
+        assert log =~ "oops"
+        :ok
+      end
+    end
+  end
+
+  def answer_three do
+    quote do
+      def test_white_box_state do
+        {:ok, pid} = TestableServer.start_link(0)
+        TestableServer.bump(pid)
+        TestableServer.bump(pid)
+        assert :sys.get_state(pid) == 2
+        GenServer.stop(pid)
+        :ok
+      end
+    end
+  end
+end
+
+IO.puts("""
 ANSWERS & EXPLANATIONS
 
 # 1. test_demo_server_assertion/0
-def test_demo_server_assertion do
-  {:ok, pid} = TestableServer.start_link(0)
-  initial_value = TestableServer.value(pid)
-  GenServer.stop(pid)
-
-  if initial_value == 0 do
-    :ok
-  else
-    {:error, {:expected_0_got, initial_value}}
-  end
-end
+#{Macro.to_string(DayOne.Answers.answer_one())}
 #  Confirms initial state via public API (black-box testing approach).
 
 # 2. test_log_capture/0
-def test_log_capture do
-  log = ExUnit.CaptureLog.capture_log(fn ->
-    Logger.warning("oops")
-  end)
-
-  if String.contains?(log, "oops") do
-    :ok
-  else
-    {:error, {:log_missing_oops, log}}
-  end
-end
+#{Macro.to_string(DayOne.Answers.answer_two())}
 #  Shows how to verify side-effects that go to the Logger system.
 
 # 3. test_white_box_state/0
-def test_white_box_state do
-  {:ok, pid} = TestableServer.start_link(0)
-  TestableServer.bump(pid)
-  TestableServer.bump(pid)
-
-  state = :sys.get_state(pid)
-  GenServer.stop(pid)
-
-  if state == 2 do
-    :ok
-  else
-    {:error, {:expected_2_got, state}}
-  end
-end
-#  Uses :sys.get_state to peek inside (white-box) but after exercising API.
-#  White-box testing should be used sparingly and with caution.
-
-The key principle in GenServer testing is to prefer black-box testing via the
-public API whenever possible. White-box approaches like :sys.get_state/1 or
-:sys.replace_state/2 should only be used when absolutely necessary, as they
-couple tests to implementation details and can make refactoring more difficult.
-"""
+#{Macro.to_string(DayOne.Answers.answer_three())}
+#  Uses :sys.get_state to peek inside (white-box) but after exercising the public API.
+#  White-box testing should be used sparingly and with caution as it couples
+#  tests to implementation details.
+""")
 
 # ============================================================================
 # 🔍 OBSERVER GUI SETUP GUIDE - Getting the Full Experience

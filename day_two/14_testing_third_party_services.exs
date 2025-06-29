@@ -72,100 +72,110 @@ defmodule DayTwo.MoxExamples do
   """
 
   def show_mox_setup do
-    """
-    # Add Mox to mix.exs dependencies:
-    {:mox, "~> 1.0", only: :test}
+    IO.puts("# Add Mox to mix.exs dependencies:")
+    IO.puts(~S'{:mox, "~> 1.0", only: :test}')
+    IO.puts("\n# Define behaviour for external service:")
 
-    # Define behaviour for external service:
-    defmodule PaymentGateway do
-      @callback charge_card(amount :: Money.t(), card :: map()) ::
-        {:ok, String.t()} | {:error, atom()}
+    code =
+      quote do
+        defmodule PaymentGateway do
+          @callback charge_card(amount :: Money.t(), card :: map()) ::
+                      {:ok, String.t()} | {:error, atom()}
 
-      @callback refund_charge(charge_id :: String.t()) ::
-        {:ok, String.t()} | {:error, atom()}
-    end
-
-    # Real implementation:
-    defmodule StripeGateway do
-      @behaviour PaymentGateway
-
-      def charge_card(amount, card) do
-        # Real Stripe API call
-        case Stripe.charge(%{amount: amount, source: card.token}) do
-          {:ok, charge} -> {:ok, charge.id}
-          {:error, error} -> {:error, error.type}
+          @callback refund_charge(charge_id :: String.t()) ::
+                      {:ok, String.t()} | {:error, atom()}
         end
       end
 
-      def refund_charge(charge_id) do
-        case Stripe.refund(charge_id) do
-          {:ok, refund} -> {:ok, refund.id}
-          {:error, error} -> {:error, error.type}
+    IO.puts(Macro.to_string(code))
+    IO.puts("\n# Real implementation:")
+
+    code =
+      quote do
+        defmodule StripeGateway do
+          @behaviour PaymentGateway
+
+          def charge_card(amount, card) do
+            case Stripe.charge(%{amount: amount, source: card.token}) do
+              {:ok, charge} -> {:ok, charge.id}
+              {:error, error} -> {:error, error.type}
+            end
+          end
+
+          def refund_charge(charge_id) do
+            case Stripe.refund(charge_id) do
+              {:ok, refund} -> {:ok, refund.id}
+              {:error, error} -> {:error, error.type}
+            end
+          end
         end
       end
-    end
 
-    # Test setup with Mox:
-    # test/test_helper.exs
-    Mox.defmock(PaymentGatewayMock, for: PaymentGateway)
-    Application.put_env(:my_app, :payment_gateway, PaymentGatewayMock)
-    """
+    IO.puts(Macro.to_string(code))
+    IO.puts("\n# Test setup with Mox:")
+
+    code =
+      quote do
+        Mox.defmock(PaymentGatewayMock, for: PaymentGateway)
+        Application.put_env(:my_app, :payment_gateway, PaymentGatewayMock)
+      end
+
+    IO.puts(Macro.to_string(code))
   end
 
   def show_mox_usage do
-    """
-    # Using Mox in tests:
-    defmodule OrderServiceTest do
-      use ExUnit.Case, async: true
-      import Mox
+    IO.puts("# Using Mox in tests:")
 
-      # Verify mocks are called
-      setup :verify_on_exit!
+    code =
+      quote do
+        defmodule OrderServiceTest do
+          use ExUnit.Case, async: true
+          import Mox
 
-      test "successful order payment" do
-        # Setup mock expectations
-        expect(PaymentGatewayMock, :charge_card, fn amount, card ->
-          assert amount == Money.new(:USD, 2000)  # $20.00
-          assert card.last_four == "4242"
-          {:ok, "charge_123"}
-        end)
+          setup :verify_on_exit!
 
-        order = %Order{total: Money.new(:USD, 2000)}
-        card = %{token: "tok_123", last_four: "4242"}
+          test "successful order payment" do
+            expect(PaymentGatewayMock, :charge_card, fn amount, card ->
+              assert amount == Money.new(:USD, 2000)
+              assert card.last_four == "4242"
+              {:ok, "charge_123"}
+            end)
 
-        assert {:ok, payment} = OrderService.process_payment(order, card)
-        assert payment.charge_id == "charge_123"
+            order = %Order{total: Money.new(:USD, 2000)}
+            card = %{token: "tok_123", last_four: "4242"}
+            assert {:ok, payment} = OrderService.process_payment(order, card)
+            assert payment.charge_id == "charge_123"
+          end
+
+          test "failed payment handling" do
+            expect(PaymentGatewayMock, :charge_card, fn _amount, _card ->
+              {:error, :card_declined}
+            end)
+
+            order = %Order{total: Money.new(:USD, 2000)}
+            card = %{token: "tok_123", last_four: "4242"}
+            assert {:error, :payment_failed} = OrderService.process_payment(order, card)
+          end
+
+          test "network timeout handling" do
+            expect(PaymentGatewayMock, :charge_card, fn _amount, _card ->
+              Process.sleep(5000)
+              {:error, :timeout}
+            end)
+
+            order = %Order{total: Money.new(:USD, 2000)}
+            card = %{token: "tok_123", last_four: "4242"}
+            assert {:error, :payment_timeout} = OrderService.process_payment(order, card)
+          end
+        end
       end
 
-      test "failed payment handling" do
-        expect(PaymentGatewayMock, :charge_card, fn _amount, _card ->
-          {:error, :card_declined}
-        end)
-
-        order = %Order{total: Money.new(:USD, 2000)}
-        card = %{token: "tok_123", last_four: "4242"}
-
-        assert {:error, :payment_failed} = OrderService.process_payment(order, card)
-      end
-
-      test "network timeout handling" do
-        expect(PaymentGatewayMock, :charge_card, fn _amount, _card ->
-          Process.sleep(5000)  # Simulate timeout
-          {:error, :timeout}
-        end)
-
-        order = %Order{total: Money.new(:USD, 2000)}
-        card = %{token: "tok_123", last_four: "4242"}
-
-        assert {:error, :payment_timeout} = OrderService.process_payment(order, card)
-      end
-    end
-    """
+    IO.puts(Macro.to_string(code))
   end
 end
 
 IO.puts("Mox setup and usage:")
-IO.puts(DayTwo.MoxExamples.show_mox_setup())
+DayTwo.MoxExamples.show_mox_setup()
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 3 – HTTP mocking with Bypass")
@@ -176,130 +186,122 @@ defmodule DayTwo.BypassExamples do
   """
 
   def show_bypass_setup do
-    """
-    # Add Bypass to dependencies:
-    {:bypass, "~> 2.1", only: :test}
+    IO.puts("# Add Bypass to dependencies:")
+    IO.puts(~S'{:bypass, "~> 2.1", only: :test}')
+    IO.puts("\n# HTTP client module:")
 
-    # HTTP client module:
-    defmodule WeatherAPI do
-      def get_current_weather(city) do
-        url = "#{base_url()}/weather?q=#{city}&appid=#{api_key()}"
+    code =
+      quote do
+        defmodule WeatherAPI do
+          def get_current_weather(city) do
+            url = "#{base_url()}/weather?q=#{city}&appid=#{api_key()}"
 
-        case HTTPoison.get(url) do
-          {:ok, %{status_code: 200, body: body}} ->
-            {:ok, Jason.decode!(body)}
-          {:ok, %{status_code: 404}} ->
-            {:error, :city_not_found}
-          {:error, reason} ->
-            {:error, reason}
+            case HTTPoison.get(url) do
+              {:ok, %{status_code: 200, body: body}} ->
+                {:ok, Jason.decode!(body)}
+              {:ok, %{status_code: 404}} ->
+                {:error, :city_not_found}
+              {:error, reason} ->
+                {:error, reason}
+            end
+          end
+
+          defp base_url, do: Application.get_env(:my_app, :weather_api_url)
+          defp api_key, do: Application.get_env(:my_app, :weather_api_key)
         end
       end
 
-      defp base_url, do: Application.get_env(:my_app, :weather_api_url)
-      defp api_key, do: Application.get_env(:my_app, :weather_api_key)
-    end
+    IO.puts(Macro.to_string(code))
+    IO.puts("\n# Test with Bypass:")
 
-    # Test with Bypass:
-    defmodule WeatherAPITest do
-      use ExUnit.Case
+    code =
+      quote do
+        defmodule WeatherAPITest do
+          use ExUnit.Case
 
-      setup do
-        bypass = Bypass.open()
-        Application.put_env(:my_app, :weather_api_url, "http://localhost:#{bypass.port}")
-        {:ok, bypass: bypass}
+          setup do
+            bypass = Bypass.open()
+            Application.put_env(:my_app, :weather_api_url, "http://localhost:#{bypass.port}")
+            {:ok, bypass: bypass}
+          end
+
+          test "successful weather request", %{bypass: bypass} do
+            Bypass.expect_once(bypass, "GET", "/weather", fn conn ->
+              assert conn.query_string =~ "q=London"
+              assert conn.query_string =~ "appid="
+
+              response = %{
+                "main" => %{"temp" => 273.15},
+                "weather" => [%{"main" => "Clear"}]
+              }
+
+              Plug.Conn.resp(conn, 200, Jason.encode!(response))
+            end)
+
+            assert {:ok, weather} = WeatherAPI.get_current_weather("London")
+            assert weather["main"]["temp"] == 273.15
+          end
+
+          test "city not found", %{bypass: bypass} do
+            Bypass.expect_once(bypass, "GET", "/weather", fn conn ->
+              Plug.Conn.resp(conn, 404, Jason.encode!(%{"message" => "city not found"}))
+            end)
+
+            assert {:error, :city_not_found} = WeatherAPI.get_current_weather("InvalidCity")
+          end
+
+          test "network timeout", %{bypass: bypass} do
+            Bypass.expect_once(bypass, "GET", "/weather", fn conn ->
+              Process.sleep(2000)
+              Plug.Conn.resp(conn, 200, "{}")
+            end)
+
+            assert {:error, _} = WeatherAPI.get_current_weather("London")
+          end
+        end
       end
 
-      test "successful weather request", %{bypass: bypass} do
-        Bypass.expect_once(bypass, "GET", "/weather", fn conn ->
-          assert conn.query_string =~ "q=London"
-          assert conn.query_string =~ "appid="
-
-          response = %{
-            "main" => %{"temp" => 273.15},
-            "weather" => [%{"main" => "Clear"}]
-          }
-
-          Plug.Conn.resp(conn, 200, Jason.encode!(response))
-        end)
-
-        assert {:ok, weather} = WeatherAPI.get_current_weather("London")
-        assert weather["main"]["temp"] == 273.15
-      end
-
-      test "city not found", %{bypass: bypass} do
-        Bypass.expect_once(bypass, "GET", "/weather", fn conn ->
-          Plug.Conn.resp(conn, 404, Jason.encode!(%{"message" => "city not found"}))
-        end)
-
-        assert {:error, :city_not_found} = WeatherAPI.get_current_weather("InvalidCity")
-      end
-
-      test "network timeout", %{bypass: bypass} do
-        Bypass.expect_once(bypass, "GET", "/weather", fn conn ->
-          Process.sleep(2000)  # Simulate slow response
-          Plug.Conn.resp(conn, 200, "{}")
-        end)
-
-        assert {:error, _} = WeatherAPI.get_current_weather("London")
-      end
-    end
-    """
+    IO.puts(Macro.to_string(code))
   end
 
   def show_advanced_bypass_patterns do
-    """
-    # Advanced Bypass patterns:
-    defmodule APIIntegrationTest do
-      use ExUnit.Case
+    IO.puts("# Advanced Bypass patterns:")
 
-      test "multiple API calls in sequence", %{bypass: bypass} do
-        # Expect multiple calls in order
-        Bypass.expect(bypass, "POST", "/auth", fn conn ->
-          Plug.Conn.resp(conn, 200, ~s({"token": "abc123"}))
-        end)
+    code =
+      quote do
+        test "handling multiple requests", %{bypass: bypass} do
+          Bypass.expect(bypass, "GET", "/status", fn conn ->
+            Plug.Conn.resp(conn, 200, "OK")
+          end)
 
-        Bypass.expect(bypass, "GET", "/users", fn conn ->
-          # Verify auth header
-          assert Plug.Conn.get_req_header(conn, "authorization") == ["Bearer abc123"]
-          Plug.Conn.resp(conn, 200, ~s([{"id": 1, "name": "Alice"}]))
-        end)
+          Bypass.expect(bypass, "POST", "/data", fn conn ->
+            {:ok, body, conn} = Plug.Conn.read_body(conn)
+            assert Jason.decode!(body) == %{"key" => "value"}
+            Plug.Conn.resp(conn, 201, "Created")
+          end)
 
-        # Test the full flow
-        {:ok, token} = AuthAPI.authenticate("user", "pass")
-        {:ok, users} = UserAPI.list_users(token)
+          assert HTTPClient.get_status() == :ok
+          assert HTTPClient.post_data(%{key: "value"}) == :created
+          assert HTTPClient.get_status() == :ok
+        end
 
-        assert token == "abc123"
-        assert length(users) == 1
+        test "verifying request headers", %{bypass: bypass} do
+          Bypass.expect_once(bypass, fn conn ->
+            assert Plug.Conn.get_req_header(conn, "authorization") == ["Bearer secret-token"]
+            assert Plug.Conn.get_req_header(conn, "x-request-id") != []
+            Plug.Conn.resp(conn, 200, "Authenticated")
+          end)
+
+          assert HTTPClient.authenticated_request("secret-token") == :ok
+        end
       end
 
-      test "API rate limiting", %{bypass: bypass} do
-        call_count = Agent.start_link(fn -> 0 end)
-
-        Bypass.expect(bypass, "GET", "/api/data", fn conn ->
-          current = Agent.get_and_update(call_count, &{&1, &1 + 1})
-
-          if current >= 3 do
-            Plug.Conn.resp(conn, 429, ~s({"error": "rate limit exceeded"}))
-          else
-            Plug.Conn.resp(conn, 200, ~s({"data": "success"}))
-          end
-        end)
-
-        # First 3 calls succeed
-        assert {:ok, _} = API.get_data()
-        assert {:ok, _} = API.get_data()
-        assert {:ok, _} = API.get_data()
-
-        # 4th call hits rate limit
-        assert {:error, :rate_limited} = API.get_data()
-      end
-    end
-    """
+    IO.puts(Macro.to_string(code))
   end
 end
 
-IO.puts("Bypass HTTP mocking:")
-IO.puts(DayTwo.BypassExamples.show_bypass_setup())
+DayTwo.BypassExamples.show_bypass_setup()
+DayTwo.BypassExamples.show_advanced_bypass_patterns()
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 4 – Testing patterns for external services")
@@ -478,132 +480,280 @@ DayTwo.PaymentSystemTesting.show_testing_benefits()
 # 3. (Challenge) Design a test suite for a multi-step payment flow with
 #    webhooks, refunds, and multiple payment providers with proper mocking.
 
-"""
-🔑 ANSWERS & EXPLANATIONS
+IO.puts("""
+ANSWERS & EXPLANATIONS
 
-# 1. Social media posting service tests
-defmodule SocialMediaServiceTest do
-  use ExUnit.Case
-  import Mox
+# 1. Mocking with Behaviours
+# First, define a `PaymentGateway` behaviour that specifies the functions
+# our application needs (`charge/2`). Then, in the test environment, configure
+# the application to use `MockPaymentGateway` instead of the real one.
+# `Mox.defmock` creates this mock module for us based on the behaviour.
+# In `config/test.exs`:
+# config :my_app, :payment_gateway, MyApp.MockPaymentGateway
 
-  setup :verify_on_exit!
+# 2. Testing with Mox
+# In the test, `import Mox` and `setup :verify_on_exit!`. The `expect` function
+# tells the mock how to respond when called. We can assert that the correct
+# arguments are received and return either a success or error tuple to test
+# different code paths in our application.
+expect(MyApp.MockPaymentGateway, :charge, fn amount, _token ->
+  assert amount == 100
+  {:ok, "charge_id_123"}
+end)
 
-  test "posts to all platforms successfully" do
-    post_content = %{text: "Hello world!", image_url: "http://example.com/image.jpg"}
+# 3. HTTP Mocking with Bypass
+# Bypass is used for testing the HTTP client layer directly. `Bypass.open()`
+# starts a server on a random port. We configure our app to use this URL.
+# `Bypass.expect` programs the mock server to handle an incoming request,
+# check its properties (like method and path), and return a specific response.
+Bypass.expect(bypass, "POST", "/charge", fn conn ->
+  Plug.Conn.resp(conn, 200, ~s'{"id": "charge_id_123"}')
+end)
+""")
 
-    expect(TwitterAPIMock, :create_tweet, fn content ->
-      assert content.text == "Hello world!"
-      {:ok, %{id: "tweet_123", url: "https://twitter.com/status/123"}}
-    end)
+defmodule DayTwo.MockingExercises do
+  @moduledoc """
+  Run the tests with: mix test day_two/14_testing_third_party_services.exs
+  or in IEx:
+  iex -r day_two/14_testing_third_party_services.exs
+  DayTwo.MockingExercisesTest.test_design_payment_gateway_mock/0
+  DayTwo.MockingExercisesTest.test_design_email_service_mock/0
+  DayTwo.MockingExercisesTest.test_design_http_client_mock_with_bypass/0
+  """
 
-    expect(FacebookAPIMock, :create_post, fn content ->
-      assert content.message == "Hello world!"
-      {:ok, %{id: "post_456", url: "https://facebook.com/posts/456"}}
-    end)
+  @doc """
+  Designs a mock for a `PaymentGateway` behaviour using Mox.
 
-    expect(LinkedInAPIMock, :share_content, fn content ->
-      assert content.text == "Hello world!"
-      {:ok, %{id: "share_789", url: "https://linkedin.com/feed/update/789"}}
-    end)
+  **Goal:** Learn how to use `Mox` to define a mock and write tests for both
+  the success and failure cases of a service that uses the behaviour.
 
-    result = SocialMediaService.post_to_all(post_content, [:twitter, :facebook, :linkedin])
+  **Behaviour to Mock:**
+  ```elixir
+  defmodule PaymentGateway do
+    @callback charge(amount :: integer, token :: String.t) ::
+      {:ok, transaction_id :: String.t} | {:error, reason :: atom}
+  end
+  ```
 
-    assert {:ok, posts} = result
-    assert length(posts) == 3
-    assert Enum.all?(posts, fn {platform, {:ok, _}} -> platform in [:twitter, :facebook, :linkedin] end)
+  **Task:**
+  Return a map describing the test design:
+  - `:mox_module_definition`: A string defining the Mox mock module.
+  - `:success_test`: A string for a test that `expect`s a successful call to
+    `charge/2` and returns an `{:ok, ...}` tuple.
+  - `:failure_test`: A string for a test that `expect`s a call to `charge/2`
+    and returns an `{:error, :card_declined}` tuple.
+  """
+  @spec design_payment_gateway_mock() :: map()
+  def design_payment_gateway_mock do
+    # Design tests for a payment gateway using Mox.
+    # Return a map with :mox_module_definition, :success_test, and :failure_test.
+    nil  # TODO: Implement this exercise
   end
 
-  test "handles partial failures gracefully" do
-    expect(TwitterAPIMock, :create_tweet, fn _ -> {:ok, %{id: "tweet_123"}} end)
-    expect(FacebookAPIMock, :create_post, fn _ -> {:error, :rate_limited} end)
-    expect(LinkedInAPIMock, :share_content, fn _ -> {:ok, %{id: "share_789"}} end)
+  @doc """
+  Designs a mock for an `EmailService` that has a non-standard return type.
 
-    result = SocialMediaService.post_to_all(%{text: "Test"}, [:twitter, :facebook, :linkedin])
+  **Goal:** Learn to mock behaviours even when they don't return simple
+  `:ok`/`:error` tuples and how to make assertions on the arguments passed
+  to the mocked function.
 
-    assert {:partial_success, results} = result
-    assert results[:twitter] == {:ok, %{id: "tweet_123"}}
-    assert results[:facebook] == {:error, :rate_limited}
-    assert results[:linkedin] == {:ok, %{id: "share_789"}}
+  **Behaviour to Mock:**
+  ```elixir
+  defmodule EmailService do
+    @callback deliver(email :: map) :: String.t | no_return
+  end
+  ```
+  Note: `deliver/1` returns a `delivery_id` string on success or raises an
+  exception on failure.
+
+  **Task:**
+  Return a string describing the testing strategy. It should explain how to:
+  1.  Test the success case, where `deliver/1` returns a `delivery_id`.
+  2.  Use an `expect` to make assertions on the `email` map that is passed
+      to the `deliver/1` function (e.g., check the `:to` and `:subject` fields).
+  3.  Test the failure case by telling the mock to `raise` an exception.
+  """
+  @spec design_email_service_mock() :: binary()
+  def design_email_service_mock do
+    # Describe a testing strategy for an EmailService mock, covering
+    # success, argument assertion, and exception cases.
+    nil  # TODO: Implement this exercise
+  end
+
+  @doc """
+  Designs a test for an HTTP client using `Bypass`.
+
+  **Goal:** Learn how to test the logic of an HTTP client (URL construction,
+  response parsing, error handling) without making real network calls.
+
+  **Module to Test:**
+  ```elixir
+  defmodule GitHubClient do
+    def get_user_repos(username) do
+      url = "https://api.github.com/users/#{username}/repos"
+      # ... logic using an HTTP client like Finch or HTTPoison ...
+    end
+  end
+  ```
+
+  **Task:**
+  Return a map describing the test design using `Bypass`:
+  - `:setup_block`: A string for the `setup` block that opens a `Bypass` connection
+    and configures the application to use the Bypass URL.
+  - `:success_test`: A string for a test that uses `Bypass.expect_once/3` to
+    stub a 200 OK response with a sample JSON body, and asserts that the
+    `get_user_repos/1` function correctly parses the response.
+  - `:not_found_test`: A string for a test that stubs a 404 Not Found
+    response and asserts that the function returns an appropriate error tuple.
+  """
+  @spec design_http_client_mock_with_bypass() :: map()
+  def design_http_client_mock_with_bypass do
+    # Design a test for a GitHub HTTP client using Bypass.
+    # Return a map with :setup_block, :success_test, and :not_found_test.
+    nil  # TODO: Implement this exercise
   end
 end
 
-# 2. File storage service with Bypass
-defmodule FileStorageServiceTest do
-  use ExUnit.Case
+ExUnit.start()
 
-  setup do
-    bypass = Bypass.open()
-    Application.put_env(:my_app, :s3_endpoint, "http://localhost:#{bypass.port}")
-    {:ok, bypass: bypass}
+defmodule DayTwo.MockingExercisesTest do
+  use ExUnit.Case, async: true
+
+  alias DayTwo.MockingExercises, as: EX
+
+  test "design_payment_gateway_mock/0 returns a valid Mox design" do
+    design = EX.design_payment_gateway_mock()
+    assert is_map(design)
+    assert String.contains?(design.mox_module_definition, "defmock")
+    assert String.contains?(design.success_test, "expect(PaymentGatewayMock")
+    assert String.contains?(design.failure_test, "{:error, :card_declined}")
   end
 
-  test "uploads file successfully", %{bypass: bypass} do
-    Bypass.expect_once(bypass, "PUT", "/bucket/file.jpg", fn conn ->
-      assert Plug.Conn.get_req_header(conn, "content-type") == ["image/jpeg"]
-      Plug.Conn.resp(conn, 200, ~s({"ETag": "abc123"}))
-    end)
-
-    file_data = %{name: "file.jpg", content: <<binary_data>>, content_type: "image/jpeg"}
-
-    assert {:ok, result} = FileStorageService.upload(file_data)
-    assert result.etag == "abc123"
-    assert result.url =~ "file.jpg"
+  test "design_email_service_mock/0 describes a comprehensive strategy" do
+    strategy = EX.design_email_service_mock()
+    assert is_binary(strategy)
+    assert String.contains?(strategy, "assert_raise")
+    assert String.contains?(strategy, "assert email.to")
   end
 
-  test "handles upload failures with retry", %{bypass: bypass} do
-    # First attempt fails
-    Bypass.expect(bypass, "PUT", "/bucket/file.jpg", fn conn ->
-      Plug.Conn.resp(conn, 500, "Internal Server Error")
-    end)
-
-    # Second attempt succeeds
-    Bypass.expect(bypass, "PUT", "/bucket/file.jpg", fn conn ->
-      Plug.Conn.resp(conn, 200, ~s({"ETag": "abc123"}))
-    end)
-
-    file_data = %{name: "file.jpg", content: <<data>>, content_type: "image/jpeg"}
-
-    assert {:ok, result} = FileStorageService.upload(file_data, retry: true)
-    assert result.etag == "abc123"
+  test "design_http_client_mock_with_bypass/0 returns a valid Bypass design" do
+    design = EX.design_http_client_mock_with_bypass()
+    assert is_map(design)
+    assert String.contains?(design.setup_block, "Bypass.open()")
+    assert String.contains?(design.success_test, "Bypass.expect_once")
+    assert String.contains?(design.not_found_test, "resp(conn, 404")
   end
 end
 
-# 3. Multi-step payment flow testing
-defmodule PaymentFlowTest do
-  use ExUnit.Case
-  import Mox
+defmodule DayTwo.Answers do
+  def answer_one do
+    quote do
+      %{
+        mox_module_definition: "Mox.defmock(PaymentGatewayMock, for: PaymentGateway)",
+        success_test: """
+        test "successful charge" do
+          expect(PaymentGatewayMock, :charge, fn 1000, "valid_token" ->
+            {:ok, "txn_123"}
+          end)
 
-  test "complete payment flow with webhook confirmation" do
-    # Mock payment gateway
-    expect(PaymentGatewayMock, :create_payment_intent, fn amount, metadata ->
-      {:ok, %{id: "pi_123", status: "requires_confirmation", client_secret: "secret_123"}}
-    end)
+          assert Order.checkout(1000, "valid_token") == {:ok, "txn_123"}
+        end
+        """,
+        failure_test: """
+        test "declined charge" do
+          expect(PaymentGatewayMock, :charge, fn 1000, "invalid_token" ->
+            {:error, :card_declined}
+          end)
 
-    expect(PaymentGatewayMock, :confirm_payment, fn payment_intent_id, payment_method ->
-      {:ok, %{id: "pi_123", status: "succeeded", charge_id: "ch_456"}}
-    end)
+          assert Order.checkout(1000, "invalid_token") == {:error, :payment_failed}
+        end
+        """
+      }
+    end
+  end
 
-    # Start payment flow
-    order = %{id: 1, total: Money.new(:USD, 2000)}
-    {:ok, intent} = PaymentFlow.create_intent(order)
+  def answer_two do
+    quote do
+      """
+      Testing Strategy for `EmailService`:
 
-    # Confirm payment
-    {:ok, payment} = PaymentFlow.confirm_payment(intent.id, %{type: "card", token: "tok_123"})
+      1.  **Success Case**: The test will use `expect/3` on the mock. The expectation
+          will return a sample delivery ID string, e.g., "delivery_abc". The test then
+          asserts that the function under test returns this ID.
+          `expect(EmailServiceMock, :deliver, fn _ -> "delivery_abc" end)`
 
-    # Simulate webhook
-    webhook_payload = %{
-      type: "payment_intent.succeeded",
-      data: %{object: %{id: "pi_123", status: "succeeded"}}
-    }
+      2.  **Argument Assertion**: The anonymous function passed to `expect` receives
+          the arguments that the real function would. Inside this function, we can
+          make assertions on the email map. This is a powerful way to ensure the
+          service is being *called correctly*.
+          `expect(..., fn email -> assert email.to == "test@example.com"; "ok" end)`
 
-    assert :ok = PaymentFlow.handle_webhook(webhook_payload)
+      3.  **Exception Case**: The `expect` function can be made to `raise` an
+          exception instead of returning a value. The test then wraps the call
+          to the service in `assert_raise/2` to verify that the system correctly
+          handles the third-party service's error.
+          `expect(..., fn _ -> raise "SMTP server down" end)`
+          `assert_raise RuntimeError, fn -> Notifier.send_welcome_email(...) end`
+      """
+    end
+  end
 
-    # Verify order is marked as paid
-    updated_order = Orders.get(order.id)
-    assert updated_order.status == :paid
-    assert updated_order.payment_id == "pi_123"
+  def answer_three do
+    quote do
+      %{
+        setup_block: """
+        setup do
+          bypass = Bypass.open()
+          Application.put_env(:my_app, :github_api_url, "http://localhost:#{bypass.port}")
+          {:ok, bypass: bypass}
+        end
+        """,
+        success_test: """
+        test "fetches user repos successfully", %{bypass: bypass} do
+          Bypass.expect_once(bypass, "GET", "/users/elixir/repos", fn conn ->
+            Plug.Conn.resp(conn, 200, ~s'[{"name": "plug"}]')
+          end)
+
+          assert {:ok, [%{"name" => "plug"}]} = GitHubClient.get_user_repos("elixir")
+        end
+        """,
+        not_found_test: """
+        test "handles user not found", %{bypass: bypass} do
+          Bypass.expect_once(bypass, "GET", "/users/unknown/repos", fn conn ->
+            Plug.Conn.resp(conn, 404, "Not Found")
+          end)
+
+          assert {:error, :not_found} = GitHubClient.get_user_repos("unknown")
+        end
+        """
+      }
+    end
   end
 end
 
-# Benefits: Comprehensive coverage, fast execution, reliable testing environment
-"""
+IO.puts("""
+ANSWERS & EXPLANATIONS
+
+# 1. Mocking a Payment Gateway with Mox
+#{Macro.to_string(DayTwo.Answers.answer_one())}
+# This demonstrates the core workflow of Mox. You define a behaviour, create a
+# mock for it, and then in each test, you set an `expect`ation for how the
+# mock should be called. Mox verifies that the function was called with the
+# correct arguments and provides the specified return value. `setup :verify_on_exit!`
+# is crucial as it ensures all expectations were met during the test.
+
+# 2. Mocking an Email Service
+#{Macro.to_string(DayTwo.Answers.answer_two())}
+# This strategy shows the flexibility of Mox. By placing assertions inside the
+# anonymous function passed to `expect`, you can test that your application is
+# constructing the correct arguments for the external service. Testing for
+# exceptions is also critical for building resilient systems that can handle
+# third-party outages.
+
+# 3. Mocking an HTTP Client with Bypass
+#{Macro.to_string(DayTwo.Answers.answer_three())}
+# Bypass is ideal when you want to test the full HTTP request/response cycle of
+# your client without the slowness and unreliability of real network calls. You
+# test everything up to the network boundary: URL construction, header formatting,
+# response body parsing, and status code handling.
+""")

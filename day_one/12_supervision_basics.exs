@@ -279,81 +279,103 @@ defmodule DayOne.SupervisionExercisesTest do
   end
 end
 
-"""
+defmodule DayOne.Answers do
+  def answer_one do
+    quote do
+      def test_rest_for_one do
+        children = [
+          Supervisor.child_spec({ToyWorker, :a}, id: :a),
+          Supervisor.child_spec({ToyWorker, :b}, id: :b),
+          Supervisor.child_spec({ToyWorker, :c}, id: :c)
+        ]
+
+        {:ok, sup} = Supervisor.start_link(children, strategy: :rest_for_one)
+        # B is before A in the start list, so it's unaffected.
+        b_pid_before = Process.whereis(:b)
+        # A is after B, so it will be restarted.
+        c_pid_before = Process.whereis(:c)
+
+        # Crash worker B
+        GenServer.cast(:b, :crash)
+        Process.sleep(100)
+
+        # A is unaffected, B and C are restarted.
+        assert Process.whereis(:a) == b_pid_before
+        assert Process.whereis(:b) != c_pid_before
+        assert Process.whereis(:c) != nil
+        Supervisor.stop(sup)
+        :ok
+      end
+    end
+  end
+
+  def answer_two do
+    quote do
+      def test_dynamic_supervisor do
+        {:ok, sup} = DynamicSupervisor.start_link(strategy: :one_for_one)
+        # Start three children dynamically
+        {:ok, _pid1} = DynamicSupervisor.start_child(sup, DynamicToyWorker)
+        {:ok, pid2} = DynamicSupervisor.start_child(sup, DynamicToyWorker)
+        {:ok, _pid3} = DynamicSupervisor.start_child(sup, DynamicToyWorker)
+
+        # Terminate one child
+        DynamicSupervisor.terminate_child(sup, pid2)
+        Process.sleep(100)
+
+        # Verify others are still alive
+        assert length(DynamicSupervisor.which_children(sup)) == 2
+        Supervisor.stop(sup)
+        :ok
+      end
+    end
+  end
+
+  def answer_three do
+    quote do
+      def test_max_restarts do
+        # Allow 2 restarts in 1 second
+        opts = [strategy: :one_for_one, max_restarts: 2, max_seconds: 1]
+        children = [CrashyWorker]
+
+        {:ok, sup} = Supervisor.start_link(children, opts)
+        worker_pid = hd(Supervisor.which_children(sup)) |> elem(1)
+
+        # 3 crashes in quick succession should exceed the limit
+        Process.exit(worker_pid, :kill)
+        Process.sleep(100)
+        Process.exit(hd(Supervisor.which_children(sup)) |> elem(1), :kill)
+        Process.sleep(100)
+        Process.exit(hd(Supervisor.which_children(sup)) |> elem(1), :kill)
+        Process.sleep(100)
+
+        # The supervisor itself should now be dead
+        refute Process.alive?(sup)
+        :ok
+      end
+    end
+  end
+end
+
+IO.puts("""
 ANSWERS & EXPLANATIONS
 
 # 1. test_rest_for_one/0
-# def test_rest_for_one do
-#   children = [
-#     {ToyWorker, :worker_a},
-#     {ToyWorker, :worker_b},
-#     {ToyWorker, :worker_c}
-#   ]
-#
-#   {:ok, sup} = Supervisor.start_link(children, strategy: :rest_for_one)
-#
-#   # Crash worker_b - should restart worker_b and worker_c, but leave worker_a alone
-#   GenServer.cast(:worker_b, :crash)
-#   Process.sleep(100)
-#
-#   # All should be alive after restart
-#   a_alive = Process.alive?(Process.whereis(:worker_a))
-#   b_alive = Process.alive?(Process.whereis(:worker_b))
-#   c_alive = Process.alive?(Process.whereis(:worker_c))
-#
-#   Supervisor.stop(sup)
-#
-#   IO.puts("worker_a (\#{a_alive}), worker_b (\#{b_alive}), worker_c (\#{c_alive})")
-#   :ok
-# end
-#  rest_for_one observation: crashing :a restarts :a and any children defined
-#  *after* it in the child list but leaves previous siblings untouched.
+#{Macro.to_string(DayOne.Answers.answer_one())}
+#  The `:rest_for_one` strategy is useful when children have dependencies based
+#  on their start order. When a child crashes, it and any children started *after*
+#  it are restarted. Children started *before* it are unaffected.
 
 # 2. test_dynamic_supervisor/0
-# def test_dynamic_supervisor do
-#   {:ok, sup} = DynamicSupervisor.start_link(strategy: :one_for_one)
-#
-#   # Start three workers
-#   {:ok, pid1} = DynamicSupervisor.start_child(sup, {DynamicToyWorker, 1})
-#   {:ok, pid2} = DynamicSupervisor.start_child(sup, {DynamicToyWorker, 2})
-#   {:ok, pid3} = DynamicSupervisor.start_child(sup, {DynamicToyWorker, 3})
-#
-#   # Terminate one manually
-#   DynamicSupervisor.terminate_child(sup, pid2)
-#
-#   # Check others are still alive
-#   alive1 = Process.alive?(pid1)
-#   alive2 = Process.alive?(pid2)
-#   alive3 = Process.alive?(pid3)
-#
-#   DynamicSupervisor.stop(sup)
-#
-#   IO.puts("Dynamic supervisor: worker1 (\#{alive1}), worker2 (\#{alive2}), worker3 (\#{alive3})")
-#   :ok
-# end
-#  Killing one worker in a DynamicSupervisor doesn't affect others, showing isolation.
+#{Macro.to_string(DayOne.Answers.answer_two())}
+#  A `DynamicSupervisor` is the right tool when you don't know all the children
+#  up front. Unlike a regular `Supervisor`, you can add and remove children
+#  at runtime using `start_child`/`terminate_child`, making it ideal for things
+#  like managing user session processes or connection pools.
 
 # 3. test_max_restarts/0
-# def test_max_restarts do
-#   # Supervisor that allows 2 restarts in 5 seconds
-#   sup_opts = [
-#     strategy: :one_for_one,
-#     max_restarts: 2,
-#     max_seconds: 5
-#   ]
-#
-#   # This will fail to start because CrashyWorker crashes immediately on init after first start
-#   result = Supervisor.start_link([CrashyWorker], sup_opts)
-#
-#   case result do
-#     {:error, {:shutdown, {:failed_to_start_child, CrashyWorker, _}}} ->
-#       IO.puts("Supervisor gave up after max_restarts exceeded")
-#       :ok
-#     _ ->
-#       IO.puts("Unexpected supervisor behavior")
-#       :ok
-#   end
-# end
-#  max_restarts/max_seconds demo: supervisor terminates after exceeding restart threshold,
-#  showing escalation when children persistently fail.
-"""
+#{Macro.to_string(DayOne.Answers.answer_three())}
+#  The `max_restarts` and `max_seconds` options are a safety valve. They prevent
+#  a faulty child from getting stuck in an infinite crash-restart loop, which
+#  could consume system resources. If the restart frequency exceeds the limit,
+#  the supervisor terminates itself and all its children, escalating the failure.
+""")

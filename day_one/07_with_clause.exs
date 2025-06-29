@@ -197,42 +197,74 @@ defmodule DayOne.WithExercisesTest do
   end
 end
 
-"""
+defmodule DayOne.Answers do
+  # Helper mocks for answer_one
+  defp mock_file_read("config.json"), do: {:ok, ~s({"key": "value"})}
+  defp mock_file_read("missing.json"), do: {:error, :enoent}
+  defp mock_file_read("invalid.json"), do: {:ok, "not json"}
+
+  defp mock_json_decode(~s({"key": "value"})), do: {:ok, %{"key" => "value"}}
+  defp mock_json_decode("not json"), do: {:error, :invalid_json}
+  defp mock_json_decode(_), do: {:error, :invalid_json}
+
+  def answer_one do
+    quote do
+      def refactor_nested_case(path) do
+        with {:ok, raw_content} <- DayOne.Answers.mock_file_read(path),
+             {:ok, data} <- DayOne.Answers.mock_json_decode(raw_content) do
+          {:ok, data}
+        end
+      end
+    end
+  end
+
+  def answer_two do
+    quote do
+      def maybe_div(_a, 0), do: {:error, :zero_div}
+      def maybe_div(a, b) do
+        with true <- is_number(a) and is_number(b) do
+          {:ok, a / b}
+        else
+          _ -> {:error, :invalid_input}
+        end
+      end
+    end
+  end
+
+  def answer_three do
+    quote do
+      def fetch_age(id) do
+        with {:ok, user} <- DayOne.WithExercises.get_user(id),
+             {:ok, profile} <- DayOne.WithExercises.get_profile(user),
+             {:ok, age} <- Map.fetch(profile, :age) do
+          {:ok, age}
+        end
+      end
+    end
+  end
+end
+
+IO.puts("""
 ANSWERS & EXPLANATIONS
 
 # 1. refactor_nested_case/1
-def refactor_nested_case(path) do
-  with {:ok, raw} <- mock_file_read(path),
-       {:ok, map} <- mock_json_decode(raw) do
-    {:ok, map}
-  end
-end
-
-defp mock_file_read("config.json"), do: {:ok, ~s({"key": "value"})}
-defp mock_file_read("missing.json"), do: {:error, :enoent}
-defp mock_file_read("invalid.json"), do: {:ok, "not json"}
-
-defp mock_json_decode(~s({"key": "value"})), do: {:ok, %{"key" => "value"}}
-defp mock_json_decode("not json"), do: {:error, :invalid_json}
-#  Single expression is clearer; `with` stops on first {:error, _}.
+#{Macro.to_string(DayOne.Answers.answer_one())}
+#  `with` is designed specifically to replace nested `case` statements (the
+#  "pyramid of doom"). Each clause must match for the `do` block to execute. If
+#  any clause fails, the `with` statement immediately short-circuits and returns
+#  the non-matching value.
 
 # 2. maybe_div/2
-def maybe_div(a, b) do
-  with true <- b != 0 do
-    {:ok, a / b}
-  else
-    false -> {:error, :zero_div}
-  end
-end
-#  Uses `with` to guard against division by zero before performing calculation.
+#{Macro.to_string(DayOne.Answers.answer_two())}
+#  While `with` can be used here, a simple function head pattern match for the
+#  zero case is often more direct and readable for simple guards like this. This
+#  answer shows a combined approach, using a function head for the zero case and
+#  `with` to validate input types.
 
 # 3. fetch_age/1
-def fetch_age(id) do
-  with {:ok, user} <- get_user(id),
-       {:ok, profile} <- get_profile(user),
-       {:ok, age} <- Map.fetch(profile, :age) do
-    {:ok, age}
-  end
-end
-#  Guards the happy path while propagating the first failure in the chain.
-"""
+#{Macro.to_string(DayOne.Answers.answer_three())}
+#  This is a perfect, idiomatic use of `with`. It describes the "happy path" -
+#  a series of steps that must all succeed. It's clean, readable, and handles
+#  any failure along the chain gracefully. Note that `Map.fetch/2` returns
+#  `{:ok, value}` or `{:error, :key_not_found}`, fitting perfectly into the chain.
+""")

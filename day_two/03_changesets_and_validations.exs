@@ -31,12 +31,44 @@ defmodule DayTwo.User do
     }
   end
 
+  def show_real_changeset_example do
+    quote do
+      # Real Ecto changeset function:
+      def changeset(user, attrs) do
+        user
+        |> cast(attrs, [:name, :email, :age, :active])
+        |> validate_required([:name, :email])
+        |> validate_format(:email, ~r/@/)
+        |> validate_number(:age, greater_than: 0, less_than: 120)
+        |> unique_constraint(:email)
+      end
+    end
+  end
+
+  def run_user_example do
+    # Test the changeset with valid data
+    valid_attrs = %{"name" => "Alice", "email" => "alice@example.com", "age" => 25}
+    valid_changeset = DayTwo.User.changeset(%DayTwo.User{}, valid_attrs)
+
+    IO.inspect(valid_changeset.valid?, label: "Valid changeset")
+    IO.inspect(valid_changeset.changes, label: "Changes")
+    IO.inspect(valid_changeset.errors, label: "Errors")
+
+    # Test with invalid data
+    invalid_attrs = %{"name" => "", "email" => "not-an-email", "age" => 150}
+    invalid_changeset = DayTwo.User.changeset(%DayTwo.User{}, invalid_attrs)
+
+    IO.inspect(invalid_changeset.valid?, label: "Invalid changeset")
+    IO.inspect(invalid_changeset.errors, label: "Validation errors")
+  end
+
   defp filter_changes(user, attrs) do
     # Only include allowed fields that have changed
     allowed = [:name, :email, :age, :active]
 
     Enum.reduce(allowed, %{}, fn field, acc ->
       key = Atom.to_string(field)
+
       if Map.has_key?(attrs, key) do
         new_value = Map.get(attrs, key)
         current_value = Map.get(user, field)
@@ -55,16 +87,23 @@ defmodule DayTwo.User do
   defp validate_all(attrs) do
     # All validations must pass
     required_present?(attrs) and
-    email_format_valid?(attrs) and
-    age_in_range?(attrs)
+      email_format_valid?(attrs) and
+      age_in_range?(attrs)
   end
 
   defp get_errors(attrs) do
     errors = []
 
-    errors = if required_present?(attrs), do: errors, else: [{:name, "can't be blank"} | errors]
-    errors = if email_format_valid?(attrs), do: errors, else: [{:email, "invalid format"} | errors]
-    errors = if age_in_range?(attrs), do: errors, else: [{:age, "must be between 1 and 120"} | errors]
+    errors =
+      if required_present?(attrs), do: errors, else: [{:name, "can't be blank"} | errors]
+
+    errors =
+      if email_format_valid?(attrs), do: errors, else: [{:email, "invalid format"} | errors]
+
+    errors =
+      if age_in_range?(attrs),
+        do: errors,
+        else: [{:age, "must be between 1 and 120"} | errors]
 
     errors
   end
@@ -81,46 +120,23 @@ defmodule DayTwo.User do
 
   defp age_in_range?(attrs) do
     case Map.get(attrs, "age") do
-      nil -> true  # age is optional
-      age when is_integer(age) -> age >= 1 and age <= 120
+      nil ->
+        true # age is optional
+      age when is_integer(age) ->
+        age >= 1 and age <= 120
       age when is_binary(age) ->
         case Integer.parse(age) do
           {parsed, ""} -> parsed >= 1 and parsed <= 120
           _ -> false
         end
-      _ -> false
+      _ ->
+        false
     end
-  end
-
-  def show_real_changeset_example do
-    """
-    # Real Ecto changeset function:
-    def changeset(user, attrs) do
-      user
-      |> cast(attrs, [:name, :email, :age, :active])
-      |> validate_required([:name, :email])
-      |> validate_format(:email, ~r/@/)
-      |> validate_number(:age, greater_than: 0, less_than: 120)
-      |> unique_constraint(:email)
-    end
-    """
   end
 end
 
-# Test the changeset with valid data
-valid_attrs = %{"name" => "Alice", "email" => "alice@example.com", "age" => 25}
-valid_changeset = DayTwo.User.changeset(%DayTwo.User{}, valid_attrs)
-
-IO.inspect(valid_changeset.valid?, label: "Valid changeset")
-IO.inspect(valid_changeset.changes, label: "Changes")
-IO.inspect(valid_changeset.errors, label: "Errors")
-
-# Test with invalid data
-invalid_attrs = %{"name" => "", "email" => "not-an-email", "age" => 150}
-invalid_changeset = DayTwo.User.changeset(%DayTwo.User{}, invalid_attrs)
-
-IO.inspect(invalid_changeset.valid?, label: "Invalid changeset")
-IO.inspect(invalid_changeset.errors, label: "Validation errors")
+DayTwo.User.run_user_example()
+IO.puts(Macro.to_string(DayTwo.User.show_real_changeset_example()))
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 2 – Common validation functions")
@@ -149,34 +165,35 @@ defmodule DayTwo.ValidationExamples do
   end
 
   def show_custom_validation_example do
-    """
-    # Custom validation function:
-    defp validate_username_availability(changeset) do
-      case get_change(changeset, :username) do
-        nil -> changeset
-        username ->
-          if username_taken?(username) do
-            add_error(changeset, :username, "is already taken")
-          else
+    quote do
+      # Custom validation function:
+      defp validate_username_availability(changeset) do
+        case get_change(changeset, :username) do
+          nil ->
             changeset
-          end
+          username ->
+            if username_taken?(username) do
+              add_error(changeset, :username, "is already taken")
+            else
+              changeset
+            end
+        end
+      end
+
+      # Usage in changeset:
+      def changeset(user, attrs) do
+        user
+        |> cast(attrs, [:username, :email])
+        |> validate_required([:username])
+        |> validate_username_availability()
       end
     end
-
-    # Usage in changeset:
-    def changeset(user, attrs) do
-      user
-      |> cast(attrs, [:username, :email])
-      |> validate_required([:username])
-      |> validate_username_availability()
-    end
-    """
   end
 end
 
 DayTwo.ValidationExamples.show_validation_functions()
 IO.puts("\nCustom validation pattern:")
-IO.puts(DayTwo.ValidationExamples.show_custom_validation_example())
+IO.puts(Macro.to_string(DayTwo.ValidationExamples.show_custom_validation_example()))
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 3 – Constraints vs validations")
@@ -206,34 +223,36 @@ defmodule DayTwo.ConstraintsVsValidations do
   end
 
   def show_constraint_example do
-    """
-    # In migration:
-    create unique_index(:users, [:email])
+    quote do
+      # In migration:
+      create unique_index(:users, [:email])
 
-    # In changeset:
-    def changeset(user, attrs) do
-      user
-      |> cast(attrs, [:email])
-      |> validate_format(:email, ~r/@/)  # validation
-      |> unique_constraint(:email)       # constraint
-    end
+      # In changeset:
+      def changeset(user, attrs) do
+        user
+        |> cast(attrs, [:email])
+        |> validate_format(:email, ~r/@/) # validation
+        |> unique_constraint(:email) # constraint
+      end
 
-    # If unique constraint fails:
-    case Repo.insert(changeset) do
-      {:ok, user} ->
-        # success
-      {:error, changeset} ->
-        # changeset.errors will include constraint violation
-        # [email: {"has already been taken", [constraint: :unique]}]
+      # If unique constraint fails:
+      case Repo.insert(changeset) do
+        {:ok, user} ->
+          # success
+          :ok
+        {:error, changeset} ->
+          # changeset.errors will include constraint violation
+          # [email: {"has already been taken", [constraint: :unique]}]
+          :error
+      end
     end
-    """
   end
 end
 
 IO.puts("Validations vs Constraints:")
 IO.puts(DayTwo.ConstraintsVsValidations.explain_difference())
 IO.puts("\nConstraint handling example:")
-IO.puts(DayTwo.ConstraintsVsValidations.show_constraint_example())
+IO.puts(Macro.to_string(DayTwo.ConstraintsVsValidations.show_constraint_example()))
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 4 – Multiple changeset functions for different contexts")
@@ -285,41 +304,46 @@ defmodule DayTwo.UserContexts do
   end
 
   def show_real_multiple_changesets do
-    """
-    # Registration changeset
-    def registration_changeset(user, attrs) do
-      user
-      |> cast(attrs, [:name, :email, :password])
-      |> validate_required([:name, :email, :password])
-      |> validate_length(:password, min: 8)
-      |> put_password_hash()
-      |> put_change(:role, "user")
-      |> put_change(:active, true)
-    end
+    quote do
+      # Registration changeset
+      def registration_changeset(user, attrs) do
+        user
+        |> cast(attrs, [:name, :email, :password])
+        |> validate_required([:name, :email, :password])
+        |> validate_length(:password, min: 8)
+        |> put_password_hash()
+        |> put_change(:role, "user")
+        |> put_change(:active, true)
+      end
 
-    # Profile update changeset
-    def update_changeset(user, attrs) do
-      user
-      |> cast(attrs, [:name, :email])
-      |> validate_required([:name, :email])
-      |> unique_constraint(:email)
-    end
+      # Profile update changeset
+      def update_changeset(user, attrs) do
+        user
+        |> cast(attrs, [:name, :email])
+        |> validate_required([:name, :email])
+        |> unique_constraint(:email)
+      end
 
-    # Admin changeset
-    def admin_changeset(user, attrs) do
-      user
-      |> cast(attrs, [:name, :email, :role, :active])
-      |> validate_inclusion(:role, ["user", "admin", "moderator"])
-      |> validate_admin_not_deactivating_self()
+      # Admin changeset
+      def admin_changeset(user, attrs) do
+        user
+        |> cast(attrs, [:name, :email, :role, :active])
+        |> validate_inclusion(:role, ["user", "admin", "moderator"])
+        |> validate_admin_not_deactivating_self()
+      end
     end
-    """
+  end
+
+  def run_example do
+    user = %__MODULE__{}
+    DayTwo.UserContexts.registration_changeset(user, %{})
+    DayTwo.UserContexts.update_profile_changeset(user, %{})
+    DayTwo.UserContexts.admin_changeset(user, %{})
   end
 end
 
-user = %DayTwo.UserContexts{}
-DayTwo.UserContexts.registration_changeset(user, %{})
-DayTwo.UserContexts.update_profile_changeset(user, %{})
-DayTwo.UserContexts.admin_changeset(user, %{})
+DayTwo.UserContexts.run_example()
+IO.puts(Macro.to_string(DayTwo.UserContexts.show_real_multiple_changesets()))
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 5 – Real-world: Blog post changeset with complex validation")
@@ -359,54 +383,64 @@ defmodule DayTwo.BlogPost do
   end
 
   def show_real_blog_changeset do
-    """
-    def changeset(post, attrs) do
-      post
-      |> cast(attrs, [:title, :content, :tags, :published_at])
-      |> validate_required([:title, :content])
-      |> validate_length(:title, min: 3, max: 100)
-      |> validate_length(:content, min: 10)
-      |> generate_slug()
-      |> unique_constraint(:slug)
-      |> process_tags()
-      |> validate_published_at()
-    end
+    quote do
+      def changeset(post, attrs) do
+        post
+        |> cast(attrs, [:title, :content, :tags, :published_at])
+        |> validate_required([:title, :content])
+        |> validate_length(:title, min: 3, max: 100)
+        |> validate_length(:content, min: 10)
+        |> generate_slug()
+        |> unique_constraint(:slug)
+        |> process_tags()
+        |> validate_published_at()
+      end
 
-    defp generate_slug(changeset) do
-      case get_change(changeset, :title) do
-        nil -> changeset
-        title ->
-          slug = title
-                 |> String.downcase()
-                 |> String.replace(~r/[^a-z0-9]/, "-")
-                 |> String.replace(~r/-+/, "-")
-                 |> String.trim("-")
+      defp generate_slug(changeset) do
+        case get_change(changeset, :title) do
+          nil ->
+            changeset
+          title ->
+            slug =
+              title
+              |> String.downcase()
+              |> String.replace(~r/[^a-z0-9]/, "-")
+              |> String.replace(~r/-+/, "-")
+              |> String.trim("-")
 
-          put_change(changeset, :slug, slug)
+            put_change(changeset, :slug, slug)
+        end
+      end
+
+      defp process_tags(changeset) do
+        case get_change(changeset, :tags) do
+          nil ->
+            changeset
+          tags when is_binary(tags) ->
+            processed =
+              tags
+              |> String.split(",")
+              |> Enum.map(&String.trim/1)
+              |> Enum.map(&String.downcase/1)
+              |> Enum.reject(&(&1 == ""))
+              |> Enum.uniq()
+
+            put_change(changeset, :tags, processed)
+          _ ->
+            changeset
+        end
       end
     end
+  end
 
-    defp process_tags(changeset) do
-      case get_change(changeset, :tags) do
-        nil -> changeset
-        tags when is_binary(tags) ->
-          processed = tags
-                     |> String.split(",")
-                     |> Enum.map(&String.trim/1)
-                     |> Enum.map(&String.downcase/1)
-                     |> Enum.reject(&(&1 == ""))
-                     |> Enum.uniq()
-
-          put_change(changeset, :tags, processed)
-        _ -> changeset
-      end
-    end
-    """
+  def run_example do
+    post = %__MODULE__{}
+    DayTwo.BlogPost.changeset(post, %{"title" => "My Blog Post"})
   end
 end
 
-post = %DayTwo.BlogPost{}
-DayTwo.BlogPost.changeset(post, %{"title" => "My Blog Post"})
+DayTwo.BlogPost.run_example()
+IO.puts(Macro.to_string(DayTwo.BlogPost.show_real_blog_changeset()))
 
 defmodule DayTwo.ChangesetExercises do
   @moduledoc """
@@ -414,35 +448,51 @@ defmodule DayTwo.ChangesetExercises do
   or in IEx:
   iex -r day_two/03_changesets_and_validations.exs
   DayTwo.ChangesetExercisesTest.test_product_changeset/0
-  DayTwo.ChangesetExercisesTest.test_password_reset/0
-  DayTwo.ChangesetExercisesTest.test_order_changeset/0
+  DayTwo.ChangesetExercisesTest.test_password_reset_changeset/0
   """
 
   @spec build_product_changeset(map(), map()) :: map()
   def build_product_changeset(_product, _attrs) do
-    #   Create a `Product` changeset that validates price is positive, name is
-    #   at least 3 characters, and SKU follows format "ABC-123" (3 letters,
-    #   dash, 3 numbers). Include a custom validation function.
-    #   Return a changeset-like map with valid? and errors keys
-    %{valid?: false, errors: []}  # TODO: Implement product changeset validation
+    # Create a changeset-like map for a `Product`.
+    #
+    # Validations:
+    # - `name`: must be at least 3 characters long.
+    # - `price`: must be a positive number.
+    # - `sku`: must follow the format "ABC-123" (3 uppercase letters, a dash, 3 numbers).
+    #
+    # Implement the `sku` validation using a private helper function.
+    #
+    # Return a map with keys: `:valid?`, `:errors`, and `:changes`.
+    %{valid?: false, errors: [], changes: %{}}
   end
 
   @spec build_password_reset_changeset(map(), map()) :: map()
   def build_password_reset_changeset(_reset, _attrs) do
-    #   Build a `PasswordReset` changeset that validates the token is present,
-    #   the new password meets complexity requirements (8+ chars, has number
-    #   and special character), and confirmation matches.
-    #   Return a changeset-like map with valid? and errors keys
-    %{valid?: false, errors: []}  # TODO: Implement password reset changeset validation
+    # Build a changeset-like map for a `PasswordReset`.
+    #
+    # Validations:
+    # - `password`: must be at least 8 characters long.
+    # - `password_confirmation`: must match the `password`.
+    #
+    # Return a map with keys: `:valid?` and `:errors`.
+    %{valid?: false, errors: []}
   end
 
-  @spec design_order_changeset_strategy() :: binary()
-  def design_order_changeset_strategy do
-    #   Design an `Order` changeset that calculates total from
-    #   line items, validates inventory is available, and applies discount
-    #   codes. Show how you'd handle the case where validation requires
-    #   database queries. Return a description of your approach.
-    ""  # TODO: Design order changeset strategy with database validations
+  defp validate_name(errors, attrs) do
+    name = Map.get(attrs, "name", "")
+    if String.length(name) < 3, do: [{:name, "must be at least 3 characters"} | errors], else: errors
+  end
+
+  defp validate_price(errors, attrs) do
+    price = Map.get(attrs, "price", 0)
+    if price <= 0, do: [{:price, "must be positive"} | errors], else: errors
+  end
+
+  defp validate_sku_format(errors, attrs) do
+    sku = Map.get(attrs, "sku", "")
+    unless Regex.match?(~r/^[A-Z]{3}-\d{3}$/, sku),
+      do: [{:sku, "must be format ABC-123"} | errors],
+      else: errors
   end
 end
 
@@ -462,87 +512,90 @@ defmodule DayTwo.ChangesetExercisesTest do
     assert valid_changeset.valid? == true
 
     invalid_changeset = EX.build_product_changeset(product, invalid_attrs)
-    assert valid_changeset.valid? == false
-    assert Map.has_key?(invalid_changeset, :errors)
+    assert invalid_changeset.valid? == false
+    assert length(invalid_changeset.errors) == 3
   end
 
-  test "build_password_reset_changeset/2 validates password complexity" do
+  test "build_password_reset_changeset/2 validates password length and confirmation" do
     reset = %{}
+
     valid_attrs = %{
-      "token" => "abc123",
-      "password" => "secure123!",
-      "password_confirmation" => "secure123!"
+      "password" => "secure_password",
+      "password_confirmation" => "secure_password"
     }
-    invalid_attrs = %{
-      "password" => "weak",
-      "password_confirmation" => "different"
-    }
+
+    invalid_attrs = %{"password" => "short", "password_confirmation" => "does_not_match"}
 
     valid_changeset = EX.build_password_reset_changeset(reset, valid_attrs)
     assert valid_changeset.valid? == true
+    assert valid_changeset.errors == []
 
     invalid_changeset = EX.build_password_reset_changeset(reset, invalid_attrs)
     assert invalid_changeset.valid? == false
-  end
-
-  test "design_order_changeset_strategy/0 describes database validation approach" do
-    strategy = EX.design_order_changeset_strategy()
-    assert is_binary(strategy)
-    assert String.contains?(strategy, "prepare_changes")
-    assert String.length(strategy) > 50
+    assert length(invalid_changeset.errors) == 2
   end
 end
 
-"""
+defmodule DayTwo.Answers do
+  def answer_one do
+    quote do
+      def build_product_changeset(product, attrs) do
+        name = Map.get(attrs, "name", "")
+        price = Map.get(attrs, "price", 0)
+        sku = Map.get(attrs, "sku", "")
+
+        errors =
+          []
+          |> validate_name(attrs)
+          |> validate_price(attrs)
+          |> validate_sku_format(attrs)
+
+        %{
+          valid?: Enum.empty?(errors),
+          errors: Enum.reverse(errors),
+          changes: Map.take(attrs, ["name", "price", "sku"])
+        }
+      end
+    end
+  end
+
+  def answer_two do
+    quote do
+      def build_password_reset_changeset(_reset, attrs) do
+        password = Map.get(attrs, "password", "")
+        confirmation = Map.get(attrs, "password_confirmation", "")
+
+        errors = []
+
+        errors =
+          if String.length(password) < 8,
+            do: [{:password, "must be at least 8 characters"} | errors],
+            else: errors
+
+        errors =
+          if password != confirmation,
+            do: [{:password_confirmation, "does not match"} | errors],
+            else: errors
+
+        %{valid?: Enum.empty?(errors), errors: Enum.reverse(errors)}
+      end
+    end
+  end
+end
+
+IO.puts("""
 ANSWERS & EXPLANATIONS
 
 # 1. build_product_changeset/2
-def build_product_changeset(product, attrs) do
-  # Simulate changeset validation logic
-  name = Map.get(attrs, "name", "")
-  price = Map.get(attrs, "price", 0)
-  sku = Map.get(attrs, "sku", "")
-
-  errors = []
-  errors = if String.length(name) < 3, do: [{:name, "must be at least 3 characters"} | errors], else: errors
-  errors = if price <= 0, do: [{:price, "must be positive"} | errors], else: errors
-  errors = if !Regex.match?(~r/^[A-Z]{3}-[0-9]{3}$/, sku), do: [{:sku, "must be format ABC-123"} | errors], else: errors
-
-  %{valid?: Enum.empty?(errors), errors: errors, changes: Map.take(attrs, ["name", "price", "sku"])}
-end
-#  Custom validation function checks SKU format with regex pattern matching.
+#{Macro.to_string(DayTwo.Answers.answer_one())}
+#  This implementation shows the validation logic inline. The exercise asks you to
+#  refactor the SKU validation into a private helper function (`defp`) inside the
+#  `DayTwo.ChangesetExercises` module, which is a common practice for cleaner code.
 
 # 2. build_password_reset_changeset/2
-def build_password_reset_changeset(reset, attrs) do
-  password = Map.get(attrs, "password", "")
-  confirmation = Map.get(attrs, "password_confirmation", "")
+#{Macro.to_string(DayTwo.Answers.answer_two())}
+#  This exercise demonstrates two common validation patterns: checking a field's
+#  properties (length) and ensuring two fields match (confirmation). This is
+#  a core part of handling user input for things like password changes.
 
-  errors = []
-  errors = if String.length(password) < 8, do: [{:password, "must be at least 8 characters"} | errors], else: errors
-  errors = if !Regex.match?(~r/[0-9]/, password), do: [{:password, "must contain a number"} | errors], else: errors
-  errors = if !Regex.match?(~r/[!@#$%^&*]/, password), do: [{:password, "must contain special character"} | errors], else: errors
-  errors = if password != confirmation, do: [{:password_confirmation, "does not match"} | errors], else: errors
-
-  %{valid?: Enum.empty?(errors), errors: errors}
-end
-#  Multiple validation rules ensure password meets security requirements.
-
-# 3. design_order_changeset_strategy/0
-def design_order_changeset_strategy do
-  \"\"\"
-  Use prepare_changes/2 for database-dependent validations:
-
-  def changeset(order, attrs) do
-    order
-    |> cast(attrs, [:user_id, :discount_code])
-    |> cast_assoc(:line_items, with: &LineItem.changeset/2)
-    |> calculate_total()
-    |> prepare_changes(&validate_inventory/1)
-    |> prepare_changes(&apply_discount/1)
-  end
-
-  This allows database queries during validation while maintaining transactional integrity.
-  \"\"\"
-end
-#  prepare_changes/2 enables complex validations that require database access.
-"""
+""")

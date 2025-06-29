@@ -101,94 +101,102 @@ defmodule DayTwo.ChannelPatterns do
   """
 
   def show_socket_implementation do
-    """
-    # Phoenix Socket implementation:
-    defmodule MyAppWeb.UserSocket do
-      use Phoenix.Socket
+    IO.puts("# Phoenix Socket implementation:")
 
-      # Channel routing
-      channel "room:*", MyAppWeb.RoomChannel
-      channel "user:*", MyAppWeb.UserChannel
-      channel "presence:*", MyAppWeb.PresenceChannel
+    code =
+      quote do
+        defmodule MyAppWeb.UserSocket do
+          use Phoenix.Socket
 
-      # Authentication
-      def connect(%{"token" => token}, socket, _connect_info) do
-        case MyApp.Guardian.decode_token(token) do
-          {:ok, user_id} ->
-            socket = assign(socket, :user_id, user_id)
-            {:ok, socket}
-          {:error, _} ->
+          # Channel routing
+          channel("room:*", MyAppWeb.RoomChannel)
+          channel("user:*", MyAppWeb.UserChannel)
+          channel("presence:*", MyAppWeb.PresenceChannel)
+
+          # Authentication
+          def connect(%{"token" => token}, socket, _connect_info) do
+            case MyApp.Guardian.decode_token(token) do
+              {:ok, user_id} ->
+                socket = assign(socket, :user_id, user_id)
+                {:ok, socket}
+              {:error, _} ->
+                :error
+            end
+          end
+
+          def connect(_params, _socket, _connect_info) do
             :error
+          end
+
+          # Socket ID for disconnection
+          def id(socket), do: "user_socket:#{socket.assigns.user_id}"
         end
       end
 
-      def connect(_params, _socket, _connect_info) do
-        :error
-      end
-
-      # Socket ID for disconnection
-      def id(socket), do: "user_socket:#{socket.assigns.user_id}"
-    end
-    """
+    IO.puts(Macro.to_string(code))
   end
 
   def show_basic_channel_implementation do
-    """
-    # Basic Channel implementation:
-    defmodule MyAppWeb.RoomChannel do
-      use Phoenix.Channel
+    IO.puts("# Basic Channel implementation:")
 
-      # Join authorization
-      def join("room:" <> room_id, params, socket) do
-        if authorized?(socket.assigns.user_id, room_id) do
-          send(self(), :after_join)
-          {:ok, assign(socket, :room_id, room_id)}
-        else
-          {:error, %{reason: "unauthorized"}}
+    code =
+      quote do
+        defmodule MyAppWeb.RoomChannel do
+          use Phoenix.Channel
+
+          # Join authorization
+          def join("room:" <> room_id, params, socket) do
+            if authorized?(socket.assigns.user_id, room_id) do
+              send(self(), :after_join)
+              {:ok, assign(socket, :room_id, room_id)}
+            else
+              {:error, %{reason: "unauthorized"}}
+            end
+          end
+
+          # Handle client messages
+          def handle_in("new_message", %{"content" => content}, socket) do
+            user_id = socket.assigns.user_id
+            room_id = socket.assigns.room_id
+
+            message = %{
+              id: generate_id(),
+              user_id: user_id,
+              content: content,
+              timestamp: DateTime.utc_now()
+            }
+
+            # Save to database
+            {:ok, _} = Messages.create_message(message)
+
+            # Broadcast to all room members
+            broadcast!(socket, "new_message", message)
+
+            {:reply, {:ok, message}, socket}
+          end
+
+          # Handle PubSub messages
+          def handle_info(:after_join, socket) do
+            room_id = socket.assigns.room_id
+            user_id = socket.assigns.user_id
+
+            # Subscribe to room-specific events
+            Phoenix.PubSub.subscribe(MyApp.PubSub, "room_events:#{room_id}")
+
+            # Announce user joined
+            broadcast!(socket, "user_joined", %{user_id: user_id})
+
+            {:noreply, socket}
+          end
         end
       end
 
-      # Handle client messages
-      def handle_in("new_message", %{"content" => content}, socket) do
-        user_id = socket.assigns.user_id
-        room_id = socket.assigns.room_id
-
-        message = %{
-          id: generate_id(),
-          user_id: user_id,
-          content: content,
-          timestamp: DateTime.utc_now()
-        }
-
-        # Save to database
-        {:ok, _} = Messages.create_message(message)
-
-        # Broadcast to all room members
-        broadcast!(socket, "new_message", message)
-
-        {:reply, {:ok, message}, socket}
-      end
-
-      # Handle PubSub messages
-      def handle_info(:after_join, socket) do
-        room_id = socket.assigns.room_id
-        user_id = socket.assigns.user_id
-
-        # Subscribe to room-specific events
-        Phoenix.PubSub.subscribe(MyApp.PubSub, "room_events:#{room_id}")
-
-        # Announce user joined
-        broadcast!(socket, "user_joined", %{user_id: user_id})
-
-        {:noreply, socket}
-      end
-    end
-    """
+    IO.puts(Macro.to_string(code))
   end
 end
 
 IO.puts("Socket implementation:")
-IO.puts(DayTwo.ChannelPatterns.show_socket_implementation())
+DayTwo.ChannelPatterns.show_socket_implementation()
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 3 – Client-side Channel integration")
@@ -199,101 +207,97 @@ defmodule DayTwo.ClientPatterns do
   """
 
   def show_javascript_setup do
-    """
-    // JavaScript client setup:
-    import {Socket} from "phoenix"
+    IO.puts("// JavaScript client setup:")
 
-    // Create socket connection
-    let socket = new Socket("/socket", {
-      params: {token: userToken},
-      logger: (kind, msg, data) => { console.log(`${kind}: ${msg}`, data) }
-    })
+    code =
+      ~S"""
+      import {Socket} from "phoenix"
 
-    socket.connect()
-
-    // Join a channel
-    let channel = socket.channel("room:general", {})
-
-    channel.join()
-      .receive("ok", resp => {
-        console.log("Joined successfully", resp)
-      })
-      .receive("error", resp => {
-        console.log("Unable to join", resp)
+      // Create socket connection
+      let socket = new Socket("/socket", {
+        params: {token: userToken},
+        logger: (kind, msg, data) => { console.log(`${kind}: ${msg}`, data) }
       })
 
-    // Listen for messages
-    channel.on("new_message", payload => {
-      console.log("New message:", payload)
-      displayMessage(payload)
-    })
+      socket.connect()
 
-    // Send messages
-    channel.push("new_message", {content: "Hello, world!"})
-      .receive("ok", resp => console.log("Message sent", resp))
-      .receive("error", resp => console.log("Failed to send", resp))
-    """
+      // Join a channel
+      let channel = socket.channel("room:general", {})
+
+      channel.join()
+        .receive("ok", resp => {
+          console.log("Joined successfully", resp)
+        })
+        .receive("error", resp => {
+          console.log("Unable to join", resp)
+        })
+
+      // Listen for messages
+      channel.on("new_message", payload => {
+        console.log("New message:", payload)
+        displayMessage(payload)
+      })
+
+      // Send messages
+      channel.push("new_message", {content: "Hello, world!"})
+        .receive("ok", resp => console.log("Message sent", resp))
+        .receive("error", resp => console.log("Failed to send", resp))
+      """
+
+    IO.puts(code)
   end
 
   def show_react_integration do
-    """
-    // React hook for channels:
-    import {useEffect, useState} from 'react'
-    import {Socket} from 'phoenix'
+    IO.puts("// React hook for channels:")
 
-    function useChannel(topic, params = {}) {
-      const [channel, setChannel] = useState(null)
-      const [messages, setMessages] = useState([])
+    code =
+      ~S"""
+      import {useEffect, useState} from 'react'
+      import {Socket} from 'phoenix'
 
-      useEffect(() => {
-        const socket = new Socket('/socket', {params: {token: userToken}})
-        socket.connect()
+      function useChannel(topic, params = {}) {
+        const [channel, setChannel] = useState(null)
+        const [messages, setMessages] = useState([])
 
-        const newChannel = socket.channel(topic, params)
+        useEffect(() => {
+          const socket = new Socket('/socket', {params: {token: userToken}})
+          socket.connect()
 
-        newChannel.on('new_message', message => {
-          setMessages(prev => [...prev, message])
-        })
+          const newChannel = socket.channel(topic, params)
+          newChannel.join()
+            .receive("ok", () => setChannel(newChannel))
 
-        newChannel.join()
-        setChannel(newChannel)
+          return () => {
+            newChannel.leave()
+            socket.disconnect()
+          }
+        }, [topic])
 
-        return () => {
-          newChannel.leave()
-          socket.disconnect()
-        }
-      }, [topic])
+        useEffect(() => {
+          if (!channel) return
 
-      const sendMessage = (event, payload) => {
-        if (channel) {
-          channel.push(event, payload)
-        }
+          const handleNewMessage = (payload) => {
+            setMessages(current => [...current, payload])
+          }
+
+          channel.on("new_message", handleNewMessage)
+
+          return () => {
+            channel.off("new_message", handleNewMessage)
+          }
+        }, [channel])
+
+        return [messages, (msg) => channel?.push("new_message", msg)]
       }
+      """
 
-      return {messages, sendMessage}
-    }
-
-    // Usage in component:
-    function ChatRoom({roomId}) {
-      const {messages, sendMessage} = useChannel(`room:${roomId}`)
-
-      const handleSend = (content) => {
-        sendMessage('new_message', {content})
-      }
-
-      return (
-        <div>
-          {messages.map(msg => <Message key={msg.id} {...msg} />)}
-          <MessageForm onSend={handleSend} />
-        </div>
-      )
-    }
-    """
+    IO.puts(code)
   end
 end
 
-IO.puts("JavaScript client patterns:")
-IO.puts(DayTwo.ClientPatterns.show_javascript_setup())
+IO.puts("Client-side setup:")
+DayTwo.ClientPatterns.show_javascript_setup()
+DayTwo.ClientPatterns.show_react_integration()
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 4 – Advanced Channel features")
@@ -617,89 +621,204 @@ DayTwo.CollaborationDemo.demonstrate_collaboration_flow()
 # 3. (Challenge) Design a live gaming channel for a turn-based game with
 #    real-time moves, spectator mode, and reconnection handling for dropped connections.
 
-"""
-🔑 ANSWERS & EXPLANATIONS
+defmodule DayTwo.ChannelExercises do
+  @moduledoc """
+  Run the tests with: mix test day_two/09_channels.exs
+  or in IEx:
+  iex -r day_two/09_channels.exs
+  DayTwo.ChannelExercisesTest.test_design_collaboration_channel/0
+  DayTwo.ChannelExercisesTest.test_design_iot_device_channel/0
+  DayTwo.ChannelExercisesTest.test_design_live_support_channel/0
+  """
 
-# 1. Chat channel with features
-defmodule MyAppWeb.ChatChannel do
-  use Phoenix.Channel
+  @doc """
+  Designs a channel for a real-time collaborative whiteboard.
 
-  def join("chat:" <> room_id, _params, socket) do
-    # Load recent message history
-    messages = Messages.get_recent(room_id, 50)
+  **Goal:** Define the events and handlers for a channel where multiple users
+  can draw on a shared whiteboard.
 
-    socket = assign(socket, :room_id, room_id)
-    send(self(), :after_join)
+  **Requirements:**
+  - The topic should be dynamic, like `"whiteboard:BOARD_ID"`.
+  - The channel should handle users joining and leaving.
+  - It must handle an incoming event `draw` with a payload of drawing data
+    (e.g., coordinates, color). This event should be broadcast to all other
+    users in the same channel.
+  - It must handle a `clear_board` event that notifies all users.
 
-    {:ok, %{messages: messages}, socket}
+  **Task:**
+  Return a map describing the channel design, including:
+  - `:topic`: An example topic string.
+  - `:events_in`: A list of incoming event names (strings) the channel handles.
+  - `:events_out`: A list of outgoing event names broadcast to clients.
+  """
+  @spec design_collaboration_channel() :: map()
+  def design_collaboration_channel do
+    # Design a channel for a collaborative whiteboard.
+    # Return a map with :topic, :events_in, and :events_out.
+    nil  # TODO: Implement this exercise
   end
 
-  def handle_in("new_message", %{"content" => content}, socket) do
-    message = Messages.create_message(socket.assigns.user_id, content)
-    broadcast!(socket, "new_message", message)
-    {:reply, {:ok, message}, socket}
+  @doc """
+  Designs a channel for controlling an IoT device.
+
+  **Goal:** Architect a secure channel for sending commands to a specific IoT
+  device and receiving status updates from it.
+
+  **Requirements:**
+  - The channel topic must uniquely identify the device (e.g., `"devices:DEVICE_ID"`).
+  - The `join/3` function must authorize based on a device-specific token.
+  - The channel must handle a `set_config` incoming event from a client (e.g., a web dashboard).
+  - The channel must handle a `status_update` incoming event from the IoT device itself.
+    This event should then be broadcast to other clients (like the dashboard).
+
+  **Task:**
+  Return a string describing the authorization logic and the flow of messages
+  for both controlling the device and receiving its updates.
+  """
+  @spec design_iot_device_channel() :: binary()
+  def design_iot_device_channel do
+    # Describe the design for an IoT device control channel, covering
+    # authorization, device control, and status updates.
+    nil  # TODO: Implement this exercise
   end
 
-  def handle_in("typing", %{"typing" => typing}, socket) do
-    broadcast_from!(socket, "user_typing", %{
-      user_id: socket.assigns.user_id,
-      typing: typing
-    })
-    {:noreply, socket}
+  @doc """
+  Designs a channel for a live customer support chat.
+
+  **Goal:** Create a channel that connects a single customer with one or more
+  support agents in a private chat session.
+
+  **Requirements:**
+  - The topic should be unique per support session (e.g., `"support:SESSION_ID"`).
+  - The `join/3` function must authorize both the customer and authenticated
+    support agents for that session.
+  - It must handle a `"new_message"` event and broadcast it to all participants.
+  - It must handle a `"typing_indicator"` event and broadcast it to other
+    participants in the channel (but not the sender). Use `broadcast_from!/3`.
+
+  **Task:**
+  Return a map describing the channel design, including:
+  - `:topic`: An example topic string.
+  - `:roles`: A list of user roles involved (e.g., `:customer`, `:agent`).
+  - `:event_handlers`: A list of tuples, where each tuple contains the
+    event name (string) and a brief description of its purpose.
+  """
+  @spec design_live_support_channel() :: map()
+  def design_live_support_channel do
+    # Design a live support chat channel.
+    # Return a map with :topic, :roles, and :event_handlers.
+    nil  # TODO: Implement this exercise
   end
 end
 
-# 2. Notifications channel with preferences
-defmodule MyAppWeb.NotificationsChannel do
-  use Phoenix.Channel
+ExUnit.start()
 
-  def join("notifications:" <> user_id, _params, socket) do
-    if socket.assigns.user_id == user_id do
-      preferences = Users.get_notification_preferences(user_id)
-      {:ok, %{preferences: preferences}, assign(socket, :preferences, preferences)}
-    else
-      {:error, %{reason: "unauthorized"}}
-    end
+defmodule DayTwo.ChannelExercisesTest do
+  use ExUnit.Case, async: true
+
+  alias DayTwo.ChannelExercises, as: EX
+
+  test "design_collaboration_channel/0 returns a valid channel design" do
+    design = EX.design_collaboration_channel()
+    assert is_map(design)
+    assert Map.has_key?(design, :topic)
+    assert Map.has_key?(design, :events_in)
+    assert Map.has_key?(design, :events_out)
+    assert "draw" in design.events_in
+    assert "user_drew" in design.events_out
   end
 
-  def handle_info({:notification, type, data}, socket) do
-    if notification_enabled?(socket.assigns.preferences, type) do
-      push(socket, "notification", %{type: type, data: data})
-    end
-    {:noreply, socket}
-  end
-end
-
-# 3. Gaming channel with reconnection
-defmodule MyAppWeb.GameChannel do
-  use Phoenix.Channel
-
-  def join("game:" <> game_id, %{"player_token" => token}, socket) do
-    case Games.authenticate_player(game_id, token) do
-      {:ok, player, game_state} ->
-        socket = assign(socket, :game_id, game_id, :player_id, player.id)
-        {:ok, game_state, socket}
-      {:error, reason} ->
-        {:error, %{reason: reason}}
-    end
+  test "design_iot_device_channel/0 describes authorization and message flow" do
+    description = EX.design_iot_device_channel()
+    assert is_binary(description)
+    assert String.contains?(description, "authorize")
+    assert String.contains?(description, "token")
+    assert String.contains?(description, "status_update")
   end
 
-  def handle_in("make_move", move_data, socket) do
-    case Games.make_move(socket.assigns.game_id, socket.assigns.player_id, move_data) do
-      {:ok, new_state} ->
-        broadcast!(socket, "game_updated", new_state)
-        {:reply, {:ok, new_state}, socket}
-      {:error, reason} ->
-        {:reply, {:error, %{reason: reason}}, socket}
-    end
-  end
-
-  # Reconnection handling
-  def handle_in("reconnect", _params, socket) do
-    game_state = Games.get_current_state(socket.assigns.game_id)
-    {:reply, {:ok, game_state}, socket}
+  test "design_live_support_channel/0 returns a valid support chat design" do
+    design = EX.design_live_support_channel()
+    assert is_map(design)
+    assert Map.has_key?(design, :topic)
+    assert Map.has_key?(design, :roles)
+    assert Map.has_key?(design, :event_handlers)
+    assert :customer in design.roles
+    assert Enum.any?(design.event_handlers, fn {event, _} -> event == "typing_indicator" end)
   end
 end
 
-# Benefits: Real-time communication, scalable architecture, fault tolerance
-"""
+defmodule DayTwo.Answers do
+  def answer_one do
+    quote do
+      %{
+        topic: "whiteboard:board-123",
+        events_in: ["draw", "clear_board"],
+        events_out: ["user_drew", "board_cleared", "user_joined", "user_left"]
+      }
+    end
+  end
+
+  def answer_two do
+    quote do
+      """
+      Architecture: IoT Device Control Channel
+
+      1. Topic and Authorization:
+      The topic is `devices:DEVICE_ID`. When a client tries to join, the `join/3`
+      callback receives a device-specific JWT in the params. It validates this
+      token to authorize the connection. This ensures only authenticated clients
+      (the device itself or a control dashboard) can join.
+
+      2. Control Flow (Dashboard to Device):
+      - A control dashboard pushes a `set_config` event with new settings.
+      - The channel's `handle_in("set_config", ...)` receives this.
+      - It then uses `push/3` to send a `set_config` message directly to the
+        socket connection of the IoT device.
+
+      3. Status Flow (Device to Dashboard):
+      - The IoT device pushes a `status_update` event with its current state.
+      - The channel's `handle_in("status_update", ...)` receives this.
+      - It then uses `broadcast!/3` to send a `new_status` message to all other
+        channel members (i.e., any connected dashboards).
+      """
+    end
+  end
+
+  def answer_three do
+    quote do
+      %{
+        topic: "support:session-abc-789",
+        roles: [:customer, :agent],
+        event_handlers: [
+          {"new_message", "Broadcasts a chat message to all participants."},
+          {"typing_indicator", "Broadcasts to others that a user is typing."}
+        ]
+      }
+    end
+  end
+end
+
+IO.puts("""
+ANSWERS & EXPLANATIONS
+
+# 1. Design Collaboration Channel
+#{Macro.to_string(DayTwo.Answers.answer_one())}
+# This design clearly separates incoming events from outgoing broadcasts. A single
+# `draw` event from one user results in a `user_drew` broadcast to everyone
+# else. This prevents the original sender from getting their own draw event back
+# and avoids messy client-side logic to filter out self-sent messages.
+
+# 2. Design IoT Device Channel
+#{Macro.to_string(DayTwo.Answers.answer_two())}
+# This architecture provides secure, bidirectional communication. Using `push/3`
+# for targeted commands and `broadcast!/3` for status updates is efficient and
+# ensures messages go only where they are needed. Token-based auth in `join/3`
+# is critical for securing access to the device.
+
+# 3. Design Live Support Channel
+#{Macro.to_string(DayTwo.Answers.answer_three())}
+# The key here is handling different roles and using `broadcast_from!/3` for
+# events like typing indicators. This prevents the user who is typing from
+# seeing their own "is typing..." message, simplifying the client-side code.
+# The session-specific topic ensures the chat remains private.
+""")

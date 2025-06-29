@@ -159,32 +159,51 @@ defmodule DayOne.PatternMatchingExercisesTest do
   end
 end
 
-"""
-🔑 ANSWERS & EXPLANATIONS
+defmodule DayOne.Answers do
+  def answer_one do
+    quote do
+      def fizzbuzz(n) when rem(n, 15) == 0, do: :fizzbuzz
+      def fizzbuzz(n) when rem(n, 3) == 0, do: :fizz
+      def fizzbuzz(n) when rem(n, 5) == 0, do: :buzz
+      def fizzbuzz(n) when is_integer(n), do: n
+    end
+  end
+
+  def answer_two do
+    quote do
+      def safe_head([h | _t]), do: {:ok, h}
+      def safe_head([]), do: :error
+    end
+  end
+
+  def answer_three do
+    quote do
+      def sign(n) when is_number(n) and n > 0, do: :positive
+      def sign(n) when is_number(n) and n < 0, do: :negative
+      def sign(0), do: :zero
+    end
+  end
+end
+
+IO.puts("""
+ANSWERS & EXPLANATIONS
 
 # 1. fizzbuzz/1
-defmodule FizzBuzzSolution do
-  def fizzbuzz(n) when rem(n, 15) == 0, do: :fizzbuzz
-  def fizzbuzz(n) when rem(n, 3)  == 0, do: :fizz
-  def fizzbuzz(n) when rem(n, 5)  == 0, do: :buzz
-  def fizzbuzz(n),                 do: n
-end
-#  Multiple heads + guards clearly encode each rule.
+#{Macro.to_string(DayOne.Answers.answer_one())}
+#  Using multiple function heads with guards is a very common and readable
+#  pattern in Elixir. The order is important: the more specific cases (like
+#  divisible by 15) must come before the less specific ones.
 
 # 2. safe_head/1
-safe_head_solution = fn
-  [h | _] -> {:ok, h}
-  []      -> :error
-end
-IO.inspect(safe_head_solution.([1, 2]))
-#  Pattern matching on list structure avoids runtime errors (no hd/1 crash).
+#{Macro.to_string(DayOne.Answers.answer_two())}
+#  This demonstrates pattern matching on the structure of a list. The first
+#  head `[h | _t]` matches any non-empty list, binding the first element to `h`.
+#  The second head `[]` matches only an empty list. This is much safer than
+#  using `hd()` which would raise an error on an empty list.
 
-# 3. sign/1 – classify a number using guards
-defmodule SignSolution do
-  def sign(n) when n > 0, do: :positive
-  def sign(n) when n < 0, do: :negative
-  def sign(0),           do: :zero
-end
-IO.inspect Enum.map([-2, 0, 5], &SignSolution.sign/1)
-#  Guards let us express the three cases succinctly.
-"""
+# 3. sign/1
+#{Macro.to_string(DayOne.Answers.answer_three())}
+#  Guards (`when ...`) allow you to add checks to your function clauses that
+#  go beyond simple pattern matching. They are essential for checks involving
+#  comparisons, type checks, or boolean logic.
+""")

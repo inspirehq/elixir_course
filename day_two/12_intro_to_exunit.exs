@@ -17,7 +17,7 @@ defmodule DayTwo.ExUnitBasics do
   """
 
   def explain_exunit_architecture do
-    """
+    IO.puts(~S"""
     ExUnit Architecture:
 
     • Test Modules: Define test cases using ExUnit.Case
@@ -28,19 +28,27 @@ defmodule DayTwo.ExUnitBasics do
     • Async Testing: async: true for parallel test execution
 
     Basic Test Structure:
+    """)
 
-    defmodule MyModuleTest do
-      use ExUnit.Case, async: true
+    code =
+      quote do
+        defmodule MyModuleTest do
+          use ExUnit.Case, async: true
 
-      setup do
-        %{user: %{name: "Alice", age: 30}}
+          setup do
+            %{user: %{name: "Alice", age: 30}}
+          end
+
+          test "user has valid name", %{user: user} do
+            assert user.name == "Alice"
+            refute user.name == ""
+          end
+        end
       end
 
-      test "user has valid name", %{user: user} do
-        assert user.name == "Alice"
-        refute user.name == ""
-      end
-    end
+    IO.puts(Macro.to_string(code))
+
+    IO.puts(~S"""
 
     Benefits:
     • Built into Elixir core
@@ -48,7 +56,7 @@ defmodule DayTwo.ExUnitBasics do
     • Parallel test execution
     • Rich assertion library
     • Great error reporting
-    """
+    """)
   end
 
   def show_test_lifecycle do
@@ -70,7 +78,7 @@ defmodule DayTwo.ExUnitBasics do
 end
 
 IO.puts("ExUnit fundamentals:")
-IO.puts(DayTwo.ExUnitBasics.explain_exunit_architecture())
+DayTwo.ExUnitBasics.explain_exunit_architecture()
 DayTwo.ExUnitBasics.show_test_lifecycle()
 
 # ────────────────────────────────────────────────────────────────
@@ -83,92 +91,106 @@ defmodule DayTwo.AssertionExamples do
   """
 
   def show_basic_assertions do
-    """
-    # Basic assertions:
-    defmodule CalculatorTest do
-      use ExUnit.Case
+    IO.puts("# Basic assertions:")
 
-      test "basic arithmetic" do
-        assert Calculator.add(2, 3) == 5
-        refute Calculator.add(2, 3) == 6
+    code =
+      quote do
+        defmodule CalculatorTest do
+          use ExUnit.Case
 
-        assert Calculator.divide(10, 2) == 5.0
-        assert_in_delta Calculator.divide(1, 3), 0.333, 0.001
+          test "basic arithmetic" do
+            assert Calculator.add(2, 3) == 5
+            refute Calculator.add(2, 3) == 6
+            assert Calculator.divide(10, 2) == 5.0
+            assert_in_delta(Calculator.divide(1, 3), 0.333, 0.001)
+          end
+
+          test "error conditions" do
+            assert_raise ArithmeticError, fn ->
+              Calculator.divide(10, 0)
+            end
+
+            assert_raise ArgumentError, "invalid input", fn ->
+              Calculator.add("a", "b")
+            end
+          end
+        end
       end
 
-      test "error conditions" do
-        assert_raise ArithmeticError, fn ->
-          Calculator.divide(10, 0)
-        end
-
-        assert_raise ArgumentError, "invalid input", fn ->
-          Calculator.add("a", "b")
-        end
-      end
-    end
-    """
+    IO.puts(Macro.to_string(code))
   end
 
   def show_pattern_matching_tests do
-    """
-    # Pattern matching in tests:
-    defmodule UserServiceTest do
-      use ExUnit.Case
+    IO.puts("# Pattern matching in tests:")
 
-      test "user creation returns expected structure" do
-        assert {:ok, user} = UserService.create_user(%{name: "Alice"})
-        assert %User{name: "Alice", id: id} = user when is_integer(id)
-        assert user.inserted_at != nil
+    code =
+      quote do
+        defmodule UserServiceTest do
+          use ExUnit.Case
+
+          test "user creation returns expected structure" do
+            assert {:ok, user} = UserService.create_user(%{name: "Alice"})
+            assert %User{name: "Alice", id: id} = user when is_integer(id)
+            assert user.inserted_at != nil
+          end
+
+          test "validation errors" do
+            assert {:error, changeset} = UserService.create_user(%{name: ""})
+            assert %{name: ["can't be blank"]} = errors_on(changeset)
+          end
+
+          test "list operations" do
+            users = UserService.list_users()
+            assert is_list(users)
+            assert length(users) > 0
+            assert Enum.all?(users, &match?(%User{}, &1))
+          end
+        end
       end
 
-      test "validation errors" do
-        assert {:error, changeset} = UserService.create_user(%{name: ""})
-        assert %{name: ["can't be blank"]} = errors_on(changeset)
-      end
-
-      test "list operations" do
-        users = UserService.list_users()
-        assert is_list(users)
-        assert length(users) > 0
-        assert Enum.all?(users, &match?(%User{}, &1))
-      end
-    end
-    """
+    IO.puts(Macro.to_string(code))
   end
 
   def show_async_and_tagging do
-    """
-    # Async tests and tagging:
-    defmodule FastMathTest do
-      use ExUnit.Case, async: true  # Safe to run in parallel
+    IO.puts("# Async tests and tagging:")
 
-      @tag :unit
-      test "pure functions are fast" do
-        assert Math.factorial(5) == 120
+    code =
+      quote do
+        defmodule FastMathTest do
+          use ExUnit.Case, async: true
+
+          @tag :unit
+          test "pure functions are fast" do
+            assert Math.factorial(5) == 120
+          end
+
+          @tag :slow
+          test "complex calculation" do
+            result = Math.complex_operation(1000)
+            assert result > 0
+          end
+
+          @tag skip: "not implemented yet"
+          test "future feature" do
+            assert false
+          end
+        end
       end
 
-      @tag :slow
-      test "complex calculation" do
-        result = Math.complex_operation(1000)
-        assert result > 0
-      end
+    IO.puts(Macro.to_string(code))
 
-      @tag skip: "not implemented yet"
-      test "future feature" do
-        assert false
-      end
-    end
+    IO.puts(~S"""
 
     # Run specific tags:
     # mix test --only unit
     # mix test --exclude slow
     # mix test --include skip
-    """
+    """)
   end
 end
 
 IO.puts("Assertion patterns:")
-IO.puts(DayTwo.AssertionExamples.show_basic_assertions())
+DayTwo.AssertionExamples.show_basic_assertions()
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 3 – Setup, teardown, and test context")
@@ -179,77 +201,75 @@ defmodule DayTwo.TestSetupExamples do
   """
 
   def show_setup_patterns do
-    """
-    # Setup and context patterns:
-    defmodule DatabaseTest do
-      use ExUnit.Case
+    IO.puts("# Setup and context patterns:")
 
-      # Runs once before all tests in this module
-      setup_all do
-        # Start test database
-        :ok = Ecto.Adapters.SQL.Sandbox.checkout(MyApp.Repo)
-        Ecto.Adapters.SQL.Sandbox.mode(MyApp.Repo, {:shared, self()})
+    code =
+      quote do
+        defmodule DatabaseTest do
+          use ExUnit.Case
 
-        # Seed test data
-        admin = insert(:user, role: "admin")
+          setup_all do
+            :ok = Ecto.Adapters.SQL.Sandbox.checkout(MyApp.Repo)
+            Ecto.Adapters.SQL.Sandbox.mode(MyApp.Repo, {:shared, self()})
+            admin = insert(:user, role: "admin")
 
-        on_exit(fn ->
-          # Cleanup after all tests
-          Ecto.Adapters.SQL.Sandbox.checkin(MyApp.Repo)
-        end)
+            on_exit(fn ->
+              Ecto.Adapters.SQL.Sandbox.checkin(MyApp.Repo)
+            end)
 
-        %{admin: admin}
-      end
+            %{admin: admin}
+          end
 
-      # Runs before each test
-      setup %{admin: admin} do
-        # Create test-specific data
-        user = insert(:user)
-        post = insert(:post, author: user)
+          setup %{admin: admin} do
+            user = insert(:user)
+            post = insert(:post, author: user)
+            %{user: user, post: post, admin: admin}
+          end
 
-        %{user: user, post: post, admin: admin}
-      end
+          test "user can view own post", %{user: user, post: post} do
+            assert Posts.can_view?(user, post)
+          end
 
-      test "user can view own post", %{user: user, post: post} do
-        assert Posts.can_view?(user, post)
-      end
-
-      test "admin can view all posts", %{admin: admin, post: post} do
-        assert Posts.can_view?(admin, post)
-      end
-    end
-    """
-  end
-
-  def show_conditional_setup do
-    """
-    # Conditional setup based on tags:
-    defmodule APITest do
-      use ExUnit.Case
-
-      setup tags do
-        if tags[:integration] do
-          # Setup for integration tests
-          start_supervised!(MockHTTPServer)
-          %{server_url: "http://localhost:4002"}
-        else
-          # Setup for unit tests
-          %{server_url: nil}
+          test "admin can view all posts", %{admin: admin, post: post} do
+            assert Posts.can_view?(admin, post)
+          end
         end
       end
 
-      @tag :integration
-      test "external API call", %{server_url: url} do
-        assert {:ok, response} = HTTPClient.get("#{url}/users")
-        assert response.status == 200
+    IO.puts(Macro.to_string(code))
+  end
+
+  def show_conditional_setup do
+    IO.puts("# Conditional setup based on tags:")
+
+    code =
+      quote do
+        defmodule APITest do
+          use ExUnit.Case
+
+          setup tags do
+            if tags[:integration] do
+              start_supervised!(MockHTTPServer)
+              %{server_url: "http://localhost:4002"}
+            else
+              %{server_url: nil}
+            end
+          end
+
+          @tag :integration
+          test "external API call", %{server_url: url} do
+            assert {:ok, response} = HTTPClient.get("#{url}/users")
+            assert response.status == 200
+          end
+
+          test "pure function test", %{server_url: url} do
+            assert url == nil
+            assert Parser.parse_json("{}") == %{}
+          end
+        end
       end
 
-      test "pure function test", %{server_url: url} do
-        assert url == nil  # Unit test, no server needed
-        assert Parser.parse_json("{}") == %{}
-      end
-    end
-    """
+    IO.puts(Macro.to_string(code))
   end
 
   def show_shared_setup do
@@ -291,8 +311,8 @@ defmodule DayTwo.TestSetupExamples do
   end
 end
 
-IO.puts("Setup patterns:")
-IO.puts(DayTwo.TestSetupExamples.show_setup_patterns())
+DayTwo.TestSetupExamples.show_setup_patterns()
+DayTwo.TestSetupExamples.show_conditional_setup()
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 4 – Testing GenServers and OTP processes")
@@ -605,155 +625,247 @@ DayTwo.ChatSystemTest.show_test_organization()
 # 3. (Challenge) Design a test suite for a real-time notification system that
 #    tests delivery, retries, batching, and different notification channels.
 
-"""
-🔑 ANSWERS & EXPLANATIONS
+defmodule DayTwo.ExUnitExercises do
+  @moduledoc """
+  Run the tests with: mix test day_two/12_intro_to_exunit.exs
+  or in IEx:
+  iex -r day_two/12_intro_to_exunit.exs
+  DayTwo.ExUnitExercisesTest.test_write_basic_assertions/0
+  DayTwo.ExUnitExercisesTest.test_write_setup_with_context/0
+  DayTwo.ExUnitExercisesTest.test_design_test_for_complex_logic/0
+  """
 
-# 1. Shopping cart test suite
-defmodule ShoppingCartTest do
-  use ExUnit.Case
+  @doc """
+  Writes basic assertions for a simple utility module.
 
-  setup do
-    {:ok, pid} = start_supervised(ShoppingCart)
-    %{cart: pid}
-  end
+  **Goal:** Learn to use the most common assertions in ExUnit to test a
+  pure function.
 
-  describe "item management" do
-    test "adding items increases quantity", %{cart: cart} do
-      ShoppingCart.add_item(cart, %{id: 1, name: "Widget", price: 10.00})
-      ShoppingCart.add_item(cart, %{id: 1, name: "Widget", price: 10.00})
-
-      items = ShoppingCart.get_items(cart)
-      assert items[1].quantity == 2
-    end
-
-    test "removing items decreases quantity", %{cart: cart} do
-      ShoppingCart.add_item(cart, %{id: 1, name: "Widget", price: 10.00})
-      ShoppingCart.remove_item(cart, 1)
-
-      items = ShoppingCart.get_items(cart)
-      assert items == %{}
-    end
-  end
-
-  describe "calculations" do
-    test "calculates total correctly", %{cart: cart} do
-      ShoppingCart.add_item(cart, %{id: 1, name: "Widget", price: 10.00})
-      ShoppingCart.add_item(cart, %{id: 2, name: "Gadget", price: 15.00})
-
-      total = ShoppingCart.get_total(cart)
-      assert_in_delta total, 25.00, 0.01
-    end
-
-    test "applies discount correctly", %{cart: cart} do
-      ShoppingCart.add_item(cart, %{id: 1, name: "Widget", price: 100.00})
-      ShoppingCart.apply_discount(cart, 0.10)  # 10% discount
-
-      total = ShoppingCart.get_total(cart)
-      assert_in_delta total, 90.00, 0.01
-    end
-  end
-end
-
-# 2. Authentication system tests
-defmodule AuthTest do
-  use MyApp.TestCase
-
-  describe "password validation" do
-    test "validates strong password" do
-      changeset = User.registration_changeset(%User{}, %{
-        email: "user@example.com",
-        password: "SecurePass123!"
-      })
-
-      assert changeset.valid?
-    end
-
-    test "rejects weak password" do
-      changeset = User.registration_changeset(%User{}, %{
-        email: "user@example.com",
-        password: "123"
-      })
-
-      refute changeset.valid?
-      assert "password too weak" in errors_on(changeset).password
-    end
-  end
-
-  describe "JWT tokens" do
-    setup do
-      user = insert(:user)
-      %{user: user}
-    end
-
-    test "generates valid JWT token", %{user: user} do
-      {:ok, token} = Auth.generate_token(user)
-      assert is_binary(token)
-
-      {:ok, claims} = Auth.verify_token(token)
-      assert claims["user_id"] == user.id
-    end
-
-    test "rejects expired token", %{user: user} do
-      {:ok, token} = Auth.generate_token(user, ttl: -1)
-
-      assert {:error, :expired} = Auth.verify_token(token)
-    end
-  end
-end
-
-# 3. Notification system tests
-defmodule NotificationSystemTest do
-  use ExUnit.Case, async: false
-
-  setup do
-    start_supervised!(NotificationQueue)
-    start_supervised!(EmailSender)
-    start_supervised!(SMSSender)
-    :ok
-  end
-
-  describe "delivery" do
-    test "delivers email notification" do
-      notification = %{
-        type: :email,
-        recipient: "user@example.com",
-        subject: "Test",
-        body: "Hello"
-      }
-
-      NotificationSystem.send(notification)
-
-      assert_receive {:email_sent, %{to: "user@example.com"}}, 1000
-    end
-
-    test "retries failed deliveries" do
-      # Mock a failing service
-      MockEmailService.set_failure_rate(0.5)
-
-      notification = %{type: :email, recipient: "user@example.com"}
-      NotificationSystem.send(notification)
-
-      # Should eventually succeed after retries
-      assert_receive {:email_sent, _}, 5000
-    end
-  end
-
-  describe "batching" do
-    test "batches multiple notifications" do
-      notifications = for i <- 1..10 do
-        %{type: :email, recipient: "user#{i}@example.com"}
+  **Module to Test:**
+  ```elixir
+  defmodule StringHelper do
+    def truncate(str, len) when is_binary(str) and is_integer(len) do
+      if String.length(str) > len do
+        String.slice(str, 0, len) <> "..."
+      else
+        str
       end
+    end
+  end
+  ```
 
-      Enum.each(notifications, &NotificationSystem.send/1)
+  **Task:**
+  Return a string containing a complete `ExUnit.Case` module that:
+  1.  Tests the `truncate/2` function when the string is shorter than the limit.
+  2.  Tests the `truncate/2` function when the string is longer than the limit.
+  3.  Uses `assert` to check for the correct return value.
+  """
+  @spec write_basic_assertions() :: binary()
+  def write_basic_assertions do
+    # Write a test module as a string for the StringHelper.truncate/2 function.
+    nil  # TODO: Implement this exercise
+  end
 
-      # Should batch into fewer actual sends
-      Process.sleep(1000)
-      sent_count = MockEmailService.get_send_count()
-      assert sent_count < 10  # Batched
-      assert sent_count > 0   # But some sent
+  @doc """
+  Writes a test that uses a `setup` block to prepare context.
+
+  **Goal:** Learn how to use `setup` to create data that can be shared
+  across multiple tests in a module.
+
+  **Scenario:**
+  You have a `ShoppingCart` module. You need to test adding items and
+  calculating the total. The cart should be created once for each test.
+
+  ```elixir
+  defmodule ShoppingCart do
+    def new(), do: %{items: [], total: 0}
+    def add_item(cart, item), do: # ...
+    def total(cart), do: # ...
+  end
+  ```
+
+  **Task:**
+  Return a map describing the test design:
+  - `:setup_block`: A string containing the `setup` block that creates a new
+    shopping cart and puts it in the context as `:cart`.
+  - `:test_one`: A string for a test named `"adds an item correctly"` that uses
+    the cart from context, adds an item, and asserts the item is in the cart.
+  - `:test_two`: A string for a test named `"calculates total correctly"` that
+    uses the cart, adds a couple of items, and asserts the total is correct.
+  """
+  @spec write_setup_with_context() :: map()
+  def write_setup_with_context do
+    # Design a test for a ShoppingCart that uses a setup block.
+    # Return a map with :setup_block, :test_one, and :test_two.
+    nil  # TODO: Implement this exercise
+  end
+
+  @doc """
+  Designs a test for a function with complex logic and potential errors.
+
+  **Goal:** Learn how to test different return patterns (`:ok`/`:error` tuples)
+  and how to assert on raised errors.
+
+  **Module to Test:**
+  ```elixir
+  defmodule UserCreator do
+    def create_user(params) do
+      with {:ok, email} <- Map.fetch(params, :email),
+           {:ok, password} <- Map.fetch(params, :password) do
+        if String.length(password) < 8 do
+          {:error, :password_too_short}
+        else
+          # DB insert logic...
+          {:ok, %{email: email, id: 123}}
+        end
+      else
+        :error -> {:error, :missing_params}
+        # Special case for a specific library error
+        {:error, :enoent} -> raise "Database not available"
+      end
+    end
+  end
+  ```
+
+  **Task:**
+  Return a string describing the testing strategy. It should cover how you would test:
+  1.  The success case (`{:ok, user}`).
+  2.  The invalid password case (`{:error, :password_too_short}`).
+  3.  The missing parameters case (`{:error, :missing_params}`).
+  4.  The case where an exception is raised, using `assert_raise/2`.
+  """
+  @spec design_test_for_complex_logic() :: binary()
+  def design_test_for_complex_logic do
+    # Describe a testing strategy for the UserCreator.create_user/1 function.
+    # Cover success, error tuples, and exceptions.
+    nil  # TODO: Implement this exercise
+  end
+end
+
+ExUnit.start()
+
+defmodule DayTwo.ExUnitExercisesTest do
+  use ExUnit.Case, async: true
+
+  alias DayTwo.ExUnitExercises, as: EX
+
+  test "write_basic_assertions/0 returns a valid test module string" do
+    test_module_string = EX.write_basic_assertions()
+    assert is_binary(test_module_string)
+    assert String.contains?(test_module_string, "defmodule StringHelperTest")
+    assert String.contains?(test_module_string, "use ExUnit.Case")
+    assert String.contains?(test_module_string, "assert StringHelper.truncate")
+  end
+
+  test "write_setup_with_context/0 returns a valid test design" do
+    design = EX.write_setup_with_context()
+    assert is_map(design)
+    assert String.contains?(design.setup_block, "setup do")
+    assert String.contains?(design.test_one, "test \"adds an item correctly\"")
+    assert String.contains?(design.test_two, "test \"calculates total correctly\"")
+  end
+
+  test "design_test_for_complex_logic/0 describes a comprehensive strategy" do
+    strategy = EX.design_test_for_complex_logic()
+    assert is_binary(strategy)
+    assert String.contains?(strategy, "assert {:ok, user}")
+    assert String.contains?(strategy, "assert {:error, :password_too_short}")
+    assert String.contains?(strategy, "assert_raise")
+  end
+end
+
+defmodule DayTwo.Answers do
+  def answer_one do
+    quote do
+      """
+      defmodule StringHelperTest do
+        use ExUnit.Case, async: true
+
+        test "does not truncate short strings" do
+          assert StringHelper.truncate("hello", 10) == "hello"
+        end
+
+        test "truncates long strings and adds ellipsis" do
+          assert StringHelper.truncate("hello world", 5) == "hello..."
+        end
+      end
+      """
+    end
+  end
+
+  def answer_two do
+    quote do
+      %{
+        setup_block: """
+        setup do
+          cart = ShoppingCart.new()
+          %{cart: cart}
+        end
+        """,
+        test_one: """
+        test "adds an item correctly", %{cart: cart} do
+          cart = ShoppingCart.add_item(cart, %{name: "milk", price: 3})
+          assert Enum.any?(cart.items, &(&1.name == "milk"))
+        end
+        """,
+        test_two: """
+        test "calculates total correctly", %{cart: cart} do
+          cart = ShoppingCart.add_item(cart, %{name: "milk", price: 3})
+          cart = ShoppingCart.add_item(cart, %{name: "bread", price: 2})
+          assert ShoppingCart.total(cart) == 5
+        end
+        """
+      }
+    end
+  end
+
+  def answer_three do
+    quote do
+      """
+      Testing Strategy for `UserCreator.create_user/1`:
+
+      1.  **Success Case**: Write a test that provides valid params (email and a
+          long password). Use pattern matching to assert on the successful
+          `{:ok, user}` tuple and the structure of the `user` map.
+          `assert {:ok, %{email: "a@b.c"}} = UserCreator.create_user(valid_params)`
+
+      2.  **Invalid Data Case**: Write a test that provides a password that is
+          too short. Assert that the function returns the specific error tuple.
+          `assert UserCreator.create_user(short_pass_params) == {:error, :password_too_short}`
+
+      3.  **Missing Data Case**: Write a test where the `:password` key is
+          missing from the params map. Assert the function returns `{:error, :missing_params}`.
+          This tests the `with` clause's `else` block.
+
+      4.  **Exception Case**: To test the `raise`, we need to mock the condition
+          that causes it. We can use a testing utility like `Mox` to make `Map.fetch`
+          return `{:error, :enoent}` for a specific test. Then, we wrap the
+          function call in `assert_raise/2` to verify the correct exception is raised.
+          `assert_raise RuntimeError, "Database not available", fn -> ... end`
+      """
     end
   end
 end
 
-# Benefits: Comprehensive coverage, realistic scenarios, proper isolation
-"""
+IO.puts("""
+ANSWERS & EXPLANATIONS
+
+# 1. Basic Assertions
+#{Macro.to_string(DayTwo.Answers.answer_one())}
+# This demonstrates the simplest form of testing: asserting that a pure function
+# returns the expected output for a given input. Separating the "happy path"
+# from the other cases into different test functions is a good practice.
+
+# 2. Setup with Context
+#{Macro.to_string(DayTwo.Answers.answer_two())}
+# The `setup` block is essential for keeping tests clean and free of repetitive
+# setup code. It runs before each test, providing a fresh context map. This
+# ensures that tests are isolated and don't interfere with each other.
+
+# 3. Testing Complex Logic
+#{Macro.to_string(DayTwo.Answers.answer_three())}
+# This strategy shows how to handle functions with multiple success and failure
+# paths. Using pattern matching in assertions (`assert {:ok, user} = ...`) is a
+# powerful Elixir feature. `assert_raise` is the standard way to confirm that
+# your code correctly handles and raises exceptions under exceptional conditions.
+""")

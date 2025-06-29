@@ -69,45 +69,60 @@ defmodule DayTwo.PresenceSetup do
   """
 
   def show_presence_module_setup do
-    """
-    # Define Presence module:
-    defmodule MyAppWeb.Presence do
-      use Phoenix.Presence,
-        otp_app: :my_app,
-        pubsub_server: MyApp.PubSub
-    end
+    IO.puts("# Define Presence module:")
 
-    # Add to supervision tree:
-    children = [
-      MyApp.Repo,
-      {Phoenix.PubSub, name: MyApp.PubSub},
-      MyAppWeb.Presence,  # Add presence here
-      MyAppWeb.Endpoint
-    ]
-
-    # Use in channels:
-    defmodule MyAppWeb.RoomChannel do
-      use Phoenix.Channel
-      alias MyAppWeb.Presence
-
-      def join("room:" <> room_id, _params, socket) do
-        send(self(), :after_join)
-        {:ok, assign(socket, :room_id, room_id)}
+    code =
+      quote do
+        defmodule MyAppWeb.Presence do
+          use Phoenix.Presence,
+            otp_app: :my_app,
+            pubsub_server: MyApp.PubSub
+        end
       end
 
-      def handle_info(:after_join, socket) do
-        # Track user presence
-        {:ok, _} = Presence.track(socket, socket.assigns.user_id, %{
-          online_at: inspect(System.system_time(:second)),
-          status: "available"
-        })
+    IO.puts(Macro.to_string(code))
 
-        # Send current presence list
-        push(socket, "presence_state", Presence.list(socket))
-        {:noreply, socket}
+    IO.puts("\n# Add to supervision tree:")
+
+    code =
+      quote do
+        children = [
+          MyApp.Repo,
+          {Phoenix.PubSub, name: MyApp.PubSub},
+          MyAppWeb.Presence,
+          MyAppWeb.Endpoint
+        ]
       end
-    end
-    """
+
+    IO.puts(Macro.to_string(code))
+
+    IO.puts("\n# Use in channels:")
+
+    code =
+      quote do
+        defmodule MyAppWeb.RoomChannel do
+          use Phoenix.Channel
+          alias MyAppWeb.Presence
+
+          def join("room:" <> room_id, _params, socket) do
+            send(self(), :after_join)
+            {:ok, assign(socket, :room_id, room_id)}
+          end
+
+          def handle_info(:after_join, socket) do
+            {:ok, _} =
+              Presence.track(socket, socket.assigns.user_id, %{
+                online_at: inspect(System.system_time(:second)),
+                status: "available"
+              })
+
+            push(socket, "presence_state", Presence.list(socket))
+            {:noreply, socket}
+          end
+        end
+      end
+
+    IO.puts(Macro.to_string(code))
   end
 
   def demonstrate_basic_operations do
@@ -127,7 +142,7 @@ defmodule DayTwo.PresenceSetup do
 end
 
 IO.puts("Presence setup:")
-IO.puts(DayTwo.PresenceSetup.show_presence_module_setup())
+DayTwo.PresenceSetup.show_presence_module_setup()
 DayTwo.PresenceSetup.demonstrate_basic_operations()
 
 # ────────────────────────────────────────────────────────────────
@@ -139,77 +154,85 @@ defmodule DayTwo.ClientPresence do
   """
 
   def show_javascript_presence do
-    """
-    // JavaScript presence handling:
-    import {Presence} from "phoenix"
+    IO.puts("// JavaScript presence handling:")
 
-    let channel = socket.channel("room:general", {})
-    let presences = {}
+    code =
+      ~S"""
+      import {Presence} from "phoenix"
 
-    channel.on("presence_state", state => {
-      presences = Presence.syncState(presences, state)
-      displayUsers(presences)
-    })
+      let channel = socket.channel("room:general", {})
+      let presences = {}
 
-    channel.on("presence_diff", diff => {
-      presences = Presence.syncDiff(presences, diff)
-      displayUsers(presences)
-    })
-
-    function displayUsers(presences) {
-      let users = Presence.list(presences, (id, {metas: [first, ...rest]}) => {
-        return {
-          id: id,
-          status: first.status,
-          online_at: first.online_at,
-          count: rest.length + 1  // Multiple sessions
-        }
+      channel.on("presence_state", state => {
+        presences = Presence.syncState(presences, state)
+        displayUsers(presences)
       })
 
-      renderUserList(users)
-    }
+      channel.on("presence_diff", diff => {
+        presences = Presence.syncDiff(presences, diff)
+        displayUsers(presences)
+      })
 
-    // Update your own status
-    function updateStatus(status) {
-      channel.push("update_status", {status: status})
-    }
-    """
+      function displayUsers(presences) {
+        let users = Presence.list(presences, (id, {metas: [first, ...rest]}) => {
+          return {
+            id: id,
+            status: first.status,
+            online_at: first.online_at,
+            count: rest.length + 1  // Multiple sessions
+          }
+        })
+
+        renderUserList(users)
+      }
+
+      // Update your own status
+      function updateStatus(status) {
+        channel.push("update_status", {status: status})
+      }
+      """
+
+    IO.puts(code)
   end
 
   def show_react_presence_hook do
-    """
-    // React presence hook:
-    function usePresence(channel) {
-      const [presences, setPresences] = useState({})
+    IO.puts("// React presence hook:")
 
-      useEffect(() => {
-        if (!channel) return
+    code =
+      ~S"""
+      function usePresence(channel) {
+        const [presences, setPresences] = useState({})
 
-        const handlePresenceState = (state) => {
-          setPresences(Presence.syncState(presences, state))
-        }
+        useEffect(() => {
+          if (!channel) return
 
-        const handlePresenceDiff = (diff) => {
-          setPresences(prev => Presence.syncDiff(prev, diff))
-        }
+          const handlePresenceState = (state) => {
+            setPresences(Presence.syncState(presences, state))
+          }
 
-        channel.on('presence_state', handlePresenceState)
-        channel.on('presence_diff', handlePresenceDiff)
+          const handlePresenceDiff = (diff) => {
+            setPresences(prev => Presence.syncDiff(prev, diff))
+          }
 
-        return () => {
-          channel.off('presence_state', handlePresenceState)
-          channel.off('presence_diff', handlePresenceDiff)
-        }
-      }, [channel])
+          channel.on('presence_state', handlePresenceState)
+          channel.on('presence_diff', handlePresenceDiff)
 
-      return Presence.list(presences)
-    }
-    """
+          return () => {
+            channel.off('presence_state', handlePresenceState)
+            channel.off('presence_diff', handlePresenceDiff)
+          }
+        }, [channel])
+
+        return Presence.list(presences)
+      }
+      """
+
+    IO.puts(code)
   end
 end
 
 IO.puts("Client-side presence:")
-IO.puts(DayTwo.ClientPresence.show_javascript_presence())
+DayTwo.ClientPresence.show_javascript_presence()
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 4 – Advanced presence patterns")
@@ -220,99 +243,76 @@ defmodule DayTwo.AdvancedPresence do
   """
 
   def show_multi_device_tracking do
-    """
-    # Multi-device presence tracking:
-    defmodule MyAppWeb.UserChannel do
-      use Phoenix.Channel
-      alias MyAppWeb.Presence
+    IO.puts("# Multi-device presence tracking:")
 
-      def join("user:" <> user_id, %{"device" => device}, socket) do
-        if socket.assigns.user_id == user_id do
-          socket = assign(socket, :device, device)
-          send(self(), :track_presence)
-          {:ok, socket}
-        else
-          {:error, %{reason: "unauthorized"}}
+    code =
+      quote do
+        defmodule MyAppWeb.UserChannel do
+          use Phoenix.Channel
+          alias MyAppWeb.Presence
+
+          def join("user:" <> user_id, %{"device" => device}, socket) do
+            if socket.assigns.user_id == user_id do
+              socket = assign(socket, :device, device)
+              send(self(), :track_presence)
+              {:ok, socket}
+            else
+              {:error, %{reason: "unauthorized"}}
+            end
+          end
+
+          def handle_info(:track_presence, socket) do
+            key = "#{socket.assigns.user_id}:#{socket.assigns.device}"
+
+            {:ok, _} =
+              Presence.track(socket, key, %{
+                user_id: socket.assigns.user_id,
+                device: socket.assigns.device,
+                online_at: inspect(System.system_time(:second)),
+                last_active: inspect(System.system_time(:second))
+              })
+
+            {:noreply, socket}
+          end
         end
       end
 
-      def handle_info(:track_presence, socket) do
-        # Track with device-specific key
-        key = "#{socket.assigns.user_id}:#{socket.assigns.device}"
-
-        {:ok, _} = Presence.track(socket, key, %{
-          user_id: socket.assigns.user_id,
-          device: socket.assigns.device,
-          online_at: inspect(System.system_time(:second)),
-          last_active: inspect(System.system_time(:second))
-        })
-
-        {:noreply, socket}
-      end
-
-      # Update activity timestamp
-      def handle_in("activity", _params, socket) do
-        key = "#{socket.assigns.user_id}:#{socket.assigns.device}"
-
-        {:ok, _} = Presence.update(socket, key, fn meta ->
-          Map.put(meta, :last_active, inspect(System.system_time(:second)))
-        end)
-
-        {:noreply, socket}
-      end
-    end
-    """
+    IO.puts(Macro.to_string(code))
   end
 
-  def show_custom_presence_logic do
-    """
-    # Custom presence aggregation:
-    defmodule MyAppWeb.TeamChannel do
-      use Phoenix.Channel
-      alias MyAppWeb.Presence
+  def show_presence_in_liveview do
+    IO.puts("# Using Presence data in LiveView:")
 
-      def handle_info(:after_join, socket) do
-        user_id = socket.assigns.user_id
-        team_id = socket.assigns.team_id
+    code =
+      quote do
+        defmodule MyAppWeb.RoomLive do
+          use MyAppWeb, :live_view
+          alias MyAppWeb.Presence
 
-        # Get user details for rich presence
-        user = Users.get_user(user_id)
+          def mount(_params, _session, socket) do
+            if connected?(socket), do: Presence.subscribe("room:live")
 
-        {:ok, _} = Presence.track(socket, user_id, %{
-          name: user.name,
-          avatar: user.avatar_url,
-          role: user.role,
-          timezone: user.timezone,
-          status: determine_status(user),
-          joined_at: inspect(System.system_time(:second))
-        })
+            users = Presence.list("room:live") |> Enum.map(&elem(&1, 1))
 
-        # Send aggregated team presence
-        team_presence = aggregate_team_presence(team_id)
-        push(socket, "team_presence", team_presence)
+            {:ok, assign(socket, :users, users)}
+          end
 
-        {:noreply, socket}
+          def handle_info(%{event: "presence_diff", payload: _}, socket) do
+            users = Presence.list("room:live") |> Enum.map(&elem(&1, 1))
+            {:noreply, assign(socket, :users, users)}
+          end
+        end
       end
 
-      defp aggregate_team_presence(team_id) do
-        presences = Presence.list("team:#{team_id}")
-
-        %{
-          total_online: map_size(presences),
-          by_role: group_by_role(presences),
-          recent_joiners: get_recent_joiners(presences, 5)
-        }
-      end
-    end
-    """
+    IO.puts(Macro.to_string(code))
   end
 end
 
-IO.puts("Advanced presence patterns:")
-IO.puts(DayTwo.AdvancedPresence.show_multi_device_tracking())
+DayTwo.AdvancedPresence.show_multi_device_tracking()
+DayTwo.AdvancedPresence.show_presence_in_liveview()
 
 # ────────────────────────────────────────────────────────────────
-IO.puts("\n📌 Example 5 – Real-world: Collaborative workspace presence")
+IO.puts("\n📌 Example 5 – Real-world Presence use cases")
 
 defmodule DayTwo.WorkspacePresence do
   @moduledoc """
@@ -368,57 +368,208 @@ DayTwo.WorkspacePresence.show_presence_features()
 # 3. (Challenge) Design a distributed team presence system that works across
 #    multiple applications (Slack, email, calendar) and shows unified status.
 
-"""
-🔑 ANSWERS & EXPLANATIONS
+defmodule DayTwo.PresenceExercises do
+  @moduledoc """
+  Run the tests with: mix test day_two/10_presence.exs
+  or in IEx:
+  iex -r day_two/10_presence.exs
+  DayTwo.PresenceExercisesTest.test_design_document_collaboration_presence/0
+  DayTwo.PresenceExercisesTest.test_design_game_lobby_presence/0
+  DayTwo.PresenceExercisesTest.test_design_e_learning_platform_presence/0
+  """
 
-# 1. Gaming lobby presence
-defmodule GameLobbyPresence do
-  def track_player(socket, player_data) do
-    Presence.track(socket, socket.assigns.user_id, %{
-      skill_level: player_data.skill_level,
-      preferred_modes: player_data.preferred_modes,
-      looking_for_match: true,
-      joined_lobby_at: System.system_time(:second)
-    })
+  @doc """
+  Designs a presence system for a collaborative document editor.
+
+  **Goal:** Track which users are currently viewing or editing a specific document.
+
+  **Requirements:**
+  - The presence topic should be unique per document (e.g., `"document:DOC_ID"`).
+  - The metadata for each user must include their `status`, which can be
+    `"viewing"` or `"editing"`.
+  - The system must handle users changing their status (e.g., from viewing to editing).
+
+  **Task:**
+  Return a map describing the presence design, including:
+  - `:topic`: An example topic string for a specific document.
+  - `:track_payload`: An example map of the metadata to be sent when a user joins.
+  - `:update_payload`: An example map for updating a user's status.
+  """
+  @spec design_document_collaboration_presence() :: map()
+  def design_document_collaboration_presence do
+    # Design a presence system for a collaborative document editor.
+    # Return a map with :topic, :track_payload, and :update_payload.
+    nil  # TODO: Implement this exercise
   end
 
-  def find_matches(lobby_presences) do
-    players = Presence.list(lobby_presences)
-    # Match players by skill level and game mode preferences
-    # Return potential matches
+  @doc """
+  Designs a presence system for a game lobby.
+
+  **Goal:** Track players in a game lobby, their ready status, and their team.
+
+  **Requirements:**
+  - The presence topic should be unique for each lobby (e.g., `"lobby:LOBBY_ID"`).
+  - The metadata must include the player's `username`, `team` (`"blue"` or `"red"`),
+    and `is_ready` (a boolean).
+  - The system should allow players to update their team and ready status.
+
+  **Task:**
+  Return a map describing the presence design, including:
+  - `:topic`: An example topic string for a lobby.
+  - `:track_payload`: An example map of metadata for a player joining the lobby.
+  - `:list_by_function`: A string containing a function signature and body for
+    the `list/2` function that would group players by team. The function
+    should take `presences` and a `mapper_fun` as arguments.
+  """
+  @spec design_game_lobby_presence() :: map()
+  def design_game_lobby_presence do
+    # Design a presence system for a game lobby.
+    # Return a map with :topic, :track_payload, and :list_by_function.
+    nil  # TODO: Implement this exercise
+  end
+
+  @doc """
+  Designs a presence system for an e-learning platform.
+
+  **Goal:** Track students and instructors in a live virtual classroom,
+  including who is the current "presenter" and if a student has their
+  "hand raised".
+
+  **Requirements:**
+  - The presence topic is unique per classroom (e.g., `"classroom:CLASS_ID"`).
+  - The metadata must include the user's `role` (`:student` or `:instructor`)
+    and other role-specific state (e.g., `:hand_raised` for students,
+    `:is_presenting` for instructors).
+
+  **Task:**
+  Return a string describing the architecture. The description should cover:
+  1.  How an instructor can be designated the presenter.
+  2.  How a student can raise their hand.
+  3.  How presence events (`presence_diff`) would be used by the client UI
+      to reflect these state changes for all participants.
+  """
+  @spec design_e_learning_platform_presence() :: binary()
+  def design_e_learning_platform_presence do
+    # Describe the presence architecture for a virtual classroom, covering
+    # presenter status and students raising their hands.
+    nil  # TODO: Implement this exercise
   end
 end
 
-# 2. Customer support presence
-defmodule SupportPresence do
-  def track_agent(socket, agent_data) do
-    Presence.track(socket, socket.assigns.agent_id, %{
-      status: "available",  # available, busy, away
-      current_cases: agent_data.active_case_count,
-      specialties: agent_data.specialties,
-      max_concurrent_cases: agent_data.max_cases
-    })
+ExUnit.start()
+
+defmodule DayTwo.PresenceExercisesTest do
+  use ExUnit.Case, async: true
+
+  alias DayTwo.PresenceExercises, as: EX
+
+  test "design_document_collaboration_presence/0 returns a valid design map" do
+    design = EX.design_document_collaboration_presence()
+    assert is_map(design)
+    assert Map.has_key?(design, :topic)
+    assert Map.has_key?(design, :track_payload)
+    assert Map.has_key?(design, :update_payload)
+    assert design.track_payload.status == "viewing"
+    assert design.update_payload.status == "editing"
   end
 
-  def find_available_agent(presences, case_category) do
-    # Find agent with matching specialty and capacity
+  test "design_game_lobby_presence/0 returns a valid game lobby design" do
+    design = EX.design_game_lobby_presence()
+    assert is_map(design)
+    assert Map.has_key?(design, :topic)
+    assert Map.has_key?(design, :track_payload)
+    assert Map.has_key?(design, :list_by_function)
+    assert is_binary(design.list_by_function)
+    assert String.contains?(design.list_by_function, "group_by")
+  end
+
+  test "design_e_learning_platform_presence/0 describes the classroom architecture" do
+    description = EX.design_e_learning_platform_presence()
+    assert is_binary(description)
+    assert String.contains?(description, "presenter")
+    assert String.contains?(description, "hand_raised")
+    assert String.contains?(description, "presence_diff")
   end
 end
 
-# 3. Distributed team presence
-defmodule UnifiedPresence do
-  def aggregate_presence(user_id) do
-    # Combine presence from multiple sources
-    slack_status = SlackAPI.get_status(user_id)
-    calendar_status = CalendarAPI.get_current_meeting(user_id)
-    app_status = Presence.get_by_key("app:team", user_id)
+defmodule DayTwo.Answers do
+  def answer_one do
+    quote do
+      %{
+        topic: "document:123-abc-789",
+        track_payload: %{status: "viewing", user_avatar: "url_to_image"},
+        update_payload: %{status: "editing"}
+      }
+    end
+  end
 
-    %{
-      unified_status: determine_unified_status([slack_status, calendar_status, app_status]),
-      sources: %{slack: slack_status, calendar: calendar_status, app: app_status}
-    }
+  def answer_two do
+    quote do
+      %{
+        topic: "lobby:g-456",
+        track_payload: %{username: "player1", team: "blue", is_ready: false},
+        list_by_function: """
+        def list_by_team(presences) do
+          Presence.list(presences)
+          |> Enum.group_by(fn {_user_id, meta} -> meta.metas |> List.first() |> Map.get(:team) end)
+        end
+        """
+      }
+    end
+  end
+
+  def answer_three do
+    quote do
+      """
+      Architecture: E-Learning Classroom Presence
+
+      1. Designating a Presenter:
+      An instructor client sends a `claim_presenter` event. The channel's
+      `handle_in` callback for this event calls `Presence.update/3` to change
+      that instructor's metadata to `is_presenting: true`. It may also update
+      any previous presenter's metadata to set `is_presenting: false`.
+
+      2. Raising a Hand:
+      A student client sends a `raise_hand` event. The channel's `handle_in`
+      callback calls `Presence.update/3` on that student's presence, setting
+      their `hand_raised` metadata to `true`. A corresponding `lower_hand`
+      event would set it to `false`.
+
+      3. Client UI Updates via `presence_diff`:
+      When any of these metadata changes occur, Phoenix Presence sends a
+      `presence_diff` event to all clients. The client-side JavaScript uses
+      `Presence.syncDiff` to update its local state. The UI is bound to this
+      state, so it automatically re-renders to:
+      - Highlight the new presenter's video feed.
+      - Show a "hand raised" icon next to the student's name.
+      """
+    end
   end
 end
 
-# Benefits: Real-time awareness, distributed consistency, rich metadata
-"""
+IO.puts("""
+ANSWERS & EXPLANATIONS
+
+# 1. Collaborative Document Presence
+#{Macro.to_string(DayTwo.Answers.answer_one())}
+# This design uses the metadata to track the state of each user within the
+# context of the document. When a user starts typing, they push an event, and
+# the channel updates their status to "editing". The resulting `presence_diff`
+# notifies all other clients, who can then show a "User is typing..." indicator
+# and lock the corresponding section of the document.
+
+# 2. Game Lobby Presence
+#{Macro.to_string(DayTwo.Answers.answer_two())}
+# This is a great example of using Presence not just for who is online, but for
+# managing shared lobby state. The custom `list_by_team` function shows how you can
+# use `Presence.list/2` with a custom mapping function on the server to easily
+# query and shape the presence data before sending it to clients.
+
+# 3. E-Learning Platform Presence
+#{Macro.to_string(DayTwo.Answers.answer_three())}
+# This architecture shows how presence can be the single source of truth for
+# real-time classroom state. Instead of custom events for everything, actions
+# like raising a hand simply update the user's metadata. The `presence_diff`
+# becomes the unified stream of all state changes, which greatly simplifies
+# client-side logic.
+""")

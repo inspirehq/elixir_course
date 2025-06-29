@@ -181,34 +181,57 @@ defmodule DayOne.TupleExercisesTest do
   end
 end
 
-"""
+defmodule DayOne.Answers do
+  def answer_one do
+    quote do
+      def parse_bool("true"), do: {:ok, true}
+      def parse_bool("false"), do: {:ok, false}
+      def parse_bool(_), do: {:error, :invalid}
+    end
+  end
+
+  def answer_two do
+    quote do
+      def read_bool_file(path) do
+        with {:ok, content} <- DayOne.TupleExercises._mock_file_read(path),
+             trimmed_content <- String.trim(content),
+             {:ok, bool} <- DayOne.TupleExercises.parse_bool(trimmed_content) do
+          {:ok, bool}
+        end
+      end
+    end
+  end
+
+  def answer_three do
+    quote do
+      def bank_pipeline(account, deposit_amount, withdraw_amount) do
+        with {:ok, after_deposit} <- Bank.Account.deposit(account, deposit_amount),
+             {:ok, after_withdrawal} <- Bank.Account.withdraw(after_deposit, withdraw_amount) do
+          {:ok, after_withdrawal}
+        end
+      end
+    end
+  end
+end
+
+IO.puts("""
 ANSWERS & EXPLANATIONS
 
 # 1. parse_bool/1
-def parse_bool(input) do
-  case input do
-    "true" -> {:ok, true}
-    "false" -> {:ok, false}
-    _ -> {:error, :invalid}
-  end
-end
-#  Pattern matches exact strings; anything else is invalid.
+#{Macro.to_string(DayOne.Answers.answer_one())}
+#  Using function heads to pattern match on the exact string values is the most
+#  concise and idiomatic way to implement this. The final clause `_` acts as a
+#  catch-all for any invalid input.
 
 # 2. read_bool_file/1
-def read_bool_file(path) do
-  with {:ok, raw} <- _mock_file_read(path),
-       {:ok, val} <- parse_bool(String.trim(raw)) do
-    {:ok, val}
-  end
-end
-#  Demonstrates chaining two tuple-returning functions with `with`.
+#{Macro.to_string(DayOne.Answers.answer_two())}
+#  The `with` special form is perfect for chaining operations that can fail (i.e.,
+#  that return `{:ok, ...}` or `{:error, ...}`). If any clause fails to match,
+#  the `with` block short-circuits and returns the non-matching value immediately.
 
 # 3. bank_pipeline/3
-def bank_pipeline(account, deposit_amount, withdraw_amount) do
-  with {:ok, account_after_deposit} <- Bank.Account.deposit(account, deposit_amount),
-       {:ok, final_account} <- Bank.Account.withdraw(account_after_deposit, withdraw_amount) do
-    {:ok, final_account}
-  end
-end
-#  The flow stops if deposit fails, showing short-circuiting nature of `with`.
-"""
+#{Macro.to_string(DayOne.Answers.answer_three())}
+#  This again shows the power of `with` for creating clean, readable pipelines
+#  for operations that can fail. The result of a successful step is passed to
+#  the next, and any error halts the entire chain.
+""")

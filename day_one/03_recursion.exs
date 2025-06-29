@@ -472,47 +472,84 @@ defmodule DayOne.RecursionExercisesTest do
   end
 end
 
-"""
+defmodule DayOne.Answers do
+  def answer_one do
+    quote do
+      # Public function is the entry point
+      def reduce(list, acc, fun) do
+        # The base case: an empty list returns the final accumulator
+        if list == [], do: acc, else: do_reduce(list, acc, fun)
+      end
+
+      # Private helper function to perform the recursion
+      defp do_reduce([head | tail], acc, fun) do
+        # Apply the function to the head and the current accumulator
+        new_acc = fun.(head, acc)
+        # The recursive call is the last thing this function does (tail call)
+        reduce(tail, new_acc, fun)
+      end
+    end
+  end
+
+  def answer_two do
+    quote do
+      def deep_flatten(list), do: do_flatten(list, [])
+
+      # Base case: we've processed the whole list, return the reversed accumulator
+      defp do_flatten([], acc), do: Enum.reverse(acc)
+      # Recursive case for a nested list: flatten the head, then the tail
+      defp do_flatten([head | tail], acc) when is_list(head) do
+        # Flatten the head first and prepend it to the tail
+        do_flatten(head ++ tail, acc)
+      end
+      # Recursive case for a non-list element: add it to the accumulator
+      defp do_flatten([head | tail], acc) do
+        do_flatten(tail, [head | acc])
+      end
+    end
+  end
+
+  def answer_three do
+    quote do
+      # Public function with memoization/cache
+      def fib(n, cache \\ %{})
+      # Base cases
+      def fib(0, _), do: {0, %{0 => 0}}
+      def fib(1, _), do: {1, %{1 => 1}}
+      # Check cache before computing
+      def fib(n, cache) when is_map_key(cache, n), do: {cache[n], cache}
+      # Compute, cache, and return
+      def fib(n, cache) do
+        {fib_n_1, cache1} = fib(n - 1, cache)
+        {fib_n_2, cache2} = fib(n - 2, cache1)
+        result = fib_n_1 + fib_n_2
+        {result, Map.put(cache2, n, result)}
+      end
+    end
+  end
+end
+
+IO.puts("""
 ANSWERS & EXPLANATIONS
 
-# 1. fibonacci/1
-def fibonacci(0), do: 0
-def fibonacci(1), do: 1
-def fibonacci(n) when n > 1 do
-  fibonacci(n - 1) + fibonacci(n - 2)
-end
+# 1. tail_recursive_reduce/3
+#{Macro.to_string(DayOne.Answers.answer_one())}
+#  This implements the classic `reduce` pattern using tail-call optimization (TCO).
+#  By passing the running total (accumulator) as an argument, the recursive call is
+#  the very last operation, which allows the Elixir compiler to convert the
+#  recursion into a loop, preventing stack overflow for large lists.
 
-# Tail-recursive version (more efficient):
-def fibonacci_tail(n), do: fibonacci_tail(n, 0, 1)
-defp fibonacci_tail(0, a, _b), do: a
-defp fibonacci_tail(n, a, b) when n > 0 do
-  fibonacci_tail(n - 1, b, a + b)
-end
-#  The naive version has exponential time complexity O(2^n) due to repeated calculations.
-#  The tail-recursive version is O(n) and uses constant stack space.
+# 2. deep_flatten/1
+#{Macro.to_string(DayOne.Answers.answer_two())}
+#  This demonstrates handling multiple recursive cases. When the head is a list,
+#  it's effectively "unpacked" and put back at the front of the list to be
+#  processed. When the head is a simple element, it's added to the accumulator.
+#  This is a good example of how recursion can process complex, nested structures.
 
-# 2. flatten_list/1
-def flatten_list([]), do: []
-def flatten_list([head | tail]) when is_list(head) do
-  flatten_list(head) ++ flatten_list(tail)
-end
-def flatten_list([head | tail]) do
-  [head | flatten_list(tail)]
-end
-#  Pattern matches on list structure, recursively flattens sublists,
-#  and concatenates results. Handles arbitrarily deep nesting.
-
-# 3. deep_count/1
-def deep_count(data) when is_list(data) do
-  Enum.reduce(data, 0, fn item, acc -> acc + deep_count(item) end)
-end
-def deep_count(data) when is_tuple(data) do
-  data |> Tuple.to_list() |> deep_count()
-end
-def deep_count(data) when is_map(data) do
-  data |> Map.values() |> deep_count()
-end
-def deep_count(_atomic), do: 1
-#  Uses guards to handle different data types, recursively processes
-#  collections, and counts atomic values (non-collections).
-"""
+# 3. fibonacci/1
+#{Macro.to_string(DayOne.Answers.answer_three())}
+#  A naive recursive Fibonacci function is very slow because it recalculates the
+#  same values many times. This solution uses a map as a cache (a technique
+#  called memoization) to store results. The cache is passed through the
+#  recursive calls, dramatically improving performance.
+""")
