@@ -36,6 +36,7 @@ cd assets && npm install && cd ..
 mix compile
 ```
 
+
 ### 2. Verify Everything Works
 
 ```bash
@@ -68,6 +69,9 @@ mix format
 
 # Check for issues
 mix credo
+
+# Checkout branch for exercises
+git checkout -b "exercises"
 ```
 
 ## 🔬 Interactive Development with IEx
