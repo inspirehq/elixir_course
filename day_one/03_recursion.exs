@@ -26,14 +26,22 @@ defmodule DayOne.RecursionBasics do
     3. Progress: Each call moves closer to the base case
 
     Basic Structure:
-    def recursive_function(input) do
+    def recursive_solution(input) do
       if base_case?(input) do
-        base_result
+        finished_value          # ← base-case result
       else
-        # Process current element
-        result = do_something(input)
-        # Recurse with smaller problem
-        recursive_function(modified_input) |> combine_with(result)
+        # 1️⃣  Work for THIS level ───────────────────────────
+        current_piece   = transform(input)
+
+        # 2️⃣  Create the SMALLER problem ────────────────────
+        modified_input = shrink(input)
+
+        # 3️⃣  Recurse, then merge the two answers ───────────
+        recursive_solution(modified_input)
+        |> combine(current_piece)
+
+        # The pipeline passes the partial answer into `combine/2`,
+        # producing the more complete answer returned up the stack.
       end
     end
     """

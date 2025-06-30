@@ -173,7 +173,7 @@ defmodule DayOne.PrimitivesExercises do
 
   @spec kv_loop_with_delete() :: :ok
   def kv_loop_with_delete do
-    #   Modify the KVLoop module to support a `:delete` message that removes
+    #   Modify the KVLoopWithDelete module to support a `:delete` message that removes
     #   a key. Return :ok after demonstrating put, delete, and get operations.
     #   Example workflow: put :test key, delete it, then get it (should return nil)
     :ok  # TODO: Implement KV loop with delete functionality

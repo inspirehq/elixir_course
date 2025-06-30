@@ -11,7 +11,7 @@
 
 # Memory efficiency demonstration
 list1 = [1, 2, 3, 4, 5]
-list2 = [0 | list1]  # Prepends 0, shares tail with list1
+list2 = [0 | list1] # Prepends 0, shares tail with list1
 
 # Challenge students to trace memory usage
 user = %{name: "Alice", age: 25, city: "London"}
