@@ -29,9 +29,6 @@ mix deps.get
 # Setup the database (creates database and runs migrations)
 mix ecto.setup
 
-# Install Node.js dependencies for assets
-cd assets && npm install && cd ..
-
 # Compile the project
 mix compile
 ```
