@@ -96,7 +96,8 @@ defmodule DayOne.CounterExercises do
   def build_counter_with_reset do
     #   Extend the CounterExercise to support a reset/0 function that sets
     #   the counter back to 0. Demonstrate by incrementing, resetting,
-    #   and verifying the counter is 0. Return :ok when complete.
+    #   and verifying the counter is 0. Return :ok when complete. Use the
+    #   CounterWithReset module provided.
     :ok  # TODO: Implement counter with reset functionality
   end
 

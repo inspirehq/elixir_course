@@ -1128,153 +1128,211 @@ end
 ### 12. Intro to ExUnit (75 minutes)
 
 #### 🎯 **Key Concepts**
-- **Testing Philosophy**: Building confidence through comprehensive testing
-- **Test Organization**: Structuring tests for maintainability
-- **Assertion Patterns**: Effective use of ExUnit's assertion library
-- **Test Lifecycle**: Setup, execution, and teardown patterns
+- **Test Structure**: `ExUnit.Case`, `test`, `setup`, `async: true`
+- **Assertion Library**: `assert`, `refute`, `assert_raise`, pattern matching
+- **Test Organization**: Tags (`@tag`), `describe` blocks, filtering tests
+- **Test Lifecycle & Context**: `setup_all`, `setup`, `on_exit`, passing context
+- **Advanced Testing**: Testing GenServers, OTP processes, and using `start_supervised`
+- **Testing Strategies**: Layering tests (unit, integration), testing real-world systems
 
 #### 📝 **Student Summary**
-*"ExUnit is Elixir's built-in testing framework that emphasizes clear, maintainable tests. It provides excellent tooling for organizing tests, making assertions, and running tests efficiently."*
+*"ExUnit is Elixir's built-in testing framework that emphasizes clear, maintainable tests. It provides excellent tooling for organizing tests, making assertions, running tests efficiently, and testing complex concurrent systems."*
 
 #### 🎤 **Teacher Talking Points**
 
-**Testing as Documentation:**
-"Good tests serve as living documentation of how your code should behave. They describe not just what the code does, but what it's supposed to do under various conditions."
+"Let's walk through the examples in `12_intro_to_exunit.exs` to see these concepts in action."
 
-**ExUnit's Design Philosophy:**
-"ExUnit prioritizes clarity over brevity. Test names should be descriptive, assertions should be explicit, and test structure should be obvious. This makes tests easier to understand and maintain."
+**Example 1: The Anatomy of a Test (Refer to `DayTwo.ExUnitBasics`)**
+-   **"The Foundation: `use ExUnit.Case`"**: "Every test file starts with this. It imports the necessary ExUnit macros and functions. The `async: true` option is crucial for performance—it tells ExUnit that tests in this module can run in parallel because they don't share or modify global state."
+-   **"The Building Block: `test`"**: "A test is just a function. The name should be a clear, descriptive sentence about what behavior is being verified. This makes test output readable and serves as documentation."
+-   **"Preparing State: `setup`"**: "The `setup` block runs before each individual test. It's perfect for setting up a clean state for each test to run against. Notice how it returns a keyword list or map, which gets passed as the `context` to the test function."
+-   **"The Test Lifecycle"**: "The `show_test_lifecycle` function outlines the order of operations. It's important to understand this sequence: `setup_all` runs once, `setup` runs before *every* test, and `on_exit` is used for cleanup. This ensures tests are isolated and don't affect each other."
 
-**Test Structure Best Practices:**
-```elixir
-defmodule UserServiceTest do
-  use ExUnit.Case, async: true
-  
-  describe "create_user/1" do
-    test "creates user with valid attributes" do
-      # Arrange
-      attrs = %{name: "Alice", email: "alice@example.com"}
-      
-      # Act  
-      result = UserService.create_user(attrs)
-      
-      # Assert
-      assert {:ok, user} = result
-      assert user.name == "Alice"
-      assert user.email == "alice@example.com"
-    end
-    
-    test "returns error with invalid email" do
-      attrs = %{name: "Alice", email: "invalid"}
-      
-      assert {:error, changeset} = UserService.create_user(attrs)
-      assert %{email: ["has invalid format"]} = errors_on(changeset)
-    end
-  end
-end
-```
+**Example 2: Making Assertions (Refer to `DayTwo.AssertionExamples`)**
+-   **"The Core Assertions"**: "`assert` checks for truthiness, while `refute` checks for falsiness. They are the workhorses of your tests. `assert_in_delta` is important for floating-point numbers where exact equality is tricky."
+-   **"Testing for Errors with `assert_raise`"**: "Don't just test the happy path. `assert_raise` is how you verify that your code fails correctly. You can check for a specific error type (like `ArithmeticError`) and even match on the error message for more precise tests."
+-   **"Idiomatic Elixir: Pattern Matching"**: "This is one of the most powerful testing patterns in Elixir. Instead of multiple `assert` lines, you can assert the entire shape of a successful result with `assert {:ok, user} = ...`. This makes tests concise and highly readable. It's also perfect for verifying the structure of error tuples, like `assert {:error, changeset} = ...`."
+-   **"Organizing with Tags"**: "As your test suite grows, you'll want to run subsets of it. `@tag` allows you to categorize tests. You can create tags like `:unit` or `:slow`. The `mix test` command can then `--only` include or `--exclude` certain tags. This is invaluable for running fast unit tests during development and saving slow, external-service-hitting tests for your CI server."
 
-**Assertion Strategy:**
-"ExUnit provides specific assertions for different scenarios:"
-- "`assert` for general truth testing"
-- "`assert_raise` for exception testing"
-- "`assert_in_delta` for floating-point comparisons"
-- "Pattern matching for complex data structure testing"
+**Example 3: Managing Test State (Refer to `DayTwo.TestSetupExamples`)**
+-   **"`setup` vs. `setup_all`"**: "`setup_all` runs only once per module, making it ideal for expensive, read-only setup that can be shared by all tests (like starting a database connection). `setup` runs before each test, providing a pristine, isolated state for each run."
+-   **"Database Testing with Sandbox"**: "The pattern shown in `show_setup_patterns` is the standard for testing Ecto queries. `Ecto.Adapters.SQL.Sandbox.checkout` gives each test process its own private database connection. All database operations happen inside a transaction that is rolled back at the end of the test, so your database is never permanently changed. This is what allows Ecto tests to run concurrently and remain clean."
+-   **"Dynamic Setup"**: "The `show_conditional_setup` example shows an advanced pattern where the setup block can inspect the tags of the test it's about to run. This allows you to perform specific setup only for certain types of tests, like starting a mock HTTP server only for `:integration` tests."
+-   **"Reducing Boilerplate with `CaseTemplate`"**: "For larger projects, you can create a `TestCase` module using `use ExUnit.CaseTemplate`. This allows you to define shared setup, imports, and helpers that can be used across all your test files with a simple `use MyApp.TestCase`. It's a powerful way to keep your tests DRY."
 
-**Async Testing Benefits:**
-"ExUnit can run tests in parallel when marked with `async: true`. This dramatically speeds up test suites, but requires tests to be isolated and not share global state."
+**Example 4: Testing the Hard Stuff - OTP (Refer to `DayTwo.OTPTestingExamples`)**
+-   **"Testing GenServers"**: "The key here is `start_supervised`. Unlike `GenServer.start_link`, it links the new process to the *test process*. If the test process finishes or crashes, the GenServer is automatically shut down. This prevents orphaned processes from leaking between test runs. The `setup` block is the perfect place to do this, giving each test a fresh process."
+-   **"Testing Concurrency and Crashes"**: "Because Elixir makes it so easy to write concurrent code, you must test it. Spawning multiple tasks to interact with a GenServer ensures it handles concurrent access correctly. You can also test the resiliency of your supervisors by killing a child process and verifying that it gets restarted properly."
+-   **"Testing Messages with `assert_receive`"**: "For processes that communicate via messages, `assert_receive` is your tool. It waits for a message that matches a given pattern. You can also specify a timeout to prevent tests from hanging forever. `refute_receive` is just as useful for asserting that a process *should not* receive a certain message."
 
-**Test Organization Patterns:**
-1. **Describe Blocks**: "Group related tests by function or feature"
-2. **Context Setup**: "Use setup callbacks for test data preparation"
-3. **Test Tags**: "Organize tests by type, speed, or environment"
-4. **Shared Examples**: "Reuse test patterns across modules"
-
-**Testing Anti-Patterns:**
-- "Testing implementation details instead of behavior"
-- "Creating overly complex test setup"
-- "Using random data that makes tests non-deterministic"
-- "Writing tests that are harder to understand than the code"
+**Example 5: A Real-World Strategy (Refer to `DayTwo.ChatSystemTest`)**
+-   **"Layering Your Tests"**: "A real application shouldn't just have one kind of test. You need a strategy. This example shows a great one:
+    1.  **Unit Tests (`describe \"message validation\"`)**: Fast, isolated tests for pure functions and business logic (like changeset validations).
+    2.  **Integration Tests (`describe \"room management\"`)**: Tests that verify the interaction between different parts of your system, like your contexts and the database. These often involve `setup` blocks to create test data.
+    3.  **Process/Real-Time Tests (`describe \"real-time messaging\"`)**: Tests that verify concurrent or real-time behavior, often using `assert_receive` to check for PubSub broadcasts.
+    4.  **Performance/Load Tests (`@tag :slow`)**: Tests that check how the system behaves under stress, like creating many records concurrently."
+-   **"Using `describe` for Clarity"**: "The `describe` blocks are essential for organizing a large test file. They group related tests and produce a nicely nested output, making it easy to see the context of each test and quickly find failures."
 
 #### 💬 **Discussion Questions**
-1. **"How do good tests contribute to code quality and maintainability?"**
-   - *Regression detection, refactoring confidence, design feedback*
-2. **"What makes a test easy to understand and maintain?"**
-   - *Clear naming, focused scope, minimal setup, explicit assertions*
-3. **"How might you organize tests in a large Phoenix application?"**
-   - *Module organization, test types, shared utilities*
+1.  **"Looking at the assertion examples, when would pattern matching in a test (`assert {:ok, _} = ...`) be more powerful than a simple `assert result == :ok`?"**
+    - *Discuss how it verifies not just success, but the *shape* and content of the successful result in one step.*
+2.  **"Why is `start_supervised` the standard for testing GenServers instead of `GenServer.start_link`?"**
+    - *Explore test process isolation and automatic cleanup to prevent state from leaking between tests.*
+3.  **"How can using `@tag` and `describe` help keep a large test suite manageable and fast for local development?"**
+    - *Discuss filtering runs (`--only unit`), organizing related tests, and improving readability of test output.*
+4.  **"In the chat system example, why is it important to have different *layers* of tests (unit, integration, etc.)?"**
+    - *Discuss the trade-offs: unit tests are fast and precise; integration tests provide confidence that components work together.*
+5.  **"When would you use `setup_all` versus `setup`? What are the risks of using `setup_all`?"**
+    - *Explore use cases for expensive, shared, read-only setup. Discuss the risk of tests accidentally modifying the shared state and influencing each other.*
 
 ---
 
-### 13. Property Testing (60 minutes)
+### 13. Property Testing (75 minutes)
 
 #### 🎯 **Key Concepts**
 - **Property-Based Testing**: Testing properties rather than specific examples
 - **Generative Testing**: Automatically generating test cases
+- **Factory Pattern**: Consistent test data generation with customization
 - **Shrinking**: Finding minimal failing cases
+- **Stateful Property Testing**: Testing GenServers and stateful systems
 - **Invariant Discovery**: Finding universal truths about your code
 
 #### 📝 **Student Summary**
-*"Property-based testing generates hundreds of test cases automatically to find edge cases you wouldn't think of manually. It's especially powerful for testing data transformations and algorithms."*
+*"Property-based testing generates hundreds of test cases automatically to find edge cases you wouldn't think of manually. Combined with factory patterns for test data generation, it's especially powerful for testing data transformations, algorithms, and stateful systems."*
 
 #### 🎤 **Teacher Talking Points**
 
-**Beyond Example-Based Testing:**
-"Traditional testing uses specific examples: 'when input is X, output should be Y.' Property testing asks: 'what should always be true about this function, regardless of input?' This finds bugs that example-based testing misses."
+**Beyond Example-Based Testing - The Paradigm Shift:**
+"Traditional testing uses specific examples: 'when input is X, output should be Y.' Property testing asks: 'what should always be true about this function, regardless of input?' This fundamental shift finds bugs that example-based testing misses."
 
-**The Property Testing Workflow:**
-1. **Define Properties**: "What should always be true?"
-2. **Generate Data**: "Create random inputs within constraints"
-3. **Test Properties**: "Verify properties hold for all generated inputs"
-4. **Shrink Failures**: "Find the smallest input that reproduces the failure"
+"Point students to the `DayTwo.MathOperations` and `DayTwo.StringOperations` modules in the script. These provide concrete, runnable examples that students will actually test, not just read about."
 
-**Common Property Patterns:**
+**The Property Testing Workflow with Real Examples:**
+1. **Define Properties**: "Look at the commutativity test - `add(a, b) == add(b, a)` should always be true"
+2. **Generate Data**: "StreamData creates thousands of integer pairs automatically"
+3. **Test Properties**: "Each generated pair is tested against the property"
+4. **Shrink Failures**: "If `add(999999, -999999)` fails, shrinking finds the minimal case like `add(1, -1)`"
+
+**Factory Pattern for Test Data Generation:**
+"The `DayTwo.Factory` and `DayTwo.AdvancedFactory` modules demonstrate crucial patterns for property testing. Point students to the key benefits:"
+
+"Basic Factory Usage:"
 ```elixir
-# Roundtrip properties
-property "encoding and decoding are inverse operations" do
-  forall data <- term() do
-    data |> encode() |> decode() == data
-  end
-end
+# Simple factory usage
+user = Factory.build(:user)
+users = Factory.build_list(:user, 5)
 
-# Invariant properties  
-property "sorting maintains list length" do
-  forall list <- list(integer()) do
-    length(Enum.sort(list)) == length(list)
-  end
-end
+# Customizable with attributes
+admin_user = Factory.build(:user, %{role: :admin, age: 35})
+```
 
-# Metamorphic properties
-property "reversing twice returns original" do
-  forall list <- list(term()) do
-    list |> Enum.reverse() |> Enum.reverse() == list
+"Advanced Factory Features:"
+```elixir
+# Sequences and relationships
+team_data = AdvancedFactory.build(:user_with_posts)
+team = AdvancedFactory.build(:team)
+user_in_team = AdvancedFactory.build(:user_in_team, team.id)
+```
+
+"Factories solve a major challenge in property testing: how do you generate realistic, complex domain objects? The factory pattern provides:"
+- "**Consistency**: Every generated user has all required fields"
+- "**Customization**: Override specific attributes for test scenarios"
+- "**Relationships**: Build connected data (users with posts, teams with members)"
+- "**Sequences**: Generate unique values (email addresses, IDs) with the sequence/2 function"
+
+**Stateful Property Testing - A New Dimension:**
+"Point students to the `DayTwo.CounterServer` and `DayTwo.BankAccount` examples. These show how property testing extends beyond pure functions to stateful systems:"
+
+"For the CounterServer, properties might include:"
+- "The counter value should equal the sum of all increments minus decrements"
+- "Multiple operations should commute: inc(5) then inc(3) equals inc(3) then inc(5)"
+- "Reset should always return the counter to zero"
+
+"For the BankAccount, invariants include:"
+- "Balance should never go negative (unless explicitly allowed)"
+- "The sum of all transaction amounts should equal the balance change"
+- "Withdrawing more than the balance should fail gracefully"
+
+**The Exercise-Driven Approach:**
+"Unlike traditional property testing tutorials that show abstract examples, this lesson provides 12 concrete exercises that students complete. Walk through the exercise structure:"
+
+**Exercise Progression:**
+1. **Basic Properties (Exercises 1-3)**: "Addition commutativity, sorting length preservation, double reverse"
+2. **String Operations (Exercises 4-5)**: "Base64 roundtrip, whitespace normalization idempotency"
+3. **Factory Testing (Exercises 6-8)**: "Valid data generation, custom attributes, list building"
+4. **Stateful Testing (Exercises 9-10)**: "GenServer consistency, bank account invariants"
+5. **Serialization (Exercise 11)**: "JSON roundtrip properties"
+6. **Custom Factory (Exercise 12)**: "Students build their own Product factory"
+
+**Complete Exercise Solutions Available:**
+"The file includes a `DayTwo.PropertyTestingAnswers` module with complete solutions for all 12 exercises. This allows instructors to demonstrate proper implementations and students to check their work."
+
+**Graceful Degradation Pattern:**
+"Notice how the exercises handle environments without StreamData. This is a crucial teaching pattern:"
+
+```elixir
+if Code.ensure_loaded?(StreamData) do
+  # Property test with generated data
+  import StreamData
+  check all a <- integer(), b <- integer() do
+    assert MathOperations.add(a, b) == MathOperations.add(b, a)
   end
+else
+  # Fall back to example-based tests
+  assert MathOperations.add(2, 3) == MathOperations.add(3, 2)
+  assert MathOperations.add(-5, 10) == MathOperations.add(10, -5)
 end
 ```
 
-**When Property Testing Shines:**
-- "Data transformation functions"
-- "Parsing and serialization code"
-- "Mathematical algorithms"
-- "Data structure operations"
-- "API contract validation"
+"This approach ensures the lesson works in any environment while teaching both property-based and example-based testing patterns."
 
-**Property Testing vs. Unit Testing:**
-"Use both approaches complementarily:"
-- "Unit tests for specific business logic and edge cases"
-- "Property tests for general behavior and invariants"
-- "Unit tests are faster and more focused"
-- "Property tests find unexpected edge cases"
+**JSON Serialization - Real-World Application:**
+"The `DayTwo.UserSerializer` module demonstrates property testing for a common real-world scenario: API serialization. This is where property testing really shines - finding edge cases in data transformation that manual testing misses."
 
-**Shrinking Magic:**
-"When a property test fails, the testing framework automatically tries smaller inputs to find the minimal case that reproduces the failure. This makes debugging much easier."
+"Properties for serialization include:"
+- "Roundtrip consistency: deserialize(serialize(data)) == data"
+- "Schema validation: serialized data matches expected JSON structure"
+- "Error handling: invalid JSON produces predictable errors"
+
+**The Custom Factory Exercise - Hands-On Learning:**
+"Exercise 12 requires students to build their own Product factory. This reinforces the pattern while letting them apply it to a new domain. The product should have:"
+- "id, name, price, category, in_stock, created_at"
+- "Realistic default values with appropriate data types"
+- "Support for custom attributes through Map.merge/2"
+- "Business logic like 80% in_stock probability"
+
+#### 🛠 **Teaching Strategies**
+
+**Start with Concrete Examples:**
+"Don't start with abstract property theory. Begin with the MathOperations module and ask: 'What should always be true about addition?' This grounds the concept in familiar territory."
+
+**Live Coding Factories:**
+"Demonstrate building a factory step by step. Start with a simple `:product` factory, then show how to add custom attributes and sequences. This makes the pattern concrete."
+
+**Compare Test Approaches:**
+"Use the same function (like `MathOperations.add`) to show both example-based and property-based testing. This highlights the complementary nature of both approaches."
+
+**Emphasize the 'Why':**
+"For each property, ask students: 'Why is this property important?' Connect mathematical properties (commutativity) to real-world implications (order of operations doesn't matter for addition)."
 
 #### 💬 **Discussion Questions**
-1. **"What kinds of properties might you test for a sorting algorithm?"**
-   - *Length preservation, ordering, idempotence, permutation*
-2. **"How might property testing help with API testing?"**
-   - *Input validation, response consistency, error handling*
-3. **"What are the limitations of property-based testing?"**
-   - *Performance overhead, property design difficulty, random test nature*
+1. **"Looking at the factory pattern, how does it change your approach to test data setup?"**
+   - *Consistency vs. customization, reducing boilerplate, enabling property testing with realistic data*
+2. **"Why might you test both individual operations and sequences of operations on the CounterServer?"**
+   - *Single operations verify basic functionality, sequences test for race conditions and state consistency*
+3. **"How do the graceful degradation patterns in the exercises help with different development environments?"**
+   - *Accessibility across teams, fallback strategies, teaching multiple approaches*
+4. **"When might property testing find bugs that example-based testing misses?"**
+   - *Edge cases, boundary conditions, unexpected input combinations, data transformation errors*
+5. **"How does the factory pattern enable more effective property testing?"**
+   - *Realistic data generation, complex object creation, relationship testing, customizable scenarios*
+
+#### ⚠️ **Common Teaching Pitfalls**
+1. **Starting Too Abstract**: Begin with concrete examples, not property theory
+2. **Ignoring Factories**: Students often struggle with test data - factories solve this elegantly
+3. **Property Overload**: Focus on 3-4 key property patterns rather than exhaustive coverage
+4. **Skipping Stateful Testing**: GenServer properties are crucial for Elixir applications
+5. **Tool Dependency**: Always provide fallback patterns for environments without specialized libraries
 
 ---
 
@@ -1282,66 +1340,136 @@ end
 
 #### 🎯 **Key Concepts**
 - **Service Isolation**: Testing without external dependencies
-- **Mock Strategies**: Different approaches to mocking external services
+- **Mock Strategies**: Different approaches to mocking external services  
+- **Behaviour-Based Mocking**: Using Elixir behaviours for type-safe mocks
 - **Contract Testing**: Ensuring mock behavior matches reality
 - **Test Reliability**: Building stable tests for unstable external services
 
 #### 📝 **Student Summary**
-*"Testing code that depends on external services requires isolation strategies. Mocks, stubs, and contract testing help you build reliable tests that don't depend on external service availability."*
+*"Testing code that depends on external services requires isolation strategies. Mocks, stubs, and contract testing help you build reliable tests that don't depend on external service availability. Elixir's behaviour system provides excellent support for type-safe mocking."*
 
 #### 🎤 **Teacher Talking Points**
 
 **The External Service Problem:**
 "External services create testing challenges: they're slow, unreliable, expensive to call, and might not exist in test environments. We need strategies to test our integration code without actually calling external services."
 
+**Real Service Examples for Context:**
+"Point students to the concrete service implementations in the script:"
+- "**`DayTwo.PaymentGateway`** behaviour with `DayTwo.StripeGateway` implementation"
+- "**`DayTwo.EmailService`** behaviour with `DayTwo.SendgridService` implementation"  
+- "**`DayTwo.WeatherAPI`** HTTP client with simulated responses"
+- "**`DayTwo.OrderService`** and **`DayTwo.NotificationService`** business logic modules"
+
+"These provide realistic examples that students will actually test, not abstract concepts."
+
+**Behaviour-Based Mocking in Elixir:**
+"Elixir's `@behaviour` system is perfect for mocking because it provides compile-time contracts:"
+
+```elixir
+defmodule PaymentGateway do
+  @callback charge_card(amount :: integer(), card_token :: String.t()) ::
+              {:ok, String.t()} | {:error, atom()}
+end
+
+# Real implementation
+defmodule StripeGateway do
+  @behaviour PaymentGateway
+  # Must implement all callback functions
+end
+
+# Test mock follows same contract
+defmodule PaymentMock do
+  @behaviour PaymentGateway  
+  # Compiler ensures we implement the same interface
+end
+```
+
+**Dependency Injection Pattern:**
+"Show students how the service modules use dependency injection:"
+
+```elixir
+def process_payment(order, card, payment_gateway \\ nil) do
+  gateway = payment_gateway || get_payment_gateway()
+  # Business logic uses injected service
+end
+```
+
+"This pattern makes testing easy - inject a mock in tests, use real service in production."
+
 **Mock vs. Stub vs. Fake:**
-- "**Mock**: Verifies that interactions happen correctly"
-- "**Stub**: Returns canned responses for testing"
-- "**Fake**: Lightweight implementation for testing (in-memory database)"
+- "**Mock**: Verifies that interactions happen correctly (used in exercises 11-12)"
+- "**Stub**: Returns canned responses for testing (used in exercises 1-10)"
+- "**Fake**: Lightweight implementation for testing (the simulated services in the script)"
 - "Choose based on what you're testing: behavior vs. state"
 
-**Mox Library Benefits:**
-"Mox is designed specifically for Elixir's concurrent nature:"
-- "Type-safe mocking through behaviours"
-- "Process-isolated mocks for async testing"
-- "Explicit setup prevents accidental mock sharing"
-- "Integration with ExUnit's lifecycle"
+**The Exercise-Driven Approach:**
+"This lesson provides 12 complete exercises that progressively build complexity:"
+
+**Exercise Progression:**
+1. **Payment Gateway Mocking (Exercises 1-3)**: "Success, decline, invalid card scenarios"
+2. **Email Service Mocking (Exercises 4-6)**: "Welcome emails, failures, order confirmations"
+3. **Refund Processing (Exercises 7-8)**: "Success and error scenarios"
+4. **Complex Workflows (Exercises 9-10)**: "Multi-service interactions, failure cascades"
+5. **Interaction Verification (Exercises 11-12)**: "Verifying correct arguments and call patterns"
+
+**Complete Exercise Solutions Available:**
+"The file includes a `DayTwo.ThirdPartyTestingAnswers` module with complete solutions for all 12 exercises. Each solution demonstrates proper mock creation, testing patterns, and error handling."
 
 **Testing Strategy Layers:**
+"The exercises demonstrate a comprehensive testing strategy:"
+
 ```elixir
-# 1. Unit tests with mocks
-test "payment processing handles success" do
-  expect(PaymentMock, :charge, fn _amount, _token ->
-    {:ok, "transaction_123"}
-  end)
+# 1. Unit tests with mocks (most exercises)
+test "successful payment processing" do
+  gateway_mock = MockHelpers.create_payment_gateway_mock(%{
+    {:charge_card, 100, "valid_token"} => {:ok, "charge_123"}
+  })
   
-  assert {:ok, _order} = OrderService.complete_purchase(order, card)
+  assert {:ok, updated_order} = OrderService.process_payment(order, card, gateway_mock)
 end
 
-# 2. Integration tests with real service in sandbox
-test "payment integration works end-to-end" do
-  # Use test API keys, test environment
-  assert {:ok, _transaction} = PaymentService.charge(100, test_token())
+# 2. Interaction verification (exercises 11-12)
+test "verify correct arguments passed" do
+  # Mock captures and verifies the actual calls made
 end
 
-# 3. Contract tests to verify mock accuracy
-test "mock behavior matches real service" do
-  # Verify mock responses match real API responses
+# 3. Complex workflow testing (exercises 9-10)
+test "complete order flow with payment and email" do
+  # Test multiple services working together
 end
 ```
 
 **HTTP Service Testing Patterns:**
-1. **Bypass**: "Create local HTTP servers for testing"
-2. **WebMock**: "Intercept HTTP requests and return test responses"
-3. **VCR**: "Record real HTTP interactions and replay them"
-4. **Service Virtualization**: "Simulate external services completely"
+"The `DayTwo.WeatherAPI` demonstrates HTTP service testing approaches:"
+1. **Response Simulation**: "The `simulate_http_get/1` function shows how to mock HTTP responses"
+2. **Error Condition Testing**: "Network timeouts, 404 errors, invalid JSON responses"
+3. **Configuration-Based Testing**: "Using application config for test vs. production URLs"
 
 **Error Scenario Testing:**
-"External services fail in many ways:"
-- "Network timeouts and connection errors"
-- "Invalid responses and malformed data"
-- "Rate limiting and authentication failures"
-- "Partial failures and inconsistent state"
+"The exercises cover comprehensive error scenarios:"
+- "Payment declines and invalid cards (exercises 2-3)"
+- "Email sending failures (exercise 5)"
+- "Invalid refund attempts (exercise 8)"
+- "Payment failures affecting email sending (exercise 10)"
+- "Network timeouts and connection errors (in the HTTP examples)"
+
+**Mock Helper Patterns:**
+"The `DayTwo.MockHelpers` module demonstrates creating reusable mock factories:"
+
+```elixir
+def create_payment_gateway_mock(expectations \\ %{}) do
+  %{
+    charge_card: fn amount, token ->
+      case Map.get(expectations, {:charge_card, argument, token}) do
+        nil -> default_response
+        result -> result
+      end
+    end
+  }
+end
+```
+
+"This pattern allows flexible mock configuration while maintaining consistency."
 
 #### 💬 **Discussion Questions**
 1. **"How do you balance test isolation with integration confidence?"**
@@ -1356,149 +1484,97 @@ end
 ### 15. Introduction to Phoenix Plugs (60 minutes)
 
 #### 🎯 **Key Concepts**
-- **Plug Specification**: Understanding the conn-in, conn-out pattern
+- **Plug Contract**: Understanding the conn-in, conn-out transformation pattern
+- **Connection Enrichment**: Adding data to conn.assigns for request-scoped storage
 - **Function vs Module Plugs**: Two approaches to building plugs
-- **Pipeline Composition**: Chaining plugs together for request processing
-- **Real-World Patterns**: Authentication, logging, CORS, rate limiting
+- **Real-World Applications**: How plugs enable authentication, logging, and middleware
 
 #### 📝 **Student Summary**
 *"Plugs are the fundamental building blocks of Phoenix applications. They transform HTTP connections through composable functions, enabling everything from authentication to logging in a standardized way."*
 
 #### 🎤 **Teacher Talking Points**
 
-**Plugs as Web Middleware:**
-"Think of plugs as middleware layers in web applications. Every request flows through a series of plugs, each one potentially transforming the connection. This pattern is simple but incredibly powerful - it's how Phoenix handles everything from parsing request bodies to enforcing authentication."
+**The Plug Contract - Keep It Simple:**
+"Every plug follows the same simple contract: receive a %Plug.Conn{}, transform it, return it. This simplicity is what makes plugs so powerful and composable."
 
-**The Plug Contract:**
-"The beauty of plugs is their simplicity. Every plug follows the same contract:"
-```elixir
-# Function plug
-def my_plug(conn, opts) do
-  # Transform the connection
-  conn
-end
+**Connection Transformation in Action:**
+"Point students to the `DayTwo.PlugExercise.enrich_connection/2` function in the script. This demonstrates the core plug pattern they'll implement:"
+- "Extract data from request headers"
+- "Add multiple key/value pairs to conn.assigns"
+- "Return the enriched connection"
 
-# Module plug  
-defmodule MyPlug do
-  def init(opts), do: opts  # Compile-time setup
-  def call(conn, opts) do   # Runtime execution
-    # Transform the connection
-    conn
-  end
-end
-```
+**Why conn.assigns Matters:**
+"The assigns map is request-scoped storage. Data you put there is available throughout the request lifecycle - in controllers, templates, and other plugs. It's how you pass context through your application."
 
-**Why Two Types of Plugs?**
-- "**Function Plugs**: Simple, stateless transformations - perfect for logging, headers"
-- "**Module Plugs**: Complex logic with compile-time optimization - authentication, rate limiting"
-- "**Performance**: Module plugs can pre-process configuration at compile time"
-- "**Testing**: Both types are pure functions, making them easy to test"
+**The Two Types of Plugs:**
+- "**Function Plugs**: Simple functions like `enrich_connection/2` - great for stateless transformations"
+- "**Module Plugs**: Two-function modules with `init/1` and `call/2` - better for complex, configurable logic"
 
-**Connection Lifecycle:**
-"The %Plug.Conn{} struct carries everything about an HTTP request/response:"
-- "Request data: method, path, headers, parameters"
-- "Response data: status, headers, body"
-- "Assigns: Key-value storage for request-scoped data"
-- "Halted flag: Stops pipeline processing when needed"
+**Real-World Connection Enrichment:**
+"Show students the patterns they'll see in production:"
+- "User-Agent extraction for analytics"
+- "Request timestamps for performance monitoring"
+- "Authentication status for authorization decisions"
+- "API versioning information for routing"
 
-**Pipeline Architecture:**
-"Phoenix applications are essentially plug pipelines:"
-```
-Request → Endpoint Plugs → Router Plugs → Controller Plugs → Action → Response
-```
-"Each layer can transform the connection, add data, or halt processing. This creates a clean separation of concerns."
+**Pipeline Thinking:**
+"Plugs compose together in pipelines. Each plug receives the connection from the previous plug and passes it to the next. This creates a clean, functional approach to request processing."
 
-**Real-World Plug Categories:**
-1. **Infrastructure Plugs**: Request ID, logging, static files, parsing
-2. **Security Plugs**: CORS, CSRF, authentication, authorization  
-3. **Business Logic Plugs**: Tenant resolution, feature flags, API versioning
-4. **Monitoring Plugs**: Metrics collection, performance timing, error tracking
+#### 💡 **The Exercise - Connection Enrichment**
 
-**Common Patterns:**
-- "**Early Termination**: Use `halt(conn)` to stop processing (authentication failures)"
-- "**Data Loading**: Use `assign(conn, :key, value)` to store request-scoped data"
-- "**Header Management**: Security headers, CORS, API versioning"
-- "**Request Transformation**: Authentication token → user struct"
+**Exercise Goal:**
+"Students implement a single function plug that demonstrates the fundamental plug pattern: connection in, connection out, with enriched data."
 
-**Performance Considerations:**
-"Plugs execute for every request, so performance matters:"
-- "Keep plug logic lightweight and focused"
-- "Use module plugs for expensive setup (compile-time optimization)"
-- "Consider caching for expensive operations"
-- "Profile plug performance in production scenarios"
+**What Students Learn:**
+1. **Header Extraction**: Pattern matching on request headers to find data
+2. **Error Handling**: Providing defaults when headers are missing
+3. **Assigns Management**: Building up the assigns map incrementally
+4. **Function Composition**: Using the pipe operator to chain operations
+5. **Return Values**: Always returning the modified connection
 
-**Testing Philosophy:**
-"Plugs are pure functions, making them exceptionally testable:"
-- "Mock %Plug.Conn{} structs for unit testing"
-- "Test both success and failure scenarios"
-- "Verify conn transformation and assigns"
-- "Integration test entire plug pipelines"
+**Key Teaching Moments:**
+- "Header access patterns and handling missing data"
+- "The assigns map as request-scoped storage"
+- "Pipe operator for clean connection transformation"
+- "Testing with mock connections"
+
+#### 🛠 **Live Coding Approach**
+
+**Start with the Test:**
+"Begin by running the test and showing it fails. This demonstrates test-driven development and helps students understand the requirements."
+
+**Build Incrementally:**
+1. "First, just return `conn` - show the test still fails"
+2. "Add one assign at a time, showing how each test assertion passes"
+3. "Handle the user-agent extraction with pattern matching"
+4. "Show the pipe operator making the code more readable"
+
+**Connect to Real Applications:**
+"This pattern is everywhere in Phoenix. Authentication plugs extract tokens, authorization plugs add user data, logging plugs add request IDs. Students are learning the fundamental building block."
 
 #### 💬 **Discussion Questions**
-1. **"How do plugs compare to middleware in other web frameworks you've used?"**
-   - *Explore functional vs. object-oriented approaches, composability*
-2. **"When would you choose a function plug vs. a module plug?"**
-   - *Complexity, reusability, configuration needs, performance*
-3. **"How might you structure plugs for a multi-tenant application?"**
-   - *Tenant resolution, authorization, data scoping*
-4. **"What security concerns should you consider when building authentication plugs?"**
-   - *Token handling, session management, timing attacks, error information leakage*
-5. **"How could you use plugs to implement feature flags or A/B testing?"**
-   - *Request routing, user segmentation, gradual rollouts*
-
-#### 🛠 **Common Implementation Patterns**
-
-**Authentication Pipeline:**
-```elixir
-# In router.ex
-pipeline :authenticated do
-  plug MyApp.AuthPlug
-  plug MyApp.LoadUserPlug
-  plug MyApp.RequireActivePlug
-end
-```
-
-**API Versioning:**
-```elixir
-defmodule MyApp.APIVersionPlug do
-  def call(conn, _opts) do
-    version = 
-      get_req_header(conn, "x-api-version") 
-      |> List.first() 
-      |> Kernel.||("v1")
-    
-    assign(conn, :api_version, version)
-  end
-end
-```
-
-**Request Timing:**
-```elixir
-# Start timer plug
-def start_timer(conn, _opts) do
-  assign(conn, :start_time, System.monotonic_time())
-end
-
-# End timer plug  
-def end_timer(conn, _opts) do
-  duration = System.monotonic_time() - conn.assigns.start_time
-  put_resp_header(conn, "x-response-time", "#{duration}ms")
-end
-```
+1. **"What other data might you want to extract from request headers?"**
+   - *API versions, client information, feature flags*
+2. **"How could this pattern help with authentication?"**
+   - *Token extraction, user lookup, permission checking*
+3. **"What would happen if we forgot to return the connection?"**
+   - *Pipeline breaks, downstream plugs get nil*
+4. **"How might you test more complex plug behavior?"**
+   - *Multiple headers, edge cases, integration scenarios*
 
 #### 🎯 **Teaching Tips**
-- **Start Simple**: Begin with basic function plugs before introducing module plugs
-- **Visual Pipeline**: Draw the request flow through different plug layers
-- **Live Coding**: Build plugs incrementally, showing conn transformation at each step
-- **Real Examples**: Use authentication, logging, and CORS as concrete use cases
-- **Error Handling**: Emphasize the importance of proper error responses and halting
+- **Focus on Fundamentals**: Keep the exercise simple to reinforce the core pattern
+- **Test-Driven**: Use the failing tests to guide implementation
+- **Live Coding**: Build the solution step by step with students
+- **Connect to Reality**: Relate the exercise to real Phoenix applications
+- **Pattern Recognition**: Help students see this pattern in existing Phoenix code
 
 #### ⚠️ **Common Pitfalls**
-1. **Forgetting to Return Conn**: Students often forget that plugs must return the connection
-2. **Halting Without Response**: Using `halt()` without setting a response leads to confusing errors
-3. **Heavy Processing**: Putting expensive operations in plugs that run on every request
-4. **State Mutation**: Trying to mutate the connection instead of returning a new one
-5. **Error Handling**: Not handling edge cases in authentication or data parsing
+1. **Forgetting to Return Conn**: Students often forget plugs must return the connection
+2. **Overcomplicating**: Keep the exercise focused on connection transformation
+3. **Header Case Sensitivity**: HTTP headers are case-insensitive but maps are not
+4. **Nil Handling**: Not providing defaults for missing headers
+5. **Assigns vs Map**: Confusion between conn.assigns and direct map access
 
 ---
 

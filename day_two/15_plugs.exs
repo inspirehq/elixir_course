@@ -5,89 +5,88 @@
 # or inside IEx with:
 #     iex -r day_two/15_plugs.exs
 #
-# Plugs are the building blocks of Phoenix applications. They provide a simple
-# way to compose web applications by defining small, reusable functions that
-# transform HTTP connections. Every Phoenix controller action is a plug!
+# Plugs are the fundamental building blocks of Phoenix applications. They transform
+# HTTP connections through composable functions, enabling everything from authentication
+# to logging in a standardized way.
 # ────────────────────────────────────────────────────────────────
 
-IO.puts("\n📌 Example 1 – Understanding the Plug specification")
+IO.puts("\n📌 Example 1 – Understanding the Plug contract")
 
 defmodule DayTwo.PlugBasics do
   @moduledoc """
-  Understanding the fundamental concepts of Plugs in Phoenix.
+  Understanding the fundamental plug patterns and contracts.
   """
 
-  def explain_plug_specification do
+  def explain_plug_contract do
     """
-    The Plug Specification:
+    The Plug Contract:
 
-    1. A plug is a function that receives a connection (conn) and returns a connection
-    2. Function signature: plug(conn, opts) -> conn
-    3. The connection (%Plug.Conn{}) contains all HTTP request/response data
-    4. Plugs can be composed together to build request processing pipelines
-    5. Each plug can transform the connection and pass it to the next plug
+    Every plug follows the same simple contract:
+    • Receives a %Plug.Conn{} struct and options
+    • Returns a %Plug.Conn{} struct (potentially modified)
+    • May halt the connection to stop further processing
 
-    Two types of Plugs:
-    • Function Plugs: Simple functions that take conn and opts
-    • Module Plugs: Modules implementing init/1 and call/2 callbacks
+    Two Types of Plugs:
+    • Function Plugs: Simple functions that transform connections
+    • Module Plugs: Modules with init/1 and call/2 functions
 
-    Basic Structure:
-    def my_plug(conn, _opts) do
-      # Transform the connection
-      conn
-      |> put_resp_header("x-custom", "value")
-      |> assign(:processed_by, :my_plug)
-    end
+    Key Connection Operations:
+    • assign(conn, key, value) - Store request-scoped data
+    • put_resp_header(conn, name, value) - Add response headers
+    • put_status(conn, status) - Set HTTP status code
+    • halt(conn) - Stop the plug pipeline
     """
   end
 
-  def show_conn_structure do
-    """
-    %Plug.Conn{} key fields:
-    • method: "GET", "POST", etc.
-    • request_path: "/users/123"
-    • params: %{"id" => "123"}
-    • query_params: %{"filter" => "active"}
-    • req_headers: [{"content-type", "application/json"}]
-    • resp_headers: [{"x-frame-options", "DENY"}]
-    • status: 200, 404, 500, etc.
-    • resp_body: Response content
-    • assigns: %{} - Storage for request-scoped data
-    • halted: false - Whether to stop processing
-    """
+  def show_connection_structure do
+    # Create a mock connection to demonstrate structure
+    mock_conn = %{
+      method: "GET",
+      path_info: ["api", "users"],
+      assigns: %{},
+      req_headers: [{"accept", "application/json"}],
+      resp_headers: [],
+      status: nil,
+      halted: false
+    }
+
+    IO.puts("Example connection structure:")
+    IO.puts("Method: #{mock_conn.method}")
+    IO.puts("Path: /#{Enum.join(mock_conn.path_info, "/")}")
+    IO.puts("Assigns: #{inspect(mock_conn.assigns)}")
+    IO.puts("Request Headers: #{inspect(mock_conn.req_headers)}")
+    IO.puts("Halted: #{mock_conn.halted}")
   end
 end
 
-IO.puts("Plug specification:")
-IO.puts(DayTwo.PlugBasics.explain_plug_specification())
-
-IO.puts("\nConnection structure:")
-IO.puts(DayTwo.PlugBasics.show_conn_structure())
+IO.puts("Plug contract explanation:")
+IO.puts(DayTwo.PlugBasics.explain_plug_contract())
+DayTwo.PlugBasics.show_connection_structure()
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 2 – Function plugs in action")
 
 defmodule DayTwo.FunctionPlugs do
-  import Plug.Conn
-
-  @doc """
-  A simple function plug that adds a timestamp to the connection
+  @moduledoc """
+  Examples of function plugs that transform connections.
   """
-  def add_timestamp(conn, _opts) do
-    assign(conn, :request_timestamp, DateTime.utc_now())
+
+  # Simple function plug that adds a request ID
+  def add_request_id(conn, _opts) do
+    request_id = generate_request_id()
+
+    conn
+    |> assign(:request_id, request_id)
+    |> put_resp_header("x-request-id", request_id)
   end
 
-  @doc """
-  A function plug that logs basic request information
-  """
+  # Function plug that logs request information
   def log_request(conn, _opts) do
-    IO.puts("#{conn.method} #{conn.request_path} from #{get_peer_ip(conn)}")
+    IO.puts("Processing #{conn.method} #{conn.request_path}")
     conn
   end
 
-  @doc """
-  A function plug that adds CORS headers
-  """
+  # Function plug that adds CORS headers
   def add_cors_headers(conn, _opts) do
     conn
     |> put_resp_header("access-control-allow-origin", "*")
@@ -95,603 +94,397 @@ defmodule DayTwo.FunctionPlugs do
     |> put_resp_header("access-control-allow-headers", "content-type, authorization")
   end
 
-  @doc """
-  A function plug that requires authentication
-  """
-  def require_auth(conn, _opts) do
-    case get_req_header(conn, "authorization") do
-      ["Bearer " <> token] when token != "" ->
-        assign(conn, :current_user, %{id: 1, token: token})
-      _ ->
-        conn
-        |> put_status(401)
-        |> put_resp_content_type("application/json")
-        |> send_resp(401, Jason.encode!(%{error: "Unauthorized"}))
-        |> halt()
-    end
+  # Simulate connection operations (these would normally be from Plug.Conn)
+  defp assign(conn, key, value) do
+    Map.update(conn, :assigns, %{key => value}, fn assigns ->
+      Map.put(assigns, key, value)
+    end)
   end
 
-  # Helper function to extract peer IP
-  defp get_peer_ip(conn) do
-    case Map.get(conn, :peer) do
-      {ip, _port} -> ip |> Tuple.to_list() |> Enum.join(".")
-      _ -> "127.0.0.1"  # Default for test connections
-    end
+  defp put_resp_header(conn, name, value) do
+    Map.update(conn, :resp_headers, [{name, value}], fn headers ->
+      [{name, value} | headers]
+    end)
   end
 
-      def demonstrate_function_plugs do
-    # Create a test connection using Plug.Test helpers
-    IO.puts("\nDemonstrating function plugs:")
-
-    try do
-      conn = Plug.Test.conn(:get, "/api/users")
-             |> Plug.Conn.put_req_header("authorization", "Bearer abc123")
-
-      result = conn
-               |> add_timestamp([])
-               |> log_request([])
-               |> add_cors_headers([])
-
-      IO.puts("✅ Timestamp assigned: #{result.assigns[:request_timestamp]}")
-      IO.puts("✅ CORS headers added: #{length(result.resp_headers)} headers")
-    rescue
-      error ->
-        IO.puts("📝 Demo note: #{inspect(error)}")
-        IO.puts("💡 In a real Phoenix app, these plugs would work with actual connections")
-        IO.puts("   The important concepts are:")
-        IO.puts("   • Plugs transform connections")
-        IO.puts("   • Data flows through the pipeline")
-        IO.puts("   • Each plug can modify conn.assigns and headers")
-    end
+  defp generate_request_id do
+    :crypto.strong_rand_bytes(8) |> Base.encode16(case: :lower)
   end
 end
 
-DayTwo.FunctionPlugs.demonstrate_function_plugs()
+# Demonstrate function plugs with a mock connection
+mock_conn = %{
+  method: "GET",
+  request_path: "/api/users",
+  assigns: %{},
+  resp_headers: []
+}
+
+IO.puts("Original connection assigns: #{inspect(mock_conn.assigns)}")
+updated_conn = DayTwo.FunctionPlugs.add_request_id(mock_conn, [])
+IO.puts("After add_request_id: #{inspect(updated_conn.assigns)}")
+IO.puts("Response headers: #{inspect(updated_conn.resp_headers)}")
 
 # ────────────────────────────────────────────────────────────────
-IO.puts("\n📌 Example 3 – Module plugs with init/1 and call/2")
-
-defmodule DayTwo.AuthPlug do
-  @moduledoc """
-  A module plug that handles authentication with configurable options
-  """
-
-  import Plug.Conn
-
-  def init(opts) do
-    # Process options at compile time
-    %{
-      realm: Keyword.get(opts, :realm, "Protected Area"),
-      required_role: Keyword.get(opts, :required_role, nil)
-    }
-  end
-
-  def call(conn, opts) do
-    case get_req_header(conn, "authorization") do
-      ["Bearer " <> token] ->
-        verify_token(conn, token, opts)
-      _ ->
-        unauthorized(conn, opts.realm)
-    end
-  end
-
-  defp verify_token(conn, token, opts) do
-    # Mock token verification
-    case token do
-      "admin_token" ->
-        user = %{id: 1, role: :admin, name: "Admin User"}
-        authorize_user(conn, user, opts)
-      "user_token" ->
-        user = %{id: 2, role: :user, name: "Regular User"}
-        authorize_user(conn, user, opts)
-      _ ->
-        unauthorized(conn, opts.realm)
-    end
-  end
-
-  defp authorize_user(conn, user, opts) do
-    case opts.required_role do
-      nil ->
-        assign(conn, :current_user, user)
-      required_role when user.role == required_role ->
-        assign(conn, :current_user, user)
-      _ ->
-        forbidden(conn)
-    end
-  end
-
-  defp unauthorized(conn, realm) do
-    conn
-    |> put_status(401)
-    |> put_resp_header("www-authenticate", "Bearer realm=\"#{realm}\"")
-    |> send_resp(401, Jason.encode!(%{error: "Authentication required"}))
-    |> halt()
-  end
-
-  defp forbidden(conn) do
-    conn
-    |> put_status(403)
-    |> send_resp(403, Jason.encode!(%{error: "Insufficient permissions"}))
-    |> halt()
-  end
-end
+IO.puts("\n📌 Example 3 – Module plugs with configuration")
 
 defmodule DayTwo.RateLimitPlug do
   @moduledoc """
-  A module plug that implements basic rate limiting
+  Example module plug that demonstrates init/1 and call/2 pattern.
   """
 
-  import Plug.Conn
-
+  # Called at compile time to process options
   def init(opts) do
-    %{
-      max_requests: Keyword.get(opts, :max_requests, 100),
-      window_seconds: Keyword.get(opts, :window_seconds, 3600),
-      storage: Keyword.get(opts, :storage, :ets)
-    }
+    limit = Keyword.get(opts, :limit, 100)
+    window = Keyword.get(opts, :window, 60)
+
+    %{limit: limit, window: window}
   end
 
-  def call(conn, opts) do
-    client_ip = get_client_ip(conn)
+  # Called at runtime for each request
+  def call(conn, %{limit: limit, window: window}) do
+    # In a real implementation, this would check a rate limiting store
+    # For demo purposes, we'll just add the limits to assigns
+    conn
+    |> assign(:rate_limit, limit)
+    |> assign(:rate_window, window)
+  end
 
-    case check_rate_limit(client_ip, opts) do
-      :ok ->
+  # Simulate assign function
+  defp assign(conn, key, value) do
+    Map.update(conn, :assigns, %{key => value}, fn assigns ->
+      Map.put(assigns, key, value)
+    end)
+  end
+end
+
+defmodule DayTwo.AuthenticationPlug do
+  @moduledoc """
+  Example authentication plug that can halt the connection.
+  """
+
+  def init(opts) do
+    required_role = Keyword.get(opts, :role, :user)
+    %{required_role: required_role}
+  end
+
+  def call(conn, %{required_role: required_role}) do
+    case get_current_user(conn) do
+      %{role: user_role} when user_role == required_role ->
+        assign(conn, :authenticated, true)
+
+      %{role: user_role} ->
         conn
-      {:exceeded, retry_after} ->
+        |> assign(:error, "Insufficient permissions. Required: #{required_role}, has: #{user_role}")
+        |> put_status(403)
+        |> halt()
+
+      nil ->
         conn
-        |> put_status(429)
-        |> put_resp_header("retry-after", Integer.to_string(retry_after))
-        |> send_resp(429, Jason.encode!(%{error: "Rate limit exceeded"}))
+        |> assign(:error, "Authentication required")
+        |> put_status(401)
         |> halt()
     end
   end
 
-  defp get_client_ip(conn) do
-    case Map.get(conn, :peer) do
-      {ip, _port} -> ip |> Tuple.to_list() |> Enum.join(".")
-      _ -> "127.0.0.1"  # Default for test connections
+  # Mock user lookup (would normally check session/token)
+  defp get_current_user(conn) do
+    case Map.get(conn.assigns, :current_user) do
+      nil -> nil
+      user -> user
     end
   end
 
-  defp check_rate_limit(ip, opts) do
-    # Mock implementation for educational purposes
-    # In a real app, this would check against a rate limiting store (Redis, ETS, etc.)
-
-    # Simulate rate limiting: block "blocked_ip" for demo purposes
-    case ip do
-      "blocked_ip" ->
-        {:exceeded, opts.window_seconds}
-      _ ->
-        :ok
-    end
+  # Simulate connection operations
+  defp assign(conn, key, value) do
+    Map.update(conn, :assigns, %{key => value}, fn assigns ->
+      Map.put(assigns, key, value)
+    end)
   end
 
-  def demonstrate_rate_limiting do
-    IO.puts("\nDemonstrating rate limiting plug:")
+  defp put_status(conn, status) do
+    Map.put(conn, :status, status)
+  end
 
-    try do
-      # Test normal request - should pass
-      conn1 = Plug.Test.conn(:get, "/api/data")
-      result1 = DayTwo.RateLimitPlug.call(conn1, DayTwo.RateLimitPlug.init([]))
-      IO.puts("✅ Normal request: Passed rate limiting")
-
-      # Test blocked IP - would be rate limited in real scenario
-      IO.puts("✅ Rate limiting logic: Configured with max_requests: 100, window: 3600s")
-
-    rescue
-      error ->
-        IO.puts("📝 Demo note: #{inspect(error)}")
-        IO.puts("💡 Rate limiting protects APIs from abuse")
-    end
+  defp halt(conn) do
+    Map.put(conn, :halted, true)
   end
 end
 
-# Demonstrate the module plugs
-defmodule DayTwo.ModulePlugDemo do
-  def demonstrate_auth_plug do
-    IO.puts("\nDemonstrating authentication plug:")
+# Demonstrate module plugs
+opts = DayTwo.RateLimitPlug.init(limit: 50, window: 30)
+IO.puts("Rate limit options: #{inspect(opts)}")
 
-    try do
-      # Test successful authentication
-      conn1 = Plug.Test.conn(:get, "/api/protected")
-              |> Plug.Conn.put_req_header("authorization", "Bearer user_token")
-
-      result1 = DayTwo.AuthPlug.call(conn1, DayTwo.AuthPlug.init([]))
-      IO.puts("✅ Auth success: User #{result1.assigns.current_user.name} authenticated")
-
-      # Test failed authentication
-      conn2 = Plug.Test.conn(:get, "/api/protected")
-      result2 = DayTwo.AuthPlug.call(conn2, DayTwo.AuthPlug.init(realm: "API"))
-      IO.puts("✅ Auth failure: Status #{result2.status}, halted: #{result2.halted}")
-
-    rescue
-      error ->
-        IO.puts("📝 Demo note: #{inspect(error)}")
-        IO.puts("💡 Module plugs provide configurable authentication logic")
-    end
-  end
-
-  def demonstrate_rate_limit_plug do
-    IO.puts("\nDemonstrating rate limiting plug:")
-
-    try do
-      # Test normal request - should pass
-      conn1 = Plug.Test.conn(:get, "/api/data")
-      result1 = DayTwo.RateLimitPlug.call(conn1, DayTwo.RateLimitPlug.init([]))
-      IO.puts("✅ Normal request: Passed rate limiting")
-
-      # Test blocked IP - would be rate limited in real scenario
-      IO.puts("✅ Rate limiting logic: Configured with max_requests: 100, window: 3600s")
-
-    rescue
-      error ->
-        IO.puts("📝 Demo note: #{inspect(error)}")
-        IO.puts("💡 Rate limiting protects APIs from abuse")
-    end
-  end
-end
-
-DayTwo.ModulePlugDemo.demonstrate_auth_plug()
-DayTwo.ModulePlugDemo.demonstrate_rate_limit_plug()
+conn_with_rate_limit = DayTwo.RateLimitPlug.call(mock_conn, opts)
+IO.puts("After rate limit plug: #{inspect(conn_with_rate_limit.assigns)}")
 
 # ────────────────────────────────────────────────────────────────
-IO.puts("\n📌 Example 4 – Composing plugs in a router")
+IO.puts("\n📌 Example 4 – Plug pipelines and composition")
 
-defmodule DayTwo.RouterComposition do
+defmodule DayTwo.PlugPipeline do
   @moduledoc """
-  Demonstrating how plugs are composed in a Phoenix router.
+  Demonstrates how plugs compose together in a pipeline.
   """
 
-  def show_router_plugs do
-    IO.puts("# Plugs in a Phoenix Router:")
-
-    code =
-      quote do
-        defmodule MyAppWeb.Router do
-          use MyAppWeb, :router
-
-          pipeline :browser do
-            plug :accepts, ["html"]
-            plug :fetch_session
-            plug :fetch_live_flash
-            plug :put_root_layout, html: {MyAppWeb.Layouts, :root}
-            plug :protect_from_forgery
-            plug :put_secure_browser_headers
-          end
-
-          pipeline :api do
-            plug :accepts, ["json"]
-            plug DayTwo.AuthPlug, realm: "API", required_role: :admin
-            plug DayTwo.RateLimitPlug, max_requests: 50, window_seconds: 60
-          end
-
-          scope "/", MyAppWeb do
-            pipe_through :browser
-            get "/", PageController, :home
-          end
-
-          scope "/api", MyAppWeb do
-            pipe_through :api
-            get "/users", UserController, :index
-          end
-        end
-      end
-
-    IO.puts(Macro.to_string(code))
+  def process_request(conn) do
+    conn
+    |> DayTwo.FunctionPlugs.add_request_id([])
+    |> DayTwo.FunctionPlugs.log_request([])
+    |> DayTwo.FunctionPlugs.add_cors_headers([])
+    |> add_processing_time()
   end
 
-  def show_controller_plugs do
-    IO.puts("# Plugs in a Phoenix Controller:")
+  defp add_processing_time(conn) do
+    assign(conn, :start_time, System.monotonic_time(:millisecond))
+  end
 
-    code =
-      quote do
-        defmodule MyAppWeb.PostController do
-          use MyAppWeb, :controller
-
-          plug DayTwo.AuthPlug, required_role: :editor
-          plug :load_post when action in [:show, :edit, :update, :delete]
-          plug :verify_ownership when action in [:edit, :update, :delete]
-
-          def show(conn, %{"id" => id}) do
-            render(conn, :show, post: conn.assigns.post)
-          end
-
-          defp load_post(conn, _opts) do
-            post = Posts.get_post!(conn.params["id"])
-            assign(conn, :post, post)
-          end
-
-          defp verify_ownership(conn, _opts) do
-            if conn.assigns.current_user.id == conn.assigns.post.user_id do
-              conn
-            else
-              conn |> put_status(403) |> text("Forbidden") |> halt()
-            end
-          end
-        end
-      end
-
-    IO.puts(Macro.to_string(code))
+  # Simulate assign function
+  defp assign(conn, key, value) do
+    Map.update(conn, :assigns, %{key => value}, fn assigns ->
+      Map.put(assigns, key, value)
+    end)
   end
 end
 
-DayTwo.RouterComposition.show_router_plugs()
-DayTwo.RouterComposition.show_controller_plugs()
+# Demonstrate pipeline
+final_conn = DayTwo.PlugPipeline.process_request(mock_conn)
+IO.puts("Final connection assigns: #{inspect(final_conn.assigns)}")
+IO.puts("Final response headers: #{inspect(final_conn.resp_headers)}")
 
 # ────────────────────────────────────────────────────────────────
-IO.puts("\n📌 Example 5 – Real-world plug examples")
+IO.puts("\n📌 Example 5 – Real-world plug patterns")
 
 defmodule DayTwo.RealWorldPlugs do
   @moduledoc """
-  Real-world plug patterns commonly used in Phoenix applications
+  Common patterns seen in production Phoenix applications.
   """
 
-  def show_common_plug_patterns do
-    """
-    Common Phoenix Plug Patterns:
+  # API versioning plug
+  def extract_api_version(conn, _opts) do
+    version =
+      conn
+      |> get_req_header("accept")
+      |> extract_version_from_header()
 
-    1. ENDPOINT PLUGS (apply to all requests):
-       • Plug.RequestId - Adds request ID for tracing
-       • Plug.Logger - Logs requests and responses
-       • Plug.Static - Serves static files
-       • Plug.Parsers - Parses request bodies
-
-    2. ROUTER PLUGS (apply to specific routes):
-       • Phoenix.Controller.Pipeline - Sets up controller context
-       • Plug.CSRF - CSRF protection
-       • Custom authentication plugs
-
-    3. CONTROLLER PLUGS (apply to controller actions):
-       • Phoenix.Controller.put_layout/2
-       • Custom authorization plugs
-       • Data loading plugs
-
-    4. CUSTOM BUSINESS LOGIC:
-       • Tenant resolution
-       • Feature flagging
-       • Metrics collection
-       • Request transformation
-    """
+    assign(conn, :api_version, version)
   end
 
-  def show_phoenix_integration do
-    """
-    How Plugs integrate with Phoenix:
+  # Tenant resolution plug
+  def resolve_tenant(conn, _opts) do
+    tenant =
+      conn
+      |> get_req_header("x-tenant-id")
+      |> List.first()
+      |> resolve_tenant_from_id()
 
-    # In your endpoint (endpoint.ex):
-    plug Plug.RequestId
-    plug Plug.Logger
-    plug MyApp.CustomPlug
+    assign(conn, :current_tenant, tenant)
+  end
 
-    # In your router (router.ex):
-    pipeline :api do
-      plug :accepts, ["json"]
-      plug MyApp.AuthPlug
-      plug MyApp.RateLimitPlug
+  # Performance monitoring plug
+  def start_performance_timer(conn, _opts) do
+    assign(conn, :request_start_time, System.monotonic_time(:microsecond))
+  end
+
+  # Mock helper functions
+  defp get_req_header(conn, header_name) do
+    conn.req_headers
+    |> Enum.filter(fn {name, _value} -> name == header_name end)
+    |> Enum.map(fn {_name, value} -> value end)
+  end
+
+  defp extract_version_from_header([]), do: "v1"
+  defp extract_version_from_header([header | _]) do
+    case Regex.run(~r/application\/vnd\.api\.v(\d+)\+json/, header) do
+      [_full, version] -> "v#{version}"
+      nil -> "v1"
     end
+  end
 
-    # In your controller:
-    defmodule MyAppWeb.UserController do
-      use MyAppWeb, :controller
+  defp resolve_tenant_from_id(nil), do: nil
+  defp resolve_tenant_from_id(tenant_id) do
+    # Would normally look up in database
+    %{id: tenant_id, name: "Tenant #{tenant_id}"}
+  end
 
-      plug MyApp.LoadUserPlug when action in [:show, :update, :delete]
-      plug MyApp.RequireAdminPlug when action in [:delete]
-
-      def show(conn, _params) do
-        # conn.assigns.current_user is available from plugs
-        render(conn, "show.json", user: conn.assigns.current_user)
-      end
-    end
-    """
+  defp assign(conn, key, value) do
+    Map.update(conn, :assigns, %{key => value}, fn assigns ->
+      Map.put(assigns, key, value)
+    end)
   end
 end
 
-IO.puts("Common plug patterns:")
-IO.puts(DayTwo.RealWorldPlugs.show_common_plug_patterns())
+# ────────────────────────────────────────────────────────────────
+# 🚀  EXERCISE
+#
+# Run the test with: mix test day_two/15_plugs.exs
+# ────────────────────────────────────────────────────────────────
 
-IO.puts("\nPhoenix integration:")
-IO.puts(DayTwo.RealWorldPlugs.show_phoenix_integration())
-
-defmodule DayTwo.PlugExercises do
+defmodule DayTwo.PlugExercise do
   @moduledoc """
-  Run the tests with: mix test day_two/15_plugs.exs
-  or in IEx:
-  iex -r day_two/15_plugs.exs
-  DayTwo.PlugExercisesTest.test_design_request_id_plug/0
-  DayTwo.PlugExercisesTest.test_design_maintenance_mode_plug/0
-  DayTwo.PlugExercisesTest.test_design_api_versioning_plug/0
+  Single exercise for learning plug fundamentals.
   """
 
   @doc """
-  Designs a function plug to add a unique request ID to every connection.
+  Create a function plug that enriches a connection with user context information.
 
-  **Goal:** Learn how to write a simple function plug that modifies the connection
-  by adding a request header and assigning a value for later use.
+  Given a connection, add the following key/value pairs to conn.assigns:
+  - :user_agent - Extract from request headers (default to "unknown" if not found)
+  - :request_timestamp - Current timestamp using DateTime.utc_now()
+  - :request_method - The HTTP method from conn.method
+  - :is_authenticated - Set to false for now (placeholder)
 
-  **Requirements:**
-  - The plug should be a simple function `add_request_id(conn, _opts)`.
-  - It should generate a unique ID (e.g., using `UUID.uuid4()`).
-  - It must add this ID to the response headers as `"x-request-id"`.
-  - It must also store the ID in the connection's `assigns` map under the
-    key `:request_id`.
-
-  **Task:**
-  Return a map describing the plug's actions:
-  - `:assigns_key`: The atom used as the key in `conn.assigns`.
-  - `:header_name`: The string for the response header name.
-  - `:implementation_hint`: A string describing the core logic, mentioning
-    `put_resp_header/3` and `assign/3`.
+  Return the modified connection.
   """
-  @spec design_request_id_plug() :: map()
-  def design_request_id_plug do
-    # Design a function plug that adds a unique request ID.
-    # Return a map with :assigns_key, :header_name, and :implementation_hint.
-    nil  # TODO: Implement this exercise
+  def enrich_connection(conn, _opts) do
+    # TODO: Implement this function
+    # 1. Extract user agent from request headers
+    # 2. Add :user_agent, :request_timestamp, :request_method, :is_authenticated to assigns
+    # 3. Return the modified connection
+
+    conn  # Placeholder - replace with your implementation
   end
 
-  @doc """
-  Designs a module plug for enabling a site-wide "maintenance mode".
-
-  **Goal:** Learn to write a module plug with an `init/1` function that can
-  be configured, and a `call/2` function that can halt the connection pipeline.
-
-  **Requirements:**
-  - The plug should be a module `MaintenanceModePlug`.
-  - The `init/1` function should accept an `:enabled` option (a boolean).
-  - The `call/2` function should check if maintenance mode is enabled.
-  - If it is enabled, the plug must:
-    - Halt the connection using `halt/1`.
-    - Set the HTTP status to 503 Service Unavailable.
-    - Send a simple response body like "Down for maintenance".
-  - If it is not enabled, the plug should just pass the connection through.
-
-  **Task:**
-  Return a string describing the architecture of this module plug, covering
-  both the `init/1` and `call/2` functions and how they work together.
-  """
-  @spec design_maintenance_mode_plug() :: binary()
-  def design_maintenance_mode_plug do
-    # Describe the architecture of a configurable MaintenanceModePlug.
-    # Cover the init/1 and call/2 functions.
-    nil  # TODO: Implement this exercise
-  end
-
-  @doc """
-  Designs a plug for routing requests based on an API version in the `Accept` header.
-
-  **Goal:** Learn how to use plugs for advanced request routing by inspecting
-  headers and modifying the connection to influence downstream routing.
-
-  **Scenario:**
-  Your API supports versions `v1` and `v2`. The version is specified in the
-  `Accept` header, e.g., `"application/vnd.myapi.v1+json"`. The plug needs to
-  parse this header and store the detected version in `conn.assigns`.
-
-  **Task:**
-  Return a map that describes the plug's design:
-  - `:header_to_inspect`: The name of the request header to check.
-  - `:logic`: A string describing the logic inside the plug. It should explain
-    how it would parse the header and what it would do for a valid version, an
-    invalid version, and a missing header.
-  - `:downstream_use`: A string explaining how a Phoenix router or controller
-    could use the `:api_version` value from `conn.assigns`.
-  """
-  @spec design_api_versioning_plug() :: map()
-  def design_api_versioning_plug do
-    # Design a plug for API versioning via the Accept header.
-    # Return a map with :header_to_inspect, :logic, and :downstream_use.
-    nil  # TODO: Implement this exercise
+  # Helper function to simulate assign (normally from Plug.Conn)
+  defp assign(conn, key, value) do
+    Map.update(conn, :assigns, %{key => value}, fn assigns ->
+      Map.put(assigns, key, value)
+    end)
   end
 end
 
 ExUnit.start()
 
-defmodule DayTwo.PlugExercisesTest do
+defmodule DayTwo.PlugExerciseTest do
   use ExUnit.Case, async: true
 
-  alias DayTwo.PlugExercises, as: EX
+  alias DayTwo.PlugExercise
 
-  test "design_request_id_plug/0 returns a valid design" do
-    design = EX.design_request_id_plug()
-    assert is_map(design)
-    assert design.assigns_key == :request_id
-    assert design.header_name == "x-request-id"
-    assert String.contains?(design.implementation_hint, "assign/3")
+  test "enrich_connection adds all required fields to assigns" do
+    # Create a mock connection
+    conn = %{
+      method: "POST",
+      assigns: %{},
+      req_headers: [{"user-agent", "TestBrowser/1.0"}, {"accept", "application/json"}]
+    }
+
+    # Call the function
+    result = PlugExercise.enrich_connection(conn, [])
+
+    # Verify all required assigns are present
+    assert result.assigns[:user_agent] == "TestBrowser/1.0"
+    assert result.assigns[:request_method] == "POST"
+    assert result.assigns[:is_authenticated] == false
+    assert %DateTime{} = result.assigns[:request_timestamp]
   end
 
-  test "design_maintenance_mode_plug/0 describes the module plug architecture" do
-    description = EX.design_maintenance_mode_plug()
-    assert is_binary(description)
-    assert String.contains?(description, "init/1")
-    assert String.contains?(description, "call/2")
-    assert String.contains?(description, "halt/1")
-    assert String.contains?(description, "503")
+  test "enrich_connection handles missing user-agent header" do
+    conn = %{
+      method: "GET",
+      assigns: %{},
+      req_headers: [{"accept", "application/json"}]
+    }
+
+    result = PlugExercise.enrich_connection(conn, [])
+
+    assert result.assigns[:user_agent] == "unknown"
+    assert result.assigns[:request_method] == "GET"
+    assert result.assigns[:is_authenticated] == false
   end
 
-  test "design_api_versioning_plug/0 returns a valid versioning design" do
-    design = EX.design_api_versioning_plug()
-    assert is_map(design)
-    assert design.header_to_inspect == "accept"
-    assert String.contains?(design.logic, "Regex.named_captures")
-    assert String.contains?(design.downstream_use, "controller action")
-  end
-end
+  test "enrich_connection preserves existing assigns" do
+    conn = %{
+      method: "PUT",
+      assigns: %{existing_key: "existing_value"},
+      req_headers: [{"user-agent", "Mobile/2.0"}]
+    }
 
-defmodule DayTwo.Answers do
-  def answer_one do
-    quote do
-      %{
-        assigns_key: :request_id,
-        header_name: "x-request-id",
-        implementation_hint: "Use UUID.uuid4() to generate an ID, then pipe the conn through `assign/3` and `put_resp_header/3`."
-      }
-    end
-  end
+    result = PlugExercise.enrich_connection(conn, [])
 
-  def answer_two do
-    quote do
-      """
-      Architecture: Maintenance Mode Plug
+    # Should preserve existing assigns
+    assert result.assigns[:existing_key] == "existing_value"
 
-      1.  `init/1`: This function is called once when the application compiles. It
-          receives options from the router, like `plug MaintenanceModePlug, enabled: true`.
-          It processes these options and returns a simplified map, e.g., `%{enabled: true}`,
-          which is passed to `call/2` for every request.
-
-      2.  `call/2`: This function is called on every request. It receives the `conn`
-          and the options map from `init/1`. It uses a `cond` or `if` statement:
-          - If `opts.enabled` is `true`, it immediately builds a 503 response using
-            `put_status/2` and `send_resp/3`, and then calls `halt/1` to stop the
-            plug pipeline completely.
-          - If `opts.enabled` is `false`, it simply returns the `conn` unmodified,
-            allowing the request to proceed to the next plug in the pipeline.
-      """
-    end
-  end
-
-  def answer_three do
-    quote do
-      %{
-        header_to_inspect: "accept",
-        logic: """
-        The plug fetches the 'accept' header. It uses a regex like
-        `~r/vnd.myapi.v(?<version>\\d+)\\+json/` to capture the version number.
-        - If it matches, it calls `assign(conn, :api_version, version)`.
-        - If it doesn't match a known version, it halts with a 400 Bad Request error.
-        - If the header is missing, it defaults to the latest version.
-        """,
-        downstream_use: """
-        A controller action can pattern match on the `conn` to dispatch to the
-        correct implementation. `def show(%{assigns: %{api_version: "2"}} = conn, params) ...`
-        """
-      }
-    end
+    # Should add new assigns
+    assert result.assigns[:user_agent] == "Mobile/2.0"
+    assert result.assigns[:request_method] == "PUT"
   end
 end
 
 IO.puts("""
-ANSWERS & EXPLANATIONS
 
-# 1. Request ID Plug
-#{Macro.to_string(DayTwo.Answers.answer_one())}
-# This is a classic function plug. It's great for cross-cutting concerns like
-# logging, metrics, or tracing. By adding an ID to both the `assigns` and the
-# response header, the ID is available for logging throughout the request and
-# can also be given to the client for support or debugging purposes.
 
-# 2. Maintenance Mode Plug
-#{Macro.to_string(DayTwo.Answers.answer_two())}
-# This demonstrates the power of a configurable module plug. You can turn
-# maintenance mode on or off with a configuration change and application
-# restart, without any code changes. Using `halt/1` is key, as it cleanly
-# stops the request pipeline and prevents the request from hitting the router
-# or controllers.
+PLUG CONCEPTS SUMMARY
+=====================
 
-# 3. API Versioning Plug
-#{Macro.to_string(DayTwo.Answers.answer_three())}
-# This shows how a plug can be used for pre-processing and routing logic. By
-# parsing the `Accept` header early in the pipeline, the plug enriches the
-# `conn` with data that downstream controllers can use to make decisions. This
-# keeps the versioning logic clean and separate from the core business logic
-# in the controller actions.
+Key Patterns:
+• Connection Transformation: Every plug receives and returns a %Plug.Conn{}
+• Function Plugs: Simple functions for stateless transformations
+• Module Plugs: Two-function modules (init/1, call/2) for configurable behavior
+• Pipeline Composition: Chain plugs together for complex request processing
+• Early Termination: Use halt(conn) to stop pipeline execution
+
+Common Use Cases:
+• Authentication and authorization
+• Request logging and monitoring
+• CORS and security headers
+• API versioning and content negotiation
+• Rate limiting and throttling
+• Tenant resolution in multi-tenant apps
+
+Plug Benefits:
+• Composable and reusable request processing
+• Clean separation of concerns
+• Easy testing of individual transformations
+• Consistent interface across the Phoenix ecosystem
+• Performance through compile-time optimization
+
+Remember: Plugs are the building blocks of Phoenix applications.
+Master them to build robust, maintainable web applications.
 """)
+
+# ────────────────────────────────────────────────────────────────
+# 📚 EXERCISE ANSWER
+# ────────────────────────────────────────────────────────────────
+
+defmodule DayTwo.PlugAnswer do
+  @moduledoc """
+  Complete solution for the plug exercise.
+  """
+
+  def answer_one do
+    """
+    # Complete implementation of enrich_connection/2
+
+    def enrich_connection(conn, _opts) do
+      # Extract user agent from request headers
+      user_agent =
+        conn.req_headers
+        |> Enum.find(fn {name, _value} -> name == "user-agent" end)
+        |> case do
+          {_name, value} -> value
+          nil -> "unknown"
+        end
+
+      # Add all required assigns
+      conn
+      |> assign(:user_agent, user_agent)
+      |> assign(:request_timestamp, DateTime.utc_now())
+      |> assign(:request_method, conn.method)
+      |> assign(:is_authenticated, false)
+    end
+
+    # Helper function to add key/value pairs to assigns
+    defp assign(conn, key, value) do
+      Map.update(conn, :assigns, %{key => value}, fn assigns ->
+        Map.put(assigns, key, value)
+      end)
+    end
+
+    Key Concepts Demonstrated:
+    • Pattern matching on request headers to extract data
+    • Using pipe operator to chain assign operations
+    • Handling missing headers with default values
+    • Building up the assigns map incrementally
+    • Returning the modified connection struct
+    """
+  end
+end
