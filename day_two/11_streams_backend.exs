@@ -124,26 +124,25 @@ defmodule DayTwo.BasicStreams do
   def show_stream_template do
     IO.puts("<!-- Template with stream rendering -->")
 
-    code =
-      ~S"""
-      <div id="messages" phx-update="stream">
-        <div :for={{dom_id, message} <- @streams.messages} id={dom_id}>
-          <div class="message">
-            <strong><%= message.author %></strong>
-            <span class="timestamp"><%= message.inserted_at %></span>
-            <p><%= message.content %></p>
+    code = """
+    <div id="messages" phx-update="stream">
+      <div :for={{dom_id, message} <- @streams.messages} id={dom_id}>
+        <div class="message">
+          <strong><%= message.author %></strong>
+          <span class="timestamp"><%= message.inserted_at %></span>
+          <p><%= message.content %></p>
 
-            <button phx-click="delete_message" phx-value-id={message.id}>
-              Delete
-            </button>
-          </div>
+          <button phx-click="delete_message" phx-value-id={message.id}>
+            Delete
+          </button>
         </div>
       </div>
+    </div>
 
-      <div class="message-count">
-        Total: <%= @message_count %> messages
-      </div>
-      """
+    <div class="message-count">
+      Total: <%= @message_count %> messages
+    </div>
+    """
 
     IO.puts(code)
   end
@@ -240,21 +239,20 @@ defmodule DayTwo.AdvancedStreams do
     IO.puts(Macro.to_string(code))
     IO.puts("\n# Template with load more button:")
 
-    code =
-      ~S"""
-      <!-- posts.html.heex -->
-      <div id="posts" phx-update="stream">
-        <article :for={{dom_id, post} <- @streams.posts} id={dom_id}>
-          <!-- post content -->
-        </article>
-      </div>
+    code = """
+    <!-- posts.html.heex -->
+    <div id="posts" phx-update="stream">
+      <article :for={{dom_id, post} <- @streams.posts} id={dom_id}>
+        <!-- post content -->
+      </article>
+    </div>
 
-      <button :if={@has_more}
-              phx-click="load_more"
-              class="load-more-btn">
-        Load More Posts
-      </button>
-      """
+    <button :if={@has_more}
+            phx-click="load_more"
+            class="load-more-btn">
+      Load More Posts
+    </button>
+    """
 
     IO.puts(code)
   end
@@ -300,45 +298,49 @@ defmodule DayTwo.StreamOptimization do
   end
 
   def show_debouncing_strategies do
-    """
-    # Debouncing rapid updates:
-    defmodule MyAppWeb.LiveSearchLive do
-      def mount(_params, _session, socket) do
-        socket = socket
-                |> assign(:search_query, "")
-                |> assign(:debounce_timer, nil)
-                |> stream(:results, [])
+    IO.puts("# Debouncing rapid updates:")
 
-        {:ok, socket}
-      end
+    code =
+      quote do
+        defmodule MyAppWeb.LiveSearchLive do
+          def mount(_params, _session, socket) do
+            socket = socket
+                    |> assign(:search_query, "")
+                    |> assign(:debounce_timer, nil)
+                    |> stream(:results, [])
 
-      def handle_event("search", %{"query" => query}, socket) do
-        # Cancel previous timer
-        if socket.assigns.debounce_timer do
-          Process.cancel_timer(socket.assigns.debounce_timer)
+            {:ok, socket}
+          end
+
+          def handle_event("search", %{"query" => query}, socket) do
+            # Cancel previous timer
+            if socket.assigns.debounce_timer do
+              Process.cancel_timer(socket.assigns.debounce_timer)
+            end
+
+            # Set new timer
+            timer = Process.send_after(self(), {:perform_search, query}, 300)
+
+            socket = socket
+                    |> assign(:search_query, query)
+                    |> assign(:debounce_timer, timer)
+
+            {:noreply, socket}
+          end
+
+          def handle_info({:perform_search, query}, socket) do
+            results = Search.search(query, limit: 50)
+
+            socket = socket
+                    |> stream(:results, results, reset: true)
+                    |> assign(:debounce_timer, nil)
+
+            {:noreply, socket}
+          end
         end
-
-        # Set new timer
-        timer = Process.send_after(self(), {:perform_search, query}, 300)
-
-        socket = socket
-                |> assign(:search_query, query)
-                |> assign(:debounce_timer, timer)
-
-        {:noreply, socket}
       end
 
-      def handle_info({:perform_search, query}, socket) do
-        results = Search.search(query, limit: 50)
-
-        socket = socket
-                |> stream(:results, results, reset: true)
-                |> assign(:debounce_timer, nil)
-
-        {:noreply, socket}
-      end
-    end
-    """
+    IO.puts(Macro.to_string(code))
   end
 
   def show_optimistic_updates do
@@ -392,6 +394,7 @@ defmodule DayTwo.StreamOptimization do
 end
 
 DayTwo.StreamOptimization.show_memory_management()
+DayTwo.StreamOptimization.show_debouncing_strategies()
 DayTwo.StreamOptimization.show_optimistic_updates()
 
 # ────────────────────────────────────────────────────────────────
@@ -442,14 +445,6 @@ DayTwo.DashboardDemo.demonstrate_dashboard_flow()
 DayTwo.DashboardDemo.show_dashboard_features()
 
 # ────────────────────────────────────────────────────────────────
-# 🚀  EXERCISES
-#
-# 1. Create a live comment system with nested replies using streams,
-#    including real-time updates and optimistic UI updates.
-# 2. Build a live leaderboard that updates in real-time as user scores change,
-#    with smooth animations and position transitions.
-# 3. (Challenge) Design a live collaborative drawing canvas where multiple users
-#    can draw simultaneously with streams handling the drawing operations.
 
 defmodule DayTwo.StreamExercises do
   @moduledoc """
@@ -457,7 +452,6 @@ defmodule DayTwo.StreamExercises do
   or in IEx:
   iex -r day_two/11_streams_backend.exs
   DayTwo.StreamExercisesTest.test_design_live_comment_stream/0
-  DayTwo.StreamExercisesTest.test_design_product_catalog_stream/0
   DayTwo.StreamExercisesTest.test_design_activity_feed_stream/0
   """
 
@@ -485,33 +479,6 @@ defmodule DayTwo.StreamExercises do
   def design_live_comment_stream do
     # Design a stream for a live comment section.
     # Return a map with :stream_name, :insert_at, :handle_info_tuple, and :handle_event_string.
-    nil  # TODO: Implement this exercise
-  end
-
-  @doc """
-  Designs a stream for a filterable product catalog.
-
-  **Goal:** Create a product catalog that can be filtered in real-time by a
-  category, using streams to efficiently update the list.
-
-  **Requirements:**
-  - The stream is named `:products`.
-  - A `handle_event` for `"filter_changed"` receives a payload like
-    `%{"category" => "electronics"}`.
-  - When the filter changes, the stream must be **reset**. This is done by
-    calling `stream(socket, :products, new_products, reset: true)`. This is
-    more efficient than deleting all old items and inserting all new ones.
-
-  **Task:**
-  Return a string describing the architecture for handling filter changes.
-  The description should explain:
-  1.  The `handle_event` function that responds to the filter change.
-  2.  Why using `stream(..., reset: true)` is the correct approach for this scenario.
-  """
-  @spec design_product_catalog_stream() :: binary()
-  def design_product_catalog_stream do
-    # Describe the architecture for a stream-based filterable product catalog.
-    # Explain the handle_event and the use of `reset: true`.
     nil  # TODO: Implement this exercise
   end
 
@@ -560,13 +527,6 @@ defmodule DayTwo.StreamExercisesTest do
     assert design.handle_event_string == "delete_comment"
   end
 
-  test "design_product_catalog_stream/0 describes the reset mechanism" do
-    description = EX.design_product_catalog_stream()
-    assert is_binary(description)
-    assert String.contains?(description, "reset: true")
-    assert String.contains?(description, "filter_changed")
-  end
-
   test "design_activity_feed_stream/0 returns a valid pagination design" do
     design = EX.design_activity_feed_stream()
     assert is_map(design)
@@ -591,27 +551,6 @@ defmodule DayTwo.Answers do
 
   def answer_two do
     quote do
-      """
-      Architecture: Filterable Product Stream
-
-      1. `handle_event("filter_changed", payload, socket)`:
-      This function is triggered when the user selects a new category. It
-      takes the category from the payload, fetches the new list of products
-      from the database, and then updates the stream.
-
-      2. Using `stream(socket, :products, new_products, reset: true)`:
-      The `reset: true` option is crucial here. It tells Phoenix to discard the
-      entire existing `:products` stream on the client and replace it with the
-      new set. This is far more efficient than calculating the difference
-      between the old and new sets (which would involve numerous inserts and
-      deletes). It's the ideal approach for when the entire dataset changes,
-      such as with filtering or sorting.
-      """
-    end
-  end
-
-  def answer_three do
-    quote do
       %{
         stream_name: :activities,
         handle_event: "load_more",
@@ -632,15 +571,8 @@ ANSWERS & EXPLANATIONS
 # for feeds. The delete event uses `stream_delete` to efficiently remove the
 # specific element from the DOM without affecting the others.
 
-# 2. Filterable Product Catalog Stream
+# 2. Activity Feed Stream with "Load More"
 #{Macro.to_string(DayTwo.Answers.answer_two())}
-# This architecture highlights the power of `reset: true`. For filter or sort
-# operations where the entire list changes, resetting the stream is the most
-# performant option. Phoenix handles the client-side replacement cleanly,
-# providing a fast and smooth user experience.
-
-# 3. Activity Feed Stream with "Load More"
-#{Macro.to_string(DayTwo.Answers.answer_three())}
 # This is the standard pattern for infinite scrolling. Using `stream_insert` with
 # `at: -1` appends the new page of items to the end of the list. The socket
 # must maintain the state (`:current_page`) to know which page to fetch next.

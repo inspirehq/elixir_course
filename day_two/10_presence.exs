@@ -358,16 +358,6 @@ end
 DayTwo.WorkspacePresence.demonstrate_workspace_flow()
 DayTwo.WorkspacePresence.show_presence_features()
 
-# ────────────────────────────────────────────────────────────────
-# 🚀  EXERCISES
-#
-# 1. Create a gaming lobby presence system that tracks players waiting for matches,
-#    their skill levels, and preferred game modes.
-# 2. Build a customer support presence system showing agent availability,
-#    current case load, and specialties.
-# 3. (Challenge) Design a distributed team presence system that works across
-#    multiple applications (Slack, email, calendar) and shows unified status.
-
 defmodule DayTwo.PresenceExercises do
   @moduledoc """
   Run the tests with: mix test day_two/10_presence.exs
@@ -375,7 +365,6 @@ defmodule DayTwo.PresenceExercises do
   iex -r day_two/10_presence.exs
   DayTwo.PresenceExercisesTest.test_design_document_collaboration_presence/0
   DayTwo.PresenceExercisesTest.test_design_game_lobby_presence/0
-  DayTwo.PresenceExercisesTest.test_design_e_learning_platform_presence/0
   """
 
   @doc """
@@ -403,55 +392,23 @@ defmodule DayTwo.PresenceExercises do
   end
 
   @doc """
-  Designs a presence system for a game lobby.
+  Designs a presence system for a simple chat room.
 
-  **Goal:** Track players in a game lobby, their ready status, and their team.
+  **Goal:** Track users in a chat room and show their online status.
 
   **Requirements:**
-  - The presence topic should be unique for each lobby (e.g., `"lobby:LOBBY_ID"`).
-  - The metadata must include the player's `username`, `team` (`"blue"` or `"red"`),
-    and `is_ready` (a boolean).
-  - The system should allow players to update their team and ready status.
+  - The presence topic should be for a specific room (e.g., `"room:ROOM_ID"`).
+  - The metadata must include the user's `username` and `status` (`"online"` or `"away"`).
 
   **Task:**
   Return a map describing the presence design, including:
-  - `:topic`: An example topic string for a lobby.
-  - `:track_payload`: An example map of metadata for a player joining the lobby.
-  - `:list_by_function`: A string containing a function signature and body for
-    the `list/2` function that would group players by team. The function
-    should take `presences` and a `mapper_fun` as arguments.
+  - `:topic`: An example topic string for a chat room.
+  - `:track_payload`: An example map of metadata when a user joins the room.
   """
   @spec design_game_lobby_presence() :: map()
   def design_game_lobby_presence do
-    # Design a presence system for a game lobby.
-    # Return a map with :topic, :track_payload, and :list_by_function.
-    nil  # TODO: Implement this exercise
-  end
-
-  @doc """
-  Designs a presence system for an e-learning platform.
-
-  **Goal:** Track students and instructors in a live virtual classroom,
-  including who is the current "presenter" and if a student has their
-  "hand raised".
-
-  **Requirements:**
-  - The presence topic is unique per classroom (e.g., `"classroom:CLASS_ID"`).
-  - The metadata must include the user's `role` (`:student` or `:instructor`)
-    and other role-specific state (e.g., `:hand_raised` for students,
-    `:is_presenting` for instructors).
-
-  **Task:**
-  Return a string describing the architecture. The description should cover:
-  1.  How an instructor can be designated the presenter.
-  2.  How a student can raise their hand.
-  3.  How presence events (`presence_diff`) would be used by the client UI
-      to reflect these state changes for all participants.
-  """
-  @spec design_e_learning_platform_presence() :: binary()
-  def design_e_learning_platform_presence do
-    # Describe the presence architecture for a virtual classroom, covering
-    # presenter status and students raising their hands.
+    # Design a presence system for a chat room.
+    # Return a map with :topic and :track_payload.
     nil  # TODO: Implement this exercise
   end
 end
@@ -473,22 +430,13 @@ defmodule DayTwo.PresenceExercisesTest do
     assert design.update_payload.status == "editing"
   end
 
-  test "design_game_lobby_presence/0 returns a valid game lobby design" do
+  test "design_game_lobby_presence/0 returns a valid chat room design" do
     design = EX.design_game_lobby_presence()
     assert is_map(design)
     assert Map.has_key?(design, :topic)
     assert Map.has_key?(design, :track_payload)
-    assert Map.has_key?(design, :list_by_function)
-    assert is_binary(design.list_by_function)
-    assert String.contains?(design.list_by_function, "group_by")
-  end
-
-  test "design_e_learning_platform_presence/0 describes the classroom architecture" do
-    description = EX.design_e_learning_platform_presence()
-    assert is_binary(description)
-    assert String.contains?(description, "presenter")
-    assert String.contains?(description, "hand_raised")
-    assert String.contains?(description, "presence_diff")
+    assert design.track_payload.username != nil
+    assert design.track_payload.status in ["online", "away"]
   end
 end
 
@@ -506,43 +454,9 @@ defmodule DayTwo.Answers do
   def answer_two do
     quote do
       %{
-        topic: "lobby:g-456",
-        track_payload: %{username: "player1", team: "blue", is_ready: false},
-        list_by_function: """
-        def list_by_team(presences) do
-          Presence.list(presences)
-          |> Enum.group_by(fn {_user_id, meta} -> meta.metas |> List.first() |> Map.get(:team) end)
-        end
-        """
+        topic: "room:general",
+        track_payload: %{username: "alice", status: "online"}
       }
-    end
-  end
-
-  def answer_three do
-    quote do
-      """
-      Architecture: E-Learning Classroom Presence
-
-      1. Designating a Presenter:
-      An instructor client sends a `claim_presenter` event. The channel's
-      `handle_in` callback for this event calls `Presence.update/3` to change
-      that instructor's metadata to `is_presenting: true`. It may also update
-      any previous presenter's metadata to set `is_presenting: false`.
-
-      2. Raising a Hand:
-      A student client sends a `raise_hand` event. The channel's `handle_in`
-      callback calls `Presence.update/3` on that student's presence, setting
-      their `hand_raised` metadata to `true`. A corresponding `lower_hand`
-      event would set it to `false`.
-
-      3. Client UI Updates via `presence_diff`:
-      When any of these metadata changes occur, Phoenix Presence sends a
-      `presence_diff` event to all clients. The client-side JavaScript uses
-      `Presence.syncDiff` to update its local state. The UI is bound to this
-      state, so it automatically re-renders to:
-      - Highlight the new presenter's video feed.
-      - Show a "hand raised" icon next to the student's name.
-      """
     end
   end
 end
@@ -555,21 +469,11 @@ ANSWERS & EXPLANATIONS
 # This design uses the metadata to track the state of each user within the
 # context of the document. When a user starts typing, they push an event, and
 # the channel updates their status to "editing". The resulting `presence_diff`
-# notifies all other clients, who can then show a "User is typing..." indicator
-# and lock the corresponding section of the document.
+# notifies all other clients, who can then show a "User is typing..." indicator.
 
-# 2. Game Lobby Presence
+# 2. Chat Room Presence
 #{Macro.to_string(DayTwo.Answers.answer_two())}
-# This is a great example of using Presence not just for who is online, but for
-# managing shared lobby state. The custom `list_by_team` function shows how you can
-# use `Presence.list/2` with a custom mapping function on the server to easily
-# query and shape the presence data before sending it to clients.
-
-# 3. E-Learning Platform Presence
-#{Macro.to_string(DayTwo.Answers.answer_three())}
-# This architecture shows how presence can be the single source of truth for
-# real-time classroom state. Instead of custom events for everything, actions
-# like raising a hand simply update the user's metadata. The `presence_diff`
-# becomes the unified stream of all state changes, which greatly simplifies
-# client-side logic.
+# This simple design tracks basic user information in a chat room. Users can
+# update their status from "online" to "away" when they're idle. The presence
+# system automatically handles cleanup when users disconnect.
 """)

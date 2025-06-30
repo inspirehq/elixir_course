@@ -407,37 +407,63 @@ DayOne.FileSystemDemo.demonstrate_file_system()
 
 defmodule DayOne.RecursionExercises do
   @moduledoc """
-  Run the tests with: mix test day_two/00_recursion.exs
+  Run the tests with: mix test day_one/03_recursion.exs
   or in IEx:
-  iex -r day_two/00_recursion.exs
-  DayOne.RecursionExercisesTest.test_fibonacci/0
-  DayOne.RecursionExercisesTest.test_list_operations/0
-  DayOne.RecursionExercisesTest.test_nested_data_processing/0
+  iex -r day_one/03_recursion.exs
+  DayOne.RecursionExercisesTest.test_tail_recursive_reduce/0
+  DayOne.RecursionExercisesTest.test_deep_flatten/0
+  DayOne.RecursionExercisesTest.test_memoized_fibonacci/0
   """
 
-  @spec fibonacci(non_neg_integer()) :: non_neg_integer()
-  def fibonacci(_n) do
-    #   Implement the Fibonacci sequence using recursion.
-    #   fibonacci(0) = 0, fibonacci(1) = 1, fibonacci(n) = fibonacci(n-1) + fibonacci(n-2)
-    #   Bonus: Implement both naive and tail-recursive versions.
-    #   Example: fibonacci(6) => 8
-    0  # TODO: Implement Fibonacci sequence using recursion
+  @spec reduce([any()], any(), (any(), any() -> any())) :: any()
+  def reduce(_list, _acc, _fun) do
+    # Implement a tail-recursive reduce function.
+    # This should work like Enum.reduce/3 but using your own recursion.
+    #
+    # The function should:
+    # - Take a list, an initial accumulator, and a function
+    # - Apply the function to each element and the accumulator
+    # - Return the final accumulated result
+    #
+    # Hint: Use a helper function for the recursion to make it tail-recursive.
+    # Base case: empty list returns the accumulator
+    # Recursive case: apply function to head and accumulator, recurse with tail
+    #
+    # Example: reduce([1, 2, 3], 0, &+/2) => 6
+    nil  # TODO: Replace with your implementation
   end
 
-  @spec flatten_list([any()]) :: [any()]
-  def flatten_list(_nested_list) do
-    #   Recursively flatten a nested list structure.
-    #   Transform [[1, 2], [3, [4, 5]], 6] into [1, 2, 3, 4, 5, 6]
-    #   Handle arbitrarily deep nesting.
-    []  # TODO: Implement recursive list flattening
+  @spec deep_flatten([any()]) :: [any()]
+  def deep_flatten(_list) do
+    # Recursively flatten a nested list structure to arbitrary depth.
+    # Transform [[1, 2], [3, [4, 5]], 6] into [1, 2, 3, 4, 5, 6]
+    #
+    # Hint: Use an accumulator pattern with a helper function.
+    # When you encounter a list as the head, you can prepend it to the tail
+    # and continue processing (head ++ tail).
+    #
+    # Handle arbitrarily deep nesting.
+    # Example: deep_flatten([1, [2, [3, 4]], 5]) => [1, 2, 3, 4, 5]
+    []  # TODO: Replace with your implementation
   end
 
-  @spec deep_count(any()) :: non_neg_integer()
-  def deep_count(_data) do
-    #   Count all atomic values in a nested data structure.
-    #   Handle lists, tuples, and maps recursively.
-    #   Example: deep_count([1, {2, [3, 4]}, %{a: 5}]) => 5
-    0  # TODO: Implement recursive deep counting
+  @spec fib(non_neg_integer(), map()) :: {non_neg_integer(), map()}
+  def fib(_n, _cache \\ %{}) do
+    # Implement Fibonacci with memoization for better performance.
+    # This should return a tuple of {result, updated_cache}.
+    #
+    # The cache is a map that stores previously computed results.
+    # Before computing fib(n), check if it's already in the cache.
+    # If not, compute it and store the result in the cache.
+    #
+    # Base cases: fib(0) = 0, fib(1) = 1
+    # Recursive case: fib(n) = fib(n-1) + fib(n-2)
+    #
+    # Hint: Use pattern matching and guards to handle different cases.
+    # Return both the result and the updated cache as a tuple.
+    #
+    # Example: fib(10) should be much faster than naive recursion
+    {0, %{}}  # TODO: Replace with your implementation
   end
 end
 
@@ -448,27 +474,61 @@ defmodule DayOne.RecursionExercisesTest do
 
   alias DayOne.RecursionExercises, as: EX
 
-  test "fibonacci/1 calculates Fibonacci numbers correctly" do
-    assert EX.fibonacci(0) == 0
-    assert EX.fibonacci(1) == 1
-    assert EX.fibonacci(2) == 1
-    assert EX.fibonacci(6) == 8
-    assert EX.fibonacci(10) == 55
+  test "reduce/3 implements tail-recursive reduction" do
+    # Test basic sum
+    assert EX.reduce([1, 2, 3, 4], 0, &+/2) == 10
+
+    # Test with different operation
+    assert EX.reduce([1, 2, 3], 1, &*/2) == 6
+
+    # Test with empty list
+    assert EX.reduce([], 42, &+/2) == 42
+
+    # Test building a list (order matters for tail recursion)
+    result = EX.reduce([1, 2, 3], [], fn x, acc -> [x | acc] end)
+    assert result == [3, 2, 1]
   end
 
-  test "flatten_list/1 flattens nested lists" do
-    assert EX.flatten_list([]) == []
-    assert EX.flatten_list([1, 2, 3]) == [1, 2, 3]
-    assert EX.flatten_list([[1, 2], [3, 4]]) == [1, 2, 3, 4]
-    assert EX.flatten_list([1, [2, [3, 4]], 5]) == [1, 2, 3, 4, 5]
+  test "deep_flatten/1 flattens arbitrarily nested lists" do
+    # Test empty list
+    assert EX.deep_flatten([]) == []
+
+    # Test flat list (no change needed)
+    assert EX.deep_flatten([1, 2, 3]) == [1, 2, 3]
+
+    # Test simple nesting
+    assert EX.deep_flatten([[1, 2], [3, 4]]) == [1, 2, 3, 4]
+
+    # Test deep nesting
+    assert EX.deep_flatten([1, [2, [3, 4]], 5]) == [1, 2, 3, 4, 5]
+
+    # Test complex nesting
+    assert EX.deep_flatten([[1, [2, 3]], [4, [5, [6, 7]]], 8]) == [1, 2, 3, 4, 5, 6, 7, 8]
   end
 
-  test "deep_count/1 counts atomic values in nested structures" do
-    assert EX.deep_count(42) == 1
-    assert EX.deep_count([1, 2, 3]) == 3
-    assert EX.deep_count({1, {2, 3}}) == 3
-    assert EX.deep_count(%{a: 1, b: [2, 3]}) == 3
-    assert EX.deep_count([1, {2, [3, 4]}, %{a: 5}]) == 5
+  test "fib/2 calculates Fibonacci with memoization" do
+    # Test base cases
+    {result, _cache} = EX.fib(0)
+    assert result == 0
+
+    {result, _cache} = EX.fib(1)
+    assert result == 1
+
+    # Test recursive cases
+    {result, _cache} = EX.fib(2)
+    assert result == 1
+
+    {result, _cache} = EX.fib(6)
+    assert result == 8
+
+    {result, _cache} = EX.fib(10)
+    assert result == 55
+
+    # Test that cache is being used and returned
+    {result, cache} = EX.fib(5)
+    assert result == 5
+    assert is_map(cache)
+    assert map_size(cache) > 0
   end
 end
 

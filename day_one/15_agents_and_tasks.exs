@@ -123,11 +123,11 @@ IO.puts("Timing sequential vs parallel...")
   Enum.map(numbers, slow_computation)
 end)
 
-# Parallel timing
+# Parallel timing using Task.async_stream
 {par_time, par_results} = :timer.tc(fn ->
   numbers
-  |> Enum.map(fn n -> Task.async(fn -> slow_computation.(n) end) end)
-  |> Enum.map(&Task.await/1)
+  |> Task.async_stream(slow_computation)
+  |> Enum.map(fn {:ok, result} -> result end)
 end)
 
 IO.puts("Sequential: #{seq_time / 1000}ms")
@@ -322,6 +322,10 @@ defmodule DayOne.Answers do
     quote do
       def test_parallel_http_simulation do
         urls = ["api1", "api2", "api3", "api4", "api5"]
+
+        # This function simulates an HTTP fetch that takes a variable
+        # amount of time (100-500ms) to complete. We use it to demonstrate
+        # how parallel execution can speed up I/O-bound work.
         mock_fetch = fn _url ->
           Process.sleep(:rand.uniform(400) + 100) # 100-500ms
           {:ok, "data"}
@@ -387,4 +391,11 @@ ANSWERS & EXPLANATIONS
 #  The key is that Agent provides a much simpler API for the common case of
 #  managing a single piece of state. Use an Agent for simplicity; upgrade to
 #  a GenServer when you need more complex logic, messages, or state structure.
+
+#  A GenServer is optimized for a fixed set of operations. You define the logic
+#  ahead of time in the server, and clients simply send commands to trigger that
+#  logic. This is more performant if you have a known, high-throughput workload.
+#  An Agent is optimized for flexibility. It allows the caller to define the
+#  state update logic at runtime. This is incredibly convenient, but it comes at
+#  the small performance cost you've just measured.
 """)

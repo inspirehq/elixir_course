@@ -186,35 +186,6 @@ defmodule DayTwo.EctoExercises do
   end
 end
 
-# Mock BlogRepo for testing
-defmodule BlogRepo do
-  def insert_post(attrs) do
-    post = %{
-      id: :rand.uniform(1000),
-      title: attrs[:title] || "Untitled",
-      content: attrs[:content] || "",
-      published_at: DateTime.utc_now()
-    }
-    {:ok, post}
-  end
-
-  def get_post(id) do
-    %{
-      id: id,
-      title: "Sample Blog Post",
-      content: "This is sample content...",
-      published_at: ~N[2023-12-01 10:00:00]
-    }
-  end
-
-  def list_posts do
-    [
-      %{id: 1, title: "First Post", published_at: ~N[2023-12-01 10:00:00]},
-      %{id: 2, title: "Second Post", published_at: ~N[2023-12-02 11:00:00]}
-    ]
-  end
-end
-
 ExUnit.start()
 
 defmodule DayTwo.EctoExercisesTest do

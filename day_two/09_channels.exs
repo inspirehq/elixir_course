@@ -209,40 +209,39 @@ defmodule DayTwo.ClientPatterns do
   def show_javascript_setup do
     IO.puts("// JavaScript client setup:")
 
-    code =
-      ~S"""
-      import {Socket} from "phoenix"
+    code = """
+    import {Socket} from "phoenix"
 
-      // Create socket connection
-      let socket = new Socket("/socket", {
-        params: {token: userToken},
-        logger: (kind, msg, data) => { console.log(`${kind}: ${msg}`, data) }
+    // Create socket connection
+    let socket = new Socket("/socket", {
+      params: {token: userToken},
+      logger: (kind, msg, data) => { console.log(`${kind}: ${msg}`, data) }
+    })
+
+    socket.connect()
+
+    // Join a channel
+    let channel = socket.channel("room:general", {})
+
+    channel.join()
+      .receive("ok", resp => {
+        console.log("Joined successfully", resp)
+      })
+      .receive("error", resp => {
+        console.log("Unable to join", resp)
       })
 
-      socket.connect()
+    // Listen for messages
+    channel.on("new_message", payload => {
+      console.log("New message:", payload)
+      displayMessage(payload)
+    })
 
-      // Join a channel
-      let channel = socket.channel("room:general", {})
-
-      channel.join()
-        .receive("ok", resp => {
-          console.log("Joined successfully", resp)
-        })
-        .receive("error", resp => {
-          console.log("Unable to join", resp)
-        })
-
-      // Listen for messages
-      channel.on("new_message", payload => {
-        console.log("New message:", payload)
-        displayMessage(payload)
-      })
-
-      // Send messages
-      channel.push("new_message", {content: "Hello, world!"})
-        .receive("ok", resp => console.log("Message sent", resp))
-        .receive("error", resp => console.log("Failed to send", resp))
-      """
+    // Send messages
+    channel.push("new_message", {content: "Hello, world!"})
+      .receive("ok", resp => console.log("Message sent", resp))
+      .receive("error", resp => console.log("Failed to send", resp))
+    """
 
     IO.puts(code)
   end
@@ -250,46 +249,45 @@ defmodule DayTwo.ClientPatterns do
   def show_react_integration do
     IO.puts("// React hook for channels:")
 
-    code =
-      ~S"""
-      import {useEffect, useState} from 'react'
-      import {Socket} from 'phoenix'
+    code = """
+    import {useEffect, useState} from 'react'
+    import {Socket} from 'phoenix'
 
-      function useChannel(topic, params = {}) {
-        const [channel, setChannel] = useState(null)
-        const [messages, setMessages] = useState([])
+    function useChannel(topic, params = {}) {
+      const [channel, setChannel] = useState(null)
+      const [messages, setMessages] = useState([])
 
-        useEffect(() => {
-          const socket = new Socket('/socket', {params: {token: userToken}})
-          socket.connect()
+      useEffect(() => {
+        const socket = new Socket('/socket', {params: {token: userToken}})
+        socket.connect()
 
-          const newChannel = socket.channel(topic, params)
-          newChannel.join()
-            .receive("ok", () => setChannel(newChannel))
+        const newChannel = socket.channel(topic, params)
+        newChannel.join()
+          .receive("ok", () => setChannel(newChannel))
 
-          return () => {
-            newChannel.leave()
-            socket.disconnect()
-          }
-        }, [topic])
+        return () => {
+          newChannel.leave()
+          socket.disconnect()
+        }
+      }, [topic])
 
-        useEffect(() => {
-          if (!channel) return
+      useEffect(() => {
+        if (!channel) return
 
-          const handleNewMessage = (payload) => {
-            setMessages(current => [...current, payload])
-          }
+        const handleNewMessage = (payload) => {
+          setMessages(current => [...current, payload])
+        }
 
-          channel.on("new_message", handleNewMessage)
+        channel.on("new_message", handleNewMessage)
 
-          return () => {
-            channel.off("new_message", handleNewMessage)
-          }
-        }, [channel])
+        return () => {
+          channel.off("new_message", handleNewMessage)
+        }
+      }, [channel])
 
-        return [messages, (msg) => channel?.push("new_message", msg)]
-      }
-      """
+      return [messages, (msg) => channel?.push("new_message", msg)]
+    }
+    """
 
     IO.puts(code)
   end
@@ -308,130 +306,141 @@ defmodule DayTwo.AdvancedChannels do
   """
 
   def show_channel_interceptors do
-    """
-    # Channel interceptors for cross-cutting concerns:
-    defmodule MyAppWeb.RoomChannel do
-      use Phoenix.Channel
+    IO.puts("# Channel interceptors for cross-cutting concerns:")
 
-      intercept ["new_message", "user_joined"]
+    code = quote do
+      defmodule MyAppWeb.RoomChannel do
+        use Phoenix.Channel
 
-      # Intercept outgoing messages
-      def handle_out("new_message", payload, socket) do
-        user_id = socket.assigns.user_id
+        intercept ["new_message", "user_joined"]
 
-        # Add user-specific data
-        enhanced_payload = Map.put(payload, :is_own_message, payload.user_id == user_id)
+        # Intercept outgoing messages
+        def handle_out("new_message", payload, socket) do
+          user_id = socket.assigns.user_id
 
-        push(socket, "new_message", enhanced_payload)
-        {:noreply, socket}
-      end
+          # Add user-specific data
+          enhanced_payload = Map.put(payload, :is_own_message, payload.user_id == user_id)
 
-      def handle_out("user_joined", payload, socket) do
-        # Filter sensitive data based on user permissions
-        if can_see_user_details?(socket.assigns.user_id, payload.user_id) do
-          push(socket, "user_joined", payload)
-        else
-          filtered = Map.take(payload, [:user_id, :timestamp])
-          push(socket, "user_joined", filtered)
+          push(socket, "new_message", enhanced_payload)
+          {:noreply, socket}
         end
 
-        {:noreply, socket}
+        def handle_out("user_joined", payload, socket) do
+          # Filter sensitive data based on user permissions
+          if can_see_user_details?(socket.assigns.user_id, payload.user_id) do
+            push(socket, "user_joined", payload)
+          else
+            filtered = Map.take(payload, [:user_id, :timestamp])
+            push(socket, "user_joined", filtered)
+          end
+
+          {:noreply, socket}
+        end
       end
     end
-    """
+
+    IO.puts(Macro.to_string(code))
   end
 
   def show_channel_state_management do
-    """
-    # Channel state management:
-    defmodule MyAppWeb.GameChannel do
-      use Phoenix.Channel
+    IO.puts("# Channel state management:")
 
-      def join("game:" <> game_id, _params, socket) do
-        game_state = GameEngine.get_state(game_id)
+    code = quote do
+      defmodule MyAppWeb.GameChannel do
+        use Phoenix.Channel
 
-        socket = socket
-                |> assign(:game_id, game_id)
-                |> assign(:player_id, socket.assigns.user_id)
-                |> assign(:game_state, game_state)
+        def join("game:" <> game_id, _params, socket) do
+          game_state = GameEngine.get_state(game_id)
 
-        {:ok, game_state, socket}
-      end
+          socket = socket
+                  |> assign(:game_id, game_id)
+                  |> assign(:player_id, socket.assigns.user_id)
+                  |> assign(:game_state, game_state)
 
-      def handle_in("make_move", %{"move" => move}, socket) do
-        game_id = socket.assigns.game_id
-        player_id = socket.assigns.player_id
+          {:ok, game_state, socket}
+        end
 
-        case GameEngine.make_move(game_id, player_id, move) do
-          {:ok, new_state} ->
-            # Update local state
-            socket = assign(socket, :game_state, new_state)
+        def handle_in("make_move", %{"move" => move}, socket) do
+          game_id = socket.assigns.game_id
+          player_id = socket.assigns.player_id
 
-            # Broadcast to all players
-            broadcast!(socket, "game_updated", new_state)
+          case GameEngine.make_move(game_id, player_id, move) do
+            {:ok, new_state} ->
+              # Update local state
+              socket = assign(socket, :game_state, new_state)
 
-            {:reply, {:ok, new_state}, socket}
+              # Broadcast to all players
+              broadcast!(socket, "game_updated", new_state)
 
-          {:error, reason} ->
-            {:reply, {:error, %{reason: reason}}, socket}
+              {:reply, {:ok, new_state}, socket}
+
+            {:error, reason} ->
+              {:reply, {:error, %{reason: reason}}, socket}
+          end
+        end
+
+        def handle_info({:game_ended, winner}, socket) do
+          game_state = %{status: :ended, winner: winner}
+
+          broadcast!(socket, "game_ended", game_state)
+          {:noreply, assign(socket, :game_state, game_state)}
         end
       end
-
-      def handle_info({:game_ended, winner}, socket) do
-        game_state = %{status: :ended, winner: winner}
-
-        broadcast!(socket, "game_ended", game_state)
-        {:noreply, assign(socket, :game_state, game_state)}
-      end
     end
-    """
+
+    IO.puts(Macro.to_string(code))
   end
 
   def show_presence_integration do
-    """
-    # Integrating Phoenix Presence:
-    defmodule MyAppWeb.RoomChannel do
-      use Phoenix.Channel
-      alias MyAppWeb.Presence
+    IO.puts("# Integrating Phoenix Presence:")
 
-      def join("room:" <> room_id, _params, socket) do
-        send(self(), :after_join)
-        {:ok, assign(socket, :room_id, room_id)}
-      end
+    code = quote do
+      defmodule MyAppWeb.RoomChannel do
+        use Phoenix.Channel
+        alias MyAppWeb.Presence
 
-      def handle_info(:after_join, socket) do
-        room_id = socket.assigns.room_id
-        user_id = socket.assigns.user_id
+        def join("room:" <> room_id, _params, socket) do
+          send(self(), :after_join)
+          {:ok, assign(socket, :room_id, room_id)}
+        end
 
-        # Track user presence
-        {:ok, _} = Presence.track(socket, user_id, %{
-          online_at: inspect(System.system_time(:second)),
-          status: "online"
-        })
+        def handle_info(:after_join, socket) do
+          room_id = socket.assigns.room_id
+          user_id = socket.assigns.user_id
 
-        # Send current presence state to joining user
-        push(socket, "presence_state", Presence.list(socket))
+          # Track user presence
+          {:ok, _} = Presence.track(socket, user_id, %{
+            online_at: inspect(System.system_time(:second)),
+            status: "online"
+          })
 
-        {:noreply, socket}
-      end
+          # Send current presence state to joining user
+          push(socket, "presence_state", Presence.list(socket))
 
-      def handle_in("update_status", %{"status" => status}, socket) do
-        user_id = socket.assigns.user_id
+          {:noreply, socket}
+        end
 
-        {:ok, _} = Presence.update(socket, user_id, %{
-          status: status,
-          updated_at: inspect(System.system_time(:second))
-        })
+        def handle_in("update_status", %{"status" => status}, socket) do
+          user_id = socket.assigns.user_id
 
-        {:noreply, socket}
+          {:ok, _} = Presence.update(socket, user_id, %{
+            status: status,
+            updated_at: inspect(System.system_time(:second))
+          })
+
+          {:noreply, socket}
+        end
       end
     end
-    """
+
+    IO.puts(Macro.to_string(code))
   end
 end
 
 IO.puts("Advanced channel features:")
-IO.puts(DayTwo.AdvancedChannels.show_channel_interceptors())
+DayTwo.AdvancedChannels.show_channel_interceptors()
+DayTwo.AdvancedChannels.show_channel_state_management()
+DayTwo.AdvancedChannels.show_presence_integration()
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 5 – Real-world: Live collaboration system")
@@ -442,124 +451,127 @@ defmodule DayTwo.CollaborationDemo do
   """
 
   def show_collaboration_channel do
-    """
-    # Live document collaboration channel:
-    defmodule MyAppWeb.DocumentChannel do
-      use Phoenix.Channel
-      alias MyApp.Documents
-      alias MyAppWeb.Presence
+    IO.puts("# Live document collaboration channel:")
 
-      def join("document:" <> doc_id, _params, socket) do
-        case Documents.get_document_with_permissions(doc_id, socket.assigns.user_id) do
-          {:ok, document, permissions} ->
-            socket = socket
-                    |> assign(:document_id, doc_id)
-                    |> assign(:permissions, permissions)
+    code = quote do
+      defmodule MyAppWeb.DocumentChannel do
+        use Phoenix.Channel
+        alias MyApp.Documents
+        alias MyAppWeb.Presence
 
-            send(self(), :after_join)
-            {:ok, %{document: document}, socket}
+        def join("document:" <> doc_id, _params, socket) do
+          case Documents.get_document_with_permissions(doc_id, socket.assigns.user_id) do
+            {:ok, document, permissions} ->
+              socket = socket
+                      |> assign(:document_id, doc_id)
+                      |> assign(:permissions, permissions)
 
-          {:error, :not_found} ->
-            {:error, %{reason: "Document not found"}}
+              send(self(), :after_join)
+              {:ok, %{document: document}, socket}
 
-          {:error, :unauthorized} ->
-            {:error, %{reason: "Access denied"}}
+            {:error, :not_found} ->
+              {:error, %{reason: "Document not found"}}
+
+            {:error, :unauthorized} ->
+              {:error, %{reason: "Access denied"}}
+          end
         end
-      end
 
-      # Real-time text editing
-      def handle_in("text_operation", payload, socket) do
-        if can_edit?(socket.assigns.permissions) do
-          doc_id = socket.assigns.document_id
+        # Real-time text editing
+        def handle_in("text_operation", payload, socket) do
+          if can_edit?(socket.assigns.permissions) do
+            doc_id = socket.assigns.document_id
+            user_id = socket.assigns.user_id
+
+            operation = %{
+              type: :text_operation,
+              user_id: user_id,
+              operation: payload["operation"],
+              timestamp: System.system_time(:millisecond)
+            }
+
+            # Apply operation to document
+            {:ok, updated_doc} = Documents.apply_operation(doc_id, operation)
+
+            # Broadcast to all collaborators except sender
+            broadcast_from!(socket, "operation_applied", %{
+              operation: operation,
+              document_version: updated_doc.version
+            })
+
+            {:reply, {:ok, %{version: updated_doc.version}}, socket}
+          else
+            {:reply, {:error, %{reason: "No edit permission"}}, socket}
+          end
+        end
+
+        # Cursor position tracking
+        def handle_in("cursor_update", %{"position" => position}, socket) do
           user_id = socket.assigns.user_id
 
-          operation = %{
-            type: :text_operation,
+          broadcast_from!(socket, "cursor_moved", %{
             user_id: user_id,
-            operation: payload["operation"],
-            timestamp: System.system_time(:millisecond)
-          }
-
-          # Apply operation to document
-          {:ok, updated_doc} = Documents.apply_operation(doc_id, operation)
-
-          # Broadcast to all collaborators except sender
-          broadcast_from!(socket, "operation_applied", %{
-            operation: operation,
-            document_version: updated_doc.version
+            position: position
           })
 
-          {:reply, {:ok, %{version: updated_doc.version}}, socket}
-        else
-          {:reply, {:error, %{reason: "No edit permission"}}, socket}
+          {:noreply, socket}
         end
-      end
 
-      # Cursor position tracking
-      def handle_in("cursor_update", %{"position" => position}, socket) do
-        user_id = socket.assigns.user_id
+        # Comment system
+        def handle_in("add_comment", comment_data, socket) do
+          if can_comment?(socket.assigns.permissions) do
+            doc_id = socket.assigns.document_id
+            user_id = socket.assigns.user_id
 
-        broadcast_from!(socket, "cursor_moved", %{
-          user_id: user_id,
-          position: position
-        })
+            comment = Map.merge(comment_data, %{
+              "document_id" => doc_id,
+              "user_id" => user_id
+            })
 
-        {:noreply, socket}
-      end
+            {:ok, created_comment} = Documents.create_comment(comment)
 
-      # Comment system
-      def handle_in("add_comment", comment_data, socket) do
-        if can_comment?(socket.assigns.permissions) do
+            broadcast!(socket, "comment_added", created_comment)
+
+            {:reply, {:ok, created_comment}, socket}
+          else
+            {:reply, {:error, %{reason: "No comment permission"}}, socket}
+          end
+        end
+
+        def handle_info(:after_join, socket) do
           doc_id = socket.assigns.document_id
           user_id = socket.assigns.user_id
 
-          comment = Map.merge(comment_data, %{
-            "document_id" => doc_id,
-            "user_id" => user_id
+          # Track user presence in document
+          {:ok, _} = Presence.track(socket, user_id, %{
+            name: Users.get_name(user_id),
+            joined_at: inspect(System.system_time(:second)),
+            cursor_position: nil
           })
 
-          {:ok, created_comment} = Documents.create_comment(comment)
+          # Send current collaborators to joining user
+          push(socket, "presence_state", Presence.list(socket))
 
-          broadcast!(socket, "comment_added", created_comment)
+          # Subscribe to document-level events
+          Phoenix.PubSub.subscribe(MyApp.PubSub, "document_events:#{doc_id}")
 
-          {:reply, {:ok, created_comment}, socket}
-        else
-          {:reply, {:error, %{reason: "No comment permission"}}, socket}
+          {:noreply, socket}
         end
-      end
 
-      def handle_info(:after_join, socket) do
-        doc_id = socket.assigns.document_id
-        user_id = socket.assigns.user_id
+        # Handle external document events
+        def handle_info({:document_shared, user_data}, socket) do
+          broadcast!(socket, "document_shared", user_data)
+          {:noreply, socket}
+        end
 
-        # Track user presence in document
-        {:ok, _} = Presence.track(socket, user_id, %{
-          name: Users.get_name(user_id),
-          joined_at: inspect(System.system_time(:second)),
-          cursor_position: nil
-        })
-
-        # Send current collaborators to joining user
-        push(socket, "presence_state", Presence.list(socket))
-
-        # Subscribe to document-level events
-        Phoenix.PubSub.subscribe(MyApp.PubSub, "document_events:#{doc_id}")
-
-        {:noreply, socket}
-      end
-
-      # Handle external document events
-      def handle_info({:document_shared, user_data}, socket) do
-        broadcast!(socket, "document_shared", user_data)
-        {:noreply, socket}
-      end
-
-      def handle_info({:document_permissions_changed, permissions}, socket) do
-        push(socket, "permissions_updated", permissions)
-        {:noreply, assign(socket, :permissions, permissions)}
+        def handle_info({:document_permissions_changed, permissions}, socket) do
+          push(socket, "permissions_updated", permissions)
+          {:noreply, assign(socket, :permissions, permissions)}
+        end
       end
     end
-    """
+
+    IO.puts(Macro.to_string(code))
   end
 
   def demonstrate_collaboration_flow do
@@ -581,45 +593,47 @@ defmodule DayTwo.CollaborationDemo do
   end
 
   def show_conflict_resolution do
-    """
-    Conflict Resolution Strategies:
+    IO.puts("Conflict Resolution Strategies:")
+    IO.puts("")
 
-    • Operational Transformation (OT):
-      - Transform operations based on concurrent changes
-      - Ensures consistent final state across all clients
-      - Complex but handles all edge cases
+    strategies = [
+      {"Operational Transformation (OT)", [
+        "- Transform operations based on concurrent changes",
+        "- Ensures consistent final state across all clients",
+        "- Complex but handles all edge cases"
+      ]},
+      {"Last Writer Wins", [
+        "- Simple timestamp-based conflict resolution",
+        "- Good for non-critical collaborative features",
+        "- Risk of data loss in high-concurrency scenarios"
+      ]},
+      {"Version Vectors", [
+        "- Track causality between operations",
+        "- Detect conflicts and allow manual resolution",
+        "- Good balance of complexity and correctness"
+      ]},
+      {"Locking Mechanisms", [
+        "- Prevent conflicts by locking document sections",
+        "- Simple to implement but reduces collaboration",
+        "- Good for critical data that must not conflict"
+      ]}
+    ]
 
-    • Last Writer Wins:
-      - Simple timestamp-based conflict resolution
-      - Good for non-critical collaborative features
-      - Risk of data loss in high-concurrency scenarios
-
-    • Version Vectors:
-      - Track causality between operations
-      - Detect conflicts and allow manual resolution
-      - Good balance of complexity and correctness
-
-    • Locking Mechanisms:
-      - Prevent conflicts by locking document sections
-      - Simple to implement but reduces collaboration
-      - Good for critical data that must not conflict
-    """
+    Enum.each(strategies, fn {name, details} ->
+      IO.puts("• #{name}:")
+      Enum.each(details, fn detail ->
+        IO.puts("  #{detail}")
+      end)
+      IO.puts("")
+    end)
   end
 end
 
 IO.puts("Collaboration channel:")
-IO.puts(DayTwo.CollaborationDemo.show_collaboration_channel())
+DayTwo.CollaborationDemo.show_collaboration_channel()
 DayTwo.CollaborationDemo.demonstrate_collaboration_flow()
+DayTwo.CollaborationDemo.show_conflict_resolution()
 
-# ────────────────────────────────────────────────────────────────
-# 🚀  EXERCISES
-#
-# 1. Create a simple chat channel that supports rooms, user authentication,
-#    and message history. Include join/leave announcements and typing indicators.
-# 2. Build a real-time notifications channel that delivers different types of
-#    notifications (mentions, likes, comments) to users based on their preferences.
-# 3. (Challenge) Design a live gaming channel for a turn-based game with
-#    real-time moves, spectator mode, and reconnection handling for dropped connections.
 
 defmodule DayTwo.ChannelExercises do
   @moduledoc """
@@ -653,32 +667,6 @@ defmodule DayTwo.ChannelExercises do
   """
   @spec design_collaboration_channel() :: map()
   def design_collaboration_channel do
-    # Design a channel for a collaborative whiteboard.
-    # Return a map with :topic, :events_in, and :events_out.
-    nil  # TODO: Implement this exercise
-  end
-
-  @doc """
-  Designs a channel for controlling an IoT device.
-
-  **Goal:** Architect a secure channel for sending commands to a specific IoT
-  device and receiving status updates from it.
-
-  **Requirements:**
-  - The channel topic must uniquely identify the device (e.g., `"devices:DEVICE_ID"`).
-  - The `join/3` function must authorize based on a device-specific token.
-  - The channel must handle a `set_config` incoming event from a client (e.g., a web dashboard).
-  - The channel must handle a `status_update` incoming event from the IoT device itself.
-    This event should then be broadcast to other clients (like the dashboard).
-
-  **Task:**
-  Return a string describing the authorization logic and the flow of messages
-  for both controlling the device and receiving its updates.
-  """
-  @spec design_iot_device_channel() :: binary()
-  def design_iot_device_channel do
-    # Describe the design for an IoT device control channel, covering
-    # authorization, device control, and status updates.
     nil  # TODO: Implement this exercise
   end
 
@@ -689,7 +677,7 @@ defmodule DayTwo.ChannelExercises do
   support agents in a private chat session.
 
   **Requirements:**
-  - The topic should be unique per support session (e.g., `"support:SESSION_ID"`).
+  - The topic should be unique per support session (e.g., `"support:SESSION_ID"`)
   - The `join/3` function must authorize both the customer and authenticated
     support agents for that session.
   - It must handle a `"new_message"` event and broadcast it to all participants.
@@ -705,8 +693,7 @@ defmodule DayTwo.ChannelExercises do
   """
   @spec design_live_support_channel() :: map()
   def design_live_support_channel do
-    # Design a live support chat channel.
-    # Return a map with :topic, :roles, and :event_handlers.
+
     nil  # TODO: Implement this exercise
   end
 end
@@ -726,14 +713,6 @@ defmodule DayTwo.ChannelExercisesTest do
     assert Map.has_key?(design, :events_out)
     assert "draw" in design.events_in
     assert "user_drew" in design.events_out
-  end
-
-  test "design_iot_device_channel/0 describes authorization and message flow" do
-    description = EX.design_iot_device_channel()
-    assert is_binary(description)
-    assert String.contains?(description, "authorize")
-    assert String.contains?(description, "token")
-    assert String.contains?(description, "status_update")
   end
 
   test "design_live_support_channel/0 returns a valid support chat design" do
@@ -760,32 +739,6 @@ defmodule DayTwo.Answers do
 
   def answer_two do
     quote do
-      """
-      Architecture: IoT Device Control Channel
-
-      1. Topic and Authorization:
-      The topic is `devices:DEVICE_ID`. When a client tries to join, the `join/3`
-      callback receives a device-specific JWT in the params. It validates this
-      token to authorize the connection. This ensures only authenticated clients
-      (the device itself or a control dashboard) can join.
-
-      2. Control Flow (Dashboard to Device):
-      - A control dashboard pushes a `set_config` event with new settings.
-      - The channel's `handle_in("set_config", ...)` receives this.
-      - It then uses `push/3` to send a `set_config` message directly to the
-        socket connection of the IoT device.
-
-      3. Status Flow (Device to Dashboard):
-      - The IoT device pushes a `status_update` event with its current state.
-      - The channel's `handle_in("status_update", ...)` receives this.
-      - It then uses `broadcast!/3` to send a `new_status` message to all other
-        channel members (i.e., any connected dashboards).
-      """
-    end
-  end
-
-  def answer_three do
-    quote do
       %{
         topic: "support:session-abc-789",
         roles: [:customer, :agent],
@@ -808,15 +761,8 @@ ANSWERS & EXPLANATIONS
 # else. This prevents the original sender from getting their own draw event back
 # and avoids messy client-side logic to filter out self-sent messages.
 
-# 2. Design IoT Device Channel
+# 2. Design Live Support Channel
 #{Macro.to_string(DayTwo.Answers.answer_two())}
-# This architecture provides secure, bidirectional communication. Using `push/3`
-# for targeted commands and `broadcast!/3` for status updates is efficient and
-# ensures messages go only where they are needed. Token-based auth in `join/3`
-# is critical for securing access to the device.
-
-# 3. Design Live Support Channel
-#{Macro.to_string(DayTwo.Answers.answer_three())}
 # The key here is handling different roles and using `broadcast_from!/3` for
 # events like typing indicators. This prevents the user who is typing from
 # seeing their own "is typing..." message, simplifying the client-side code.
