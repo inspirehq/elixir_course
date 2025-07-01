@@ -218,7 +218,7 @@ defmodule DayOne.DataTypesExercises do
   end
 
   @spec data_converter(any()) :: map()
-  def data_converter(keyword_list) do
+  def data_converter(_keyword_list) do
     # Convert a keyword list to a map.
     # Handle the case where the input is not a keyword list by returning an empty map.
     # Examples:
@@ -231,7 +231,7 @@ defmodule DayOne.DataTypesExercises do
   end
 
   @spec collection_builder(atom(), list()) :: any()
-  def collection_builder(type, items) do
+  def collection_builder(_type, items) do
     # Build different collection types from a list of items based on the type parameter.
     # Support: :list (return as-is), :tuple (convert to tuple), :map_with_index (create map with indices as keys)
     # Examples:
