@@ -17,36 +17,6 @@ defmodule DayOne.RecursionBasics do
   Understanding the fundamental concepts of recursion in Elixir.
   """
 
-  def explain_recursion_pattern do
-    """
-    Recursion Pattern in Elixir:
-
-    1. Base Case: Condition that stops the recursion
-    2. Recursive Case: Function calls itself with modified input
-    3. Progress: Each call moves closer to the base case
-
-    Basic Structure:
-    def recursive_solution(input) do
-      if base_case?(input) do
-        finished_value          # ← base-case result
-      else
-        # 1️⃣  Work for THIS level ───────────────────────────
-        current_piece   = transform(input)
-
-        # 2️⃣  Create the SMALLER problem ────────────────────
-        modified_input = shrink(input)
-
-        # 3️⃣  Recurse, then merge the two answers ───────────
-        recursive_solution(modified_input)
-        |> combine(current_piece)
-
-        # The pipeline passes the partial answer into `combine/2`,
-        # producing the more complete answer returned up the stack.
-      end
-    end
-    """
-  end
-
   def simple_countdown(0) do
     IO.puts("Blast off! 🚀")
     :done
@@ -77,9 +47,6 @@ defmodule DayOne.RecursionBasics do
     """
   end
 end
-
-IO.puts("Recursion pattern:")
-IO.puts(DayOne.RecursionBasics.explain_recursion_pattern())
 
 IO.puts("\nCountdown demonstration:")
 DayOne.RecursionBasics.simple_countdown(5)

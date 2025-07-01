@@ -28,6 +28,132 @@ By the end of Day One, students will:
 
 ## 📖 Lesson-by-Lesson Guide
 
+### 00. Data Types in Elixir (30 minutes)
+
+#### 🎯 **Key Concepts**
+- **Primitive Types**: Understanding integers, floats, atoms, and booleans
+- **Collection Types**: Lists, tuples, maps, and keyword lists
+- **Advanced Types**: Structs, functions, processes, and references
+- **Type Characteristics**: When to use each type and their performance implications
+
+#### 📝 **Student Summary**
+*"Elixir provides a rich set of data types, each optimized for different use cases. Understanding when and how to use each type is fundamental to writing efficient and idiomatic Elixir code."*
+
+#### 🎤 **Teacher Talking Points**
+
+**Foundation First Approach:**
+"Before we dive into Elixir's unique features like immutability and pattern matching, we need to understand the building blocks - the data types. Every powerful concept in Elixir builds on these fundamentals."
+
+**Type System Philosophy:**
+- "Elixir's type system is designed for reliability and concurrency"
+- "Unlike languages with complex type hierarchies, Elixir keeps types simple and predictable"
+- "Every piece of data in Elixir is one of these fundamental types - no hidden surprises"
+- "The type system helps us write code that 'fails fast' when something unexpected happens"
+
+**Integers and Arbitrary Precision:**
+- "Unlike many languages, Elixir integers can be arbitrarily large - they're only limited by available memory"
+- "This eliminates a whole class of overflow bugs common in other languages"
+- "Demonstrate with: `123_456_789_012_345_678_901_234_567_890 * 2`"
+- "The underscores in large numbers are just for readability - they're ignored by the compiler"
+
+**Atoms as Efficient Constants:**
+- "Atoms are like symbols in Ruby or keywords in other languages"
+- "They're stored in a global table and compared by reference, making them very fast"
+- "Warning: atoms are never garbage collected, so don't create them dynamically from user input"
+- "Booleans `true`, `false`, and `nil` are all just special atoms"
+
+**Strings vs. Binaries:**
+- "In Elixir, strings are UTF-8 encoded binaries - this is important for international applications"
+- "This means `byte_size/1` and `String.length/1` can give different results for non-ASCII characters"
+- "Show example: `byte_size("café")` vs `String.length("café")`"
+- "Binaries give you low-level control for things like parsing network protocols"
+
+**Collections: Lists vs. Tuples:**
+- "Lists are optimized for prepending - adding to the front is O(1), adding to the back is O(n)"
+- "Use lists when the size varies or when you need to process elements sequentially"
+- "Tuples are fixed-size and optimized for indexed access - good for coordinates, RGB values"
+- "Pattern matching works beautifully with both: `[head | tail]` and `{x, y, z}`"
+
+**Maps: The Workhorse Collection:**
+- "Maps are your go-to for key-value data - efficient for both small and large collections"
+- "Atom keys allow dot notation: `user.name` vs string keys requiring bracket notation: `config["host"]`"
+- "Maps preserve insertion order in newer Elixir versions, but don't rely on this for logic"
+
+**Keyword Lists: The Configuration Type:**
+- "Keyword lists are just lists of 2-tuples: `[{:key, value}]`"
+- "They allow duplicate keys and preserve order - perfect for function options"
+- "Most Elixir functions accept keyword lists for configuration: `GenServer.start_link(MyServer, [], name: :my_server)`"
+
+**Structs: Maps with Guarantees:**
+- "Structs are maps with a fixed set of keys and a module name"
+- "They give you data validation and can implement protocols"
+- "Think of them as 'classes' for data, but without methods - just structure"
+
+**Process Types (Advanced Concepts):**
+- "PIDs, references, and ports are unique to the BEAM virtual machine"
+- "You'll work with PIDs constantly in concurrent programming"
+- "References are globally unique identifiers - perfect for tracking async operations"
+- "Ports represent external programs or resources (less commonly used directly)"
+
+**Performance Considerations:**
+- "Small integers (up to 60 bits on 64-bit systems) are stored directly - very efficient"
+- "Lists: fast prepend, slow append and random access"
+- "Tuples: fast indexed access, but creating a new tuple copies all elements"
+- "Maps: generally O(log n) operations, very efficient for most sizes"
+
+**Memory Layout Understanding:**
+"Unlike languages where everything is a pointer to heap memory, Elixir optimizes small values to fit directly in registers. This makes basic operations incredibly fast."
+
+#### 💬 **Discussion Questions**
+1. **"Why might Elixir have both lists and tuples when they seem similar?"**
+   - *Guide students to think about performance characteristics and use cases*
+2. **"When would you choose a map over a keyword list for configuration?"**
+   - *Explore duplicate keys, order preservation, and access patterns*
+3. **"How does Elixir's approach to strings (as binaries) differ from other languages?"**
+   - *Discuss Unicode handling and byte vs. character operations*
+4. **"What are the trade-offs between using atoms vs. strings for keys?"**
+   - *Memory usage, access speed, and safety considerations*
+5. **"Why are atoms never garbage collected, and what are the implications?"**
+   - *Security considerations and memory management*
+
+#### 🔧 **Additional Examples**
+
+```elixir
+# Demonstrate type flexibility
+mixed_data = %{
+  id: 123,                    # integer
+  name: "Alice",              # string (binary)
+  active: true,               # boolean (atom)
+  tags: [:vip, :customer],    # list of atoms
+  coordinates: {37.7, -122.4}, # tuple of floats
+  metadata: %{               # nested map
+    created_at: ~N[2023-01-01 12:00:00],
+    preferences: [theme: :dark, notifications: true]
+  }
+}
+
+# Type checking in action
+def process_user_data(data) when is_map(data) and is_integer(data.id) do
+  # Only proceed if we have a map with an integer ID
+  # This prevents runtime errors from wrong data types
+end
+```
+
+#### 🧠 **Teaching Tips**
+- **Use the REPL extensively**: Show type checking functions like `is_integer/1`, `is_binary/1`
+- **Demonstrate with real data**: Use examples that students can relate to (user profiles, shopping carts)
+- **Compare with familiar languages**: Help students map concepts from languages they know
+- **Show the inspection**: Use `IO.inspect/2` to help students see how data looks internally
+
+#### ⚠️ **Common Pitfalls**
+- Confusing strings with character lists (single quotes vs. double quotes)
+- Creating atoms dynamically from user input (memory leak)
+- Using lists when tuples would be more appropriate (and vice versa)
+- Forgetting that keyword lists allow duplicate keys
+- Mixing atom and string keys in maps
+
+---
+
 ### 01. Immutability and Rebinding (30 minutes)
 
 #### 🎯 **Key Concepts**
