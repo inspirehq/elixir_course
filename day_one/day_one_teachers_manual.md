@@ -867,6 +867,7 @@ end)
 - "`Enum.chunk_every/2` - process data in batches"
 - "`Enum.flat_map/2` - map and flatten in one step"
 - "`Enum.uniq_by/2` - remove duplicates based on a field"
+- "`Enum.sort_by/2` - sort by specific data
 
 #### 💬 **Discussion Questions**
 1. **"How does Enum.reduce/3 relate to other Enum functions?"**
