@@ -11,13 +11,28 @@
 # Each numbered block below is executable & independent.
 # ────────────────────────────────────────────────────────────────
 
+
+# # spawn: Create a new process
+# pid = spawn(fn -> loop() end)
+
+# # send: Send a message to a process
+# send(pid, {:hello, "world"})
+
+# # receive: Wait for and handle messages
+# receive do
+#   {:hello, msg} -> IO.puts("Got: #{msg}")
+#   _ -> IO.puts("Unknown message")
+# end
+
 IO.puts("\n📌 Example 1 – spawn/1 & send/2 + receive")
 
 # Step-by-step breakdown of basic process communication:
 # Step 1: Spawn a new process that waits for a message
 pid = spawn(fn ->
   receive do
-    {:hello, from} -> send(from, :world)  # When we get {:hello, sender}, reply with :world
+    {:hello, from_pid} ->
+      :timer.sleep(1500)
+      send(from_pid, :world)  # When we get {:hello, sender}, reply with :world
   end
 end)
 
@@ -44,6 +59,8 @@ IO.puts("\n📌 Example 2 – Process links for crash propagation")
 
 # Step-by-step breakdown of process linking and crash propagation:
 # Step 1: Trap exits so we can handle crashes instead of dying ourselves
+# Changes a flag on the current parent process so that any exit signal coming from a linked process
+# is turned into a normal message with the following pattern: {:EXIT, pid, reason}
 Process.flag(:trap_exit, true)
 
 parent = self()

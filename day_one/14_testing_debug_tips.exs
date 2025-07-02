@@ -14,9 +14,34 @@
 # ────────────────────────────────────────────────────────────────
 
 IO.puts("\n📌 Example 1 – ExUnit synchronous test style (scripted)")
+# EXAMPLE 1 – Synchronous testing with ExUnit (black-box style)
+#
+# WHAT YOU'LL SEE
+#   • A minimal GenServer (`DemoSyncServer`) that stores an integer.
+#   • An inline "test" that bumps the counter once and asserts the new
+#     value – all without the usual `mix test` scaffolding.
+#
+# WHY WE START HERE
+#   1. Instant feedback – synchronous `GenServer.call/3` returns
+#      immediately so assertions are deterministic.
+#   2. Zero concurrency headaches – no timing issues or race conditions
+#      yet, letting you focus on the testing pattern itself.
+#
+# ROADMAP
+#   A. Start the server with an initial value of 0.
+#   B. Send an asynchronous `cast/2` to increment the counter.
+#   C. Fetch the value with a synchronous `call/3`.
+#   D. Compare the result against the expected value and print a pass/fail
+#      emoji – this mimics an ExUnit `assert`.
+#   E. Stop the process so it doesn't leak into later examples.
+#
+# PRO-TIPS
+#   • Register the process under the module name (`name: __MODULE__`) to
+#     avoid passing PIDs around in simple tests.
+#   • Always tidy up with `GenServer.stop/1` so the process doesn't keep
+#     running and interfere with subsequent assertions.
+# ───────────────────────────────────────────────────────────────────
 
-# In a real project this would live in `*_test.exs` – here we simulate quickly.
-# We'll define the TestableServer later and use a simple named server here for demo
 ExUnit.start()
 
 defmodule DemoSyncServer do
@@ -106,6 +131,27 @@ end
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 2 – :sys.get_state/1 for internal assertion")
+# =====================================================================
+# 🛠️  WHITE-BOX  VS  BLACK-BOX  TESTING
+# ---------------------------------------------------------------------
+#  • **Black-box**  – Interact *only* through the public API.  Safer, future-
+#    proof, but sometimes hard when behaviour is purely side-effectual or
+#    time-based.
+#  • **White-box** – Use internal tooling (`:sys.get_state/1`, `:erlang.trace/3`,
+#    etc.) to peek inside.  Powerful, but couples tests to implementation.
+#
+# WHAT WE DO HERE
+#   1. Start a *fresh* `TestableServer` so test isolation is guaranteed.
+#   2. Mutate state via the public API (`bump/1`).
+#   3. Inspect the **internal** state directly (`:sys.get_state/1`).
+#   4. Compare with the *expected* value and print human-friendly output.
+#   5. Stop the process (isolation again!).
+#
+# WHEN TO USE THIS IN REAL LIFE
+#   • Time-sensitive logic where waiting/sleeping would slow the suite.
+#   • Migration/outage scenarios where you must assert internal counters.
+#   • Debugging flaky failures – drop a `:sys.get_state` in the failing branch.
+# =====================================================================
 
 # Step 1: Start a TestableServer for white-box testing demonstration
 {:ok, test_pid} = TestableServer.start_link(42)  # Start with initial value 42
@@ -130,7 +176,26 @@ GenServer.stop(test_pid)
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 3 – Capturing logs during tests")
-
+# =====================================================================
+# 📋  WHY CAPTURE LOGS?
+# ---------------------------------------------------------------------
+#  • Some functions don't return rich errors – they *log* them.
+#  • You might want to assert *negative* cases (a warning **should not** be
+#    logged).
+#  • Keeps the test output clean – captured logs are only surfaced when an
+#    assertion fails.
+#
+# PATTERNS SHOWN
+#   1. Capture **any** log output from a function block – store in `log_output`.
+#   2. Assert a *specific* message appears (case-sensitive substring search).
+#   3. Capture *multiple* log levels to show that the Logger respects order &
+#      level filtering in one go.
+#
+# GOTCHAS
+#   • Don't leave `capture_log` around production code – it's test-only!
+#   • Use the `level:` option to restrict to `:warning`/`:error` if you only
+#     care about high-severity events.
+# =====================================================================
 require Logger
 
 # Step 1: Demonstrate basic log capture
@@ -163,6 +228,25 @@ IO.puts(multi_log)
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 4 – Runtime inspection with :observer (manual)")
+# =====================================================================
+# 🔍  OBSERVER – YOUR BEAM DASHBOARD
+# ---------------------------------------------------------------------
+#  • GUI app shipped with Erlang (wxWidgets backend).
+#  • Visualises **everything**: processes, memory, scheduler load, ETS tables.
+#  • Great for *live* debugging of production systems – attach over the network
+#    with `:observer.start()` after `Node.connect/1`.
+#
+# SCRIPT FLOW
+#   1. Print a human-readable description of what Observer offers (students may
+#      run this on a headless box – they still learn what they're missing).
+#   2. Attempt to start the GUI – but wrap in `try/rescue` so the lesson doesn't
+#      crash on systems without wx.
+#   3. Provide **CLI fallbacks** (`:erlang.memory/0`, `Process.list/0`, etc.) so
+#      learners can still inspect their node.
+#
+# TIP: Use `:observer.start/0` in an IEx *inside* your running Phoenix app and
+# immediately see every LiveView/GenServer.
+# =====================================================================
 
 # Step 1: Explain what Observer shows you
 IO.puts("""
@@ -259,6 +343,23 @@ end
 
 # ────────────────────────────────────────────────────────────────
 IO.puts("\n📌 Example 5 – Real-world: Testing the ApiClient rate-limited GenServer")
+# =====================================================================
+# 🚦  END-TO-END RATE-LIMIT TEST
+# ---------------------------------------------------------------------
+#  • Shows how to *simulate load* (6 sequential calls) to verify business
+#    constraints (5 allowed / 1 blocked).
+#  • Highlights *state-ful* assertions: after the 6th call we also peek inside
+#    via `:sys.get_state/1` to see the counter & window timestamp.
+#  • Encourages students to think about **time travel** in tests – here we don't
+#    mock time, but in a full suite you might abstract the `ts/0` function and
+#    inject a mock clock.
+#
+# EXTENSIONS YOU CAN TRY
+#   • Property-based test: random sequence of calls should never exceed limit.
+#   • Parallel tasks (`Task.async_stream`) to test concurrency safety.
+#   • Use `assert_receive` to verify callers get `{:error, :rate_limited}` in an
+#     async context.
+# =====================================================================
 
 # Step 1: Start the existing ApiClient GenServer (defined below)
 # This demonstrates testing a production-style rate-limited API client

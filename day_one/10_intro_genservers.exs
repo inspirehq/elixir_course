@@ -14,6 +14,26 @@
 IO.puts("\n📌 Example 1 – Minimal GenServer that echoes synchronous calls")
 
 # Step-by-step breakdown of a minimal GenServer:
+#
+# 👩‍💻 Caller-level overview
+#   • `IntroServer.start_link/1` spins up a **new BEAM process** that runs the
+#     GenServer loop. The *link* part means the caller will be notified if the
+#     server crashes (and vice-versa).
+#   • The function returns a **PID**—think of it as the server's phone number.
+#     We'll need it whenever we want to talk to that specific process.
+#   • `IntroServer.echo/2` wraps `GenServer.call/3`, which performs a
+#     *synchronous* round-trip:
+#       1. Build a message `{:echo, msg}` tagged with a unique reference.
+#       2. Drop it into the server's mailbox.
+#       3. Suspend the caller until a reply carrying the same reference comes
+#          back (default timeout: 5 s).
+#   • Inside the GenServer, the runtime invokes `handle_call/3`. We return
+#     `{:reply, msg, state}` so GenServer can send the reply and continue its
+#     loop with the (unchanged) state.
+#   • From the outside it feels like an ordinary function call—you hand in a
+#     value and instantly get one back—yet two isolated processes and a mailbox
+#     are doing the hard work.
+#
 defmodule IntroServer do
   # Step 1: "use GenServer" brings in all the GenServer behavior
   use GenServer
@@ -48,6 +68,17 @@ IntroServer.demo()
 IO.puts("\n📌 Example 2 – Asynchronous casts & internal state")
 
 # Step-by-step breakdown of stateful GenServer with named registration:
+#
+# 🏷️  **Name registration** (via `name: __MODULE__`) keeps us from juggling
+# PIDs—any process on the node can refer to the server simply as `CounterServer`.
+#
+# 🔄  Two public functions, two experiences:
+#   • `inc/0` uses **GenServer.cast/2**—an *asynchronous* fire-and-forget. The
+#     caller enqueues `:inc` into the mailbox and continues immediately.
+#   • `value/0` uses **GenServer.call/2**—a *synchronous* request that blocks
+#     until the server replies with the current count. Writes stay non-blocking;
+#     occasional reads remain accurate.
+#
 defmodule CounterServer do
   use GenServer
 
@@ -85,6 +116,15 @@ IO.inspect(CounterServer.value(), label: "counter value")
 IO.puts("\n📌 Example 3 – handle_info/2 for custom messages & timeouts")
 
 # Step-by-step breakdown of self-sending messages and continue:
+#
+# ⏲️  **Self-messaging for periodic work**
+#   1. `init/1` returns `{:ok, 0, {:continue, :kickoff}}`. The integer `0` is
+#      our starting state; `{:continue, ...}` tells GenServer to call
+#      `handle_continue/2` right away—before any external messages.
+#   2. `handle_continue/2` schedules the first `:tick` with
+#      `Process.send_after/3` (1 000 ms) and returns.
+#   3. Each `:tick` lands in `handle_info/2`, where we print, increment the
+#      state, and schedule the next tick. One GenServer, zero extra processes!
 defmodule TimerServer do
   use GenServer
 
@@ -123,6 +163,19 @@ IO.puts("\n📌 Example 4 – Real-world style: in-memory feature flag cache")
 
 # Step-by-step breakdown of a production-style GenServer with ETS caching:
 # ETS is a shared memory store that can be accessed by multiple processes. (Erlang Term Storage)
+#
+# 🗄️  **Why ETS?** Erlang Term Storage is a high-performance in-memory table
+# accessible from *any* process:
+#   • Reads are lock-free—ideal for feature-flag checks that happen frequently.
+#   • The GenServer acts as the **single writer** refreshing the table on a
+#     fixed schedule, ensuring consistency.
+#   • If the GenServer crashes the ETS table survives, so callers keep reading
+#     stale-but-safe values until a supervisor restarts the refresher.
+#
+# Refresh workflow → `init/1` ➡️ `handle_continue/2` ➡️ `handle_info/2` (loop):
+#   1. Start table and immediately `{:continue, :refresh}`.
+#   2. Load latest flags and schedule `:refresh`.
+#   3. Every `:refresh` message repeats step 2—hands-free updates!
 defmodule FlagsCache do
   use GenServer
   # Module attributes are like constants in other languages.
