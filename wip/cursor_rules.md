@@ -17,7 +17,7 @@ and adjust for consistency. When in doubt, prefer the exemplar’s approach. Alw
 
 __
 
-Always be sure to use the MCP tools provided (Tidewave AI, Playwright and Interactive Feedback)
+Always be sure to use the MCP tools provided (Tidewave AI, Playwright, Context7 and Interactive Feedback)
 
 Always check the documentation before providing an answer.
 
