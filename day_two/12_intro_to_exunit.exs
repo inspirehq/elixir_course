@@ -96,22 +96,22 @@ defmodule DayTwo.AssertionExamples do
     code =
       quote do
         defmodule CalculatorTest do
-          use ExUnit.Case
+          use ExUnit.Case # Defines a test module for Calculator
 
           test "basic arithmetic" do
-            assert Calculator.add(2, 3) == 5
-            refute Calculator.add(2, 3) == 6
-            assert Calculator.divide(10, 2) == 5.0
-            assert_in_delta(Calculator.divide(1, 3), 0.333, 0.001)
+            assert Calculator.add(2, 3) == 5 # Check that addition works as expected
+            refute Calculator.add(2, 3) == 6 # Ensure incorrect results are not returned
+            assert Calculator.divide(10, 2) == 5.0 # Check division result
+            assert_in_delta(Calculator.divide(1, 3), 0.333, 0.001) # Allow for floating point rounding errors
           end
 
           test "error conditions" do
             assert_raise ArithmeticError, fn ->
-              Calculator.divide(10, 0)
+              Calculator.divide(10, 0) # Ensure dividing by zero raises an error
             end
 
             assert_raise ArgumentError, "invalid input", fn ->
-              Calculator.add("a", "b")
+              Calculator.add("a", "b") # Ensure invalid input raises the correct error
             end
           end
         end
@@ -126,24 +126,24 @@ defmodule DayTwo.AssertionExamples do
     code =
       quote do
         defmodule UserServiceTest do
-          use ExUnit.Case
+          use ExUnit.Case # Defines a test module for UserService
 
           test "user creation returns expected structure" do
-            assert {:ok, user} = UserService.create_user(%{name: "Alice"})
-            assert %User{name: "Alice", id: id} = user when is_integer(id)
-            assert user.inserted_at != nil
+            assert {:ok, user} = UserService.create_user(%{name: "Alice"}) # Pattern match to check for success tuple
+            assert %User{name: "Alice", id: id} = user when is_integer(id) # Ensure user struct has correct fields and id is an integer
+            assert user.inserted_at != nil # Check that a timestamp was set
           end
 
           test "validation errors" do
-            assert {:error, changeset} = UserService.create_user(%{name: ""})
-            assert %{name: ["can't be blank"]} = errors_on(changeset)
+            assert {:error, changeset} = UserService.create_user(%{name: ""}) # Pattern match to check for error tuple
+            assert %{name: ["can't be blank"]} = errors_on(changeset) # Ensure the error message is correct
           end
 
           test "list operations" do
-            users = UserService.list_users()
-            assert is_list(users)
-            assert length(users) > 0
-            assert Enum.all?(users, &match?(%User{}, &1))
+            users = UserService.list_users() # Get the list of users
+            assert is_list(users) # Ensure the result is a list
+            assert length(users) > 0 # List should not be empty
+            assert Enum.all?(users, &match?(%User{}, &1)) # Every element should be a User struct
           end
         end
       end
@@ -157,22 +157,22 @@ defmodule DayTwo.AssertionExamples do
     code =
       quote do
         defmodule FastMathTest do
-          use ExUnit.Case, async: true
+          use ExUnit.Case, async: true # Run tests in parallel for speed
 
           @tag :unit
           test "pure functions are fast" do
-            assert Math.factorial(5) == 120
+            assert Math.factorial(5) == 120 # Check that factorial works for a small input
           end
 
           @tag :slow
           test "complex calculation" do
-            result = Math.complex_operation(1000)
-            assert result > 0
+            result = Math.complex_operation(1000) # Run a slow operation
+            assert result > 0 # Ensure the result is positive
           end
 
           @tag skip: "not implemented yet"
           test "future feature" do
-            assert false
+            assert false # This test is marked as skipped and will not run
           end
         end
       end
@@ -208,32 +208,32 @@ defmodule DayTwo.TestSetupExamples do
     code =
       quote do
         defmodule DatabaseTest do
-          use ExUnit.Case
+          use ExUnit.Case # Defines a test module for database-related tests
 
           setup_all do
-            :ok = Ecto.Adapters.SQL.Sandbox.checkout(MyApp.Repo)
-            Ecto.Adapters.SQL.Sandbox.mode(MyApp.Repo, {:shared, self()})
-            admin = insert(:user, role: "admin")
+            :ok = Ecto.Adapters.SQL.Sandbox.checkout(MyApp.Repo) # Checkout a DB connection for all tests in this module
+            Ecto.Adapters.SQL.Sandbox.mode(MyApp.Repo, {:shared, self()}) # Set sandbox mode to shared for concurrent tests
+            admin = insert(:user, role: "admin") # Insert an admin user for use in tests
 
             on_exit(fn ->
-              Ecto.Adapters.SQL.Sandbox.checkin(MyApp.Repo)
+              Ecto.Adapters.SQL.Sandbox.checkin(MyApp.Repo) # Clean up DB connection after all tests
             end)
 
-            %{admin: admin}
+            %{admin: admin} # Make admin available to all tests
           end
 
           setup %{admin: admin} do
-            user = insert(:user)
-            post = insert(:post, author: user)
-            %{user: user, post: post, admin: admin}
+            user = insert(:user) # Insert a regular user
+            post = insert(:post, author: user) # Insert a post for that user
+            %{user: user, post: post, admin: admin} # Provide all test data in the context
           end
 
           test "user can view own post", %{user: user, post: post} do
-            assert Posts.can_view?(user, post)
+            assert Posts.can_view?(user, post) # User should be able to view their own post
           end
 
           test "admin can view all posts", %{admin: admin, post: post} do
-            assert Posts.can_view?(admin, post)
+            assert Posts.can_view?(admin, post) # Admin should be able to view any post
           end
         end
       end
@@ -247,26 +247,26 @@ defmodule DayTwo.TestSetupExamples do
     code =
       quote do
         defmodule APITest do
-          use ExUnit.Case
+          use ExUnit.Case # Defines a test module for API-related tests
 
           setup tags do
             if tags[:integration] do
-              start_supervised!(MockHTTPServer)
-              %{server_url: "http://localhost:4002"}
+              start_supervised!(MockHTTPServer) # Start a mock HTTP server for integration tests
+              %{server_url: "http://localhost:4002"} # Provide the server URL in the test context
             else
-              %{server_url: nil}
+              %{server_url: nil} # For non-integration tests, no server is started
             end
           end
 
           @tag :integration
           test "external API call", %{server_url: url} do
-            assert {:ok, response} = HTTPClient.get("#{url}/users")
-            assert response.status == 200
+            assert {:ok, response} = HTTPClient.get("#{url}/users") # Make an HTTP call and check for success
+            assert response.status == 200 # Ensure the response status is 200 OK
           end
 
           test "pure function test", %{server_url: url} do
-            assert url == nil
-            assert Parser.parse_json("{}") == %{}
+            assert url == nil # No server URL should be set for this test
+            assert Parser.parse_json("{}") == %{} # Check that JSON parsing works
           end
         end
       end
@@ -279,31 +279,32 @@ defmodule DayTwo.TestSetupExamples do
     code =
       quote do
         defmodule MyApp.TestCase do
-          use ExUnit.CaseTemplate
+          use ExUnit.CaseTemplate # Defines a reusable template for test modules
 
           using do
             quote do
-              use ExUnit.Case, async: true
-              import MyApp.TestHelpers
-              import MyApp.Factory
+              use ExUnit.Case, async: true # All tests using this template will run in parallel by default
+              import MyApp.TestHelpers    # Bring in custom helper functions for use in tests
+              import MyApp.Factory        # Bring in test data factory functions for easy test data creation
             end
           end
 
           setup tags do
-            # Common setup for all tests
-            :ok = Ecto.Adapters.SQL.Sandbox.checkout(MyApp.Repo)
+            # This setup block runs before each test using this template
+            :ok = Ecto.Adapters.SQL.Sandbox.checkout(MyApp.Repo) # Checkout a database connection for test isolation
             unless tags[:async] do
+              # If the test is not async, set the sandbox mode to shared so multiple processes can use the same connection
               Ecto.Adapters.SQL.Sandbox.mode(MyApp.Repo, {:shared, self()})
             end
-            :ok
+            :ok # Return :ok to indicate setup succeeded
           end
         end
-        # Usage in test files:
+        # Example usage of the test case template:
         defmodule UserTest do
-          use MyApp.TestCase
+          use MyApp.TestCase # Inherit all setup and imports from MyApp.TestCase
           test "user creation" do
-            user = insert(:user)
-            assert user.id != nil
+            user = insert(:user) # Use the imported factory to create a user
+            assert user.id != nil # Assert that the user was created and has an id
           end
         end
       end
@@ -328,37 +329,35 @@ defmodule DayTwo.OTPTestingExamples do
     code =
       quote do
         defmodule CounterServerTest do
-          use ExUnit.Case
+          use ExUnit.Case # Defines a test module for the CounterServer GenServer
           setup do
-            # Start supervised GenServer for each test
+            # Start a supervised CounterServer for each test to ensure isolation
             {:ok, pid} = start_supervised(CounterServer)
-            %{counter: pid}
+            %{counter: pid} # Provide the GenServer pid in the test context
           end
           test "initial state", %{counter: counter} do
-            assert CounterServer.value(counter) == 0
+            assert CounterServer.value(counter) == 0 # Counter should start at 0
           end
           test "increment operation", %{counter: counter} do
-            CounterServer.inc(counter)
-            CounterServer.inc(counter)
-            assert CounterServer.value(counter) == 2
+            CounterServer.inc(counter) # Increment the counter
+            CounterServer.inc(counter) # Increment again
+            assert CounterServer.value(counter) == 2 # Counter should now be 2
           end
           test "concurrent operations", %{counter: counter} do
-            # Test concurrent access
+            # Test concurrent increments using tasks
             tasks = for _ <- 1..10 do
               Task.async(fn -> CounterServer.inc(counter) end)
             end
-            Enum.each(tasks, &Task.await/1)
-            assert CounterServer.value(counter) == 10
+            Enum.each(tasks, &Task.await/1) # Wait for all tasks to finish
+            assert CounterServer.value(counter) == 10 # Counter should reflect all increments
           end
           test "server crash and restart" do
-            {:ok, pid} = start_supervised(CounterServer)
-            CounterServer.inc(pid)
-            # Kill the process
-            Process.exit(pid, :kill)
-            # Supervisor should restart it
-            Process.sleep(10)
-            {:ok, new_pid} = start_supervised(CounterServer)
-            assert CounterServer.value(new_pid) == 0 # Fresh state
+            {:ok, pid} = start_supervised(CounterServer) # Start a new server
+            CounterServer.inc(pid) # Increment once
+            Process.exit(pid, :kill) # Simulate a crash
+            Process.sleep(10) # Give supervisor time to restart
+            {:ok, new_pid} = start_supervised(CounterServer) # Start again
+            assert CounterServer.value(new_pid) == 0 # New server should start fresh
           end
         end
       end
@@ -370,27 +369,26 @@ defmodule DayTwo.OTPTestingExamples do
     code =
       quote do
         defmodule ProcessTest do
-          use ExUnit.Case
+          use ExUnit.Case # Defines a test module for process messaging
           test "process receives messages" do
-            parent = self()
+            parent = self() # Get the current process pid
             pid = spawn(fn ->
               receive do
-                {:ping, from} -> send(from, :pong)
+                {:ping, from} -> send(from, :pong) # Reply with :pong when pinged
               end
             end)
-            send(pid, {:ping, parent})
-            assert_receive :pong, 1000
+            send(pid, {:ping, parent}) # Send a ping message
+            assert_receive :pong, 1000 # Assert that we receive :pong within 1 second
           end
           test "process sends messages periodically" do
-            {:ok, _pid} = PeriodicWorker.start_link(interval: 100)
-            # Should receive multiple ticks
-            assert_receive :tick, 150
-            assert_receive :tick, 150
-            assert_receive :tick, 150
+            {:ok, _pid} = PeriodicWorker.start_link(interval: 100) # Start a worker that sends :tick
+            assert_receive :tick, 150 # Should receive a tick soon
+            assert_receive :tick, 150 # And another
+            assert_receive :tick, 150 # And another
           end
           test "no unwanted messages" do
-            QuietWorker.start_link()
-            refute_receive _, 100 # Should not receive anything
+            QuietWorker.start_link() # Start a worker that should not send messages
+            refute_receive _, 100 # Assert that no messages are received within 100ms
           end
         end
       end
@@ -402,27 +400,24 @@ defmodule DayTwo.OTPTestingExamples do
     code =
       quote do
         defmodule SupervisorTest do
-          use ExUnit.Case
+          use ExUnit.Case # Defines a test module for supervisor behavior
           test "supervisor starts children" do
-            {:ok, sup_pid} = MyApp.Supervisor.start_link()
-            children = Supervisor.which_children(sup_pid)
-            assert length(children) == 3
-            # Verify specific children are running
+            {:ok, sup_pid} = MyApp.Supervisor.start_link() # Start the supervisor
+            children = Supervisor.which_children(sup_pid) # Get the list of children
+            assert length(children) == 3 # There should be three children
+            # Check that a specific worker is running
             assert {:worker1, worker_pid, :worker, [Worker]} =
                      List.keyfind(children, :worker1, 0)
-            assert Process.alive?(worker_pid)
+            assert Process.alive?(worker_pid) # The worker process should be alive
           end
           test "supervisor restarts crashed children" do
-            {:ok, sup_pid} = MyApp.Supervisor.start_link()
-            [{:worker1, pid, :worker, [Worker]}] = Supervisor.which_children(sup_pid)
-            # Kill the worker
-            Process.exit(pid, :kill)
-            # Wait for restart
-            Process.sleep(100)
-            # Verify new worker is running
-            [{:worker1, new_pid, :worker, [Worker]}] = Supervisor.which_children(sup_pid)
-            assert new_pid != pid
-            assert Process.alive?(new_pid)
+            {:ok, sup_pid} = MyApp.Supervisor.start_link() # Start the supervisor
+            [{:worker1, pid, :worker, [Worker]}] = Supervisor.which_children(sup_pid) # Get the worker
+            Process.exit(pid, :kill) # Simulate a crash
+            Process.sleep(100) # Wait for restart
+            [{:worker1, new_pid, :worker, [Worker]}] = Supervisor.which_children(sup_pid) # Get the new worker
+            assert new_pid != pid # The pid should be different (new process)
+            assert Process.alive?(new_pid) # The new worker should be alive
           end
         end
       end
@@ -459,7 +454,7 @@ defmodule DayTwo.ChatSystemTest do
     code =
       quote do
         defmodule ChatSystemTest do
-          use MyApp.TestCase, async: false # Database operations
+          use MyApp.TestCase, async: false # Use the shared test case template, run tests synchronously (DB ops)
           describe "message validation" do
             test "valid message passes validation" do
               changeset =
@@ -467,8 +462,8 @@ defmodule DayTwo.ChatSystemTest do
                   content: "Hello world",
                   user_id: 1,
                   room_id: 1
-                })
-              assert changeset.valid?
+                }) # Build a changeset for a valid message
+              assert changeset.valid? # The changeset should be valid
             end
             test "empty content fails validation" do
               changeset =
@@ -476,65 +471,59 @@ defmodule DayTwo.ChatSystemTest do
                   content: "",
                   user_id: 1,
                   room_id: 1
-                })
-              refute changeset.valid?
-              assert "can't be blank" in errors_on(changeset).content
+                }) # Build a changeset with empty content
+              refute changeset.valid? # The changeset should be invalid
+              assert "can't be blank" in errors_on(changeset).content # Error message should be present
             end
           end
           describe "room management" do
             setup do
-              user = insert(:user)
-              room = insert(:room, owner: user)
-              %{user: user, room: room}
+              user = insert(:user) # Create a user
+              room = insert(:room, owner: user) # Create a room owned by the user
+              %{user: user, room: room} # Provide both in the test context
             end
             test "user can join room", %{user: user, room: room} do
-              assert {:ok, membership} = Rooms.join(room, user)
-              assert membership.user_id == user.id
-              assert membership.room_id == room.id
+              assert {:ok, membership} = Rooms.join(room, user) # User should be able to join the room
+              assert membership.user_id == user.id # Membership should reference the correct user
+              assert membership.room_id == room.id # Membership should reference the correct room
             end
             test "user receives messages after joining", %{user: user, room: room} do
-              {:ok, _} = Rooms.join(room, user)
-              message = insert(:message, room: room)
-              # Simulate real-time notification
+              {:ok, _} = Rooms.join(room, user) # User joins the room
+              message = insert(:message, room: room) # Insert a message into the room
               Phoenix.PubSub.broadcast(
                 MyApp.PubSub,
                 "room:#{room.id}",
                 {:new_message, message}
-              )
-              # User process should receive the message
-              assert_receive {:new_message, ^message}, 1000
+              ) # Simulate a real-time message broadcast
+              assert_receive {:new_message, ^message}, 1000 # User process should receive the message
             end
           end
           describe "real-time messaging" do
             test "message broadcasts to room members" do
-              room = insert(:room)
-              user1 = insert(:user)
-              user2 = insert(:user)
-              # Both users join room
-              {:ok, _} = Rooms.join(room, user1)
+              room = insert(:room) # Create a room
+              user1 = insert(:user) # Create user 1
+              user2 = insert(:user) # Create user 2
+              {:ok, _} = Rooms.join(room, user1) # Both users join the room
               {:ok, _} = Rooms.join(room, user2)
-              # User1 sends message
               message_data = %{content: "Hello!", user_id: user1.id, room_id: room.id}
-              {:ok, message} = Messages.create_and_broadcast(message_data)
-              # Both users should receive the message
-              assert_receive {:new_message, ^message}
+              {:ok, message} = Messages.create_and_broadcast(message_data) # User1 sends a message
+              assert_receive {:new_message, ^message} # Both users should receive the message
               assert_receive {:new_message, ^message}
             end
             test "typing indicators work" do
-              room = insert(:room)
-              user = insert(:user)
-              TypingIndicator.start_typing(room.id, user.id)
-              assert_receive {:typing_started, %{room_id: room_id, user_id: user_id}}
-              assert room_id == room.id
-              assert user_id == user.id
+              room = insert(:room) # Create a room
+              user = insert(:user) # Create a user
+              TypingIndicator.start_typing(room.id, user.id) # Simulate typing
+              assert_receive {:typing_started, %{room_id: room_id, user_id: user_id}} # Should receive typing event
+              assert room_id == room.id # Room id should match
+              assert user_id == user.id # User id should match
             end
           end
           describe "performance and load" do
             @tag :slow
             test "handles concurrent message creation" do
-              room = insert(:room)
-              user = insert(:user)
-              # Create 100 messages concurrently
+              room = insert(:room) # Create a room
+              user = insert(:user) # Create a user
               tasks =
                 for i <- 1..100 do
                   Task.async(fn ->
@@ -542,15 +531,13 @@ defmodule DayTwo.ChatSystemTest do
                       content: "Message #{i}",
                       user_id: user.id,
                       room_id: room.id
-                    })
+                    }) # Create messages concurrently
                   end)
                 end
-              results = Enum.map(tasks, &Task.await(&1, 5000))
-              # All should succeed
-              assert Enum.all?(results, &match?({:ok, _}, &1))
-              # Verify count in database
-              count = Messages.count_for_room(room.id)
-              assert count == 100
+              results = Enum.map(tasks, &Task.await(&1, 5000)) # Wait for all tasks
+              assert Enum.all?(results, &match?({:ok, _}, &1)) # All should succeed
+              count = Messages.count_for_room(room.id) # Check message count in DB
+              assert count == 100 # Should be 100 messages
             end
           end
         end
